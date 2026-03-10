@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Профиль</title>
+  <link rel="stylesheet" href="css/main.css">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>👤 Профиль</h1>
+    </header>
+    <main class="main">
+      <section id="bookingsSection">
+        <h2>Мои брони</h2>
+        <div id="bookingsList"></div>
+      </section>
+      <section id="passengersSection">
+        <h2>Сохранённые пассажиры</h2>
+        <div id="passengersList"></div>
+        <button type="button" id="addPassenger" class="btn btn-small">Добавить</button>
+      </section>
+    </main>
+    <nav class="tab-bar">
+      <a href="index.html" class="tab">🎫 Бронь</a>
+      <a href="profile.html" class="tab active">👤 Профиль</a>
+      <a href="faq.html" class="tab">❓ FAQ</a>
+    </nav>
+  </div>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/profile.js"></script>
+</body>
+</html>

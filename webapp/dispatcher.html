@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Диспетчер</title>
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/dispatcher.css">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>🔄 Панель диспетчера</h1>
+    </header>
+    <div id="loginWarning" class="warning hidden">Войдите через Telegram (как диспетчер).</div>
+    <main id="dispatcherMain" class="main hidden">
+      <div class="tabs">
+        <button type="button" data-tab="new">🆕 Новые</button>
+        <button type="button" data-tab="active">🔄 В работе</button>
+        <button type="button" data-tab="search">🔍 Поиск</button>
+        <button type="button" data-tab="stats">📊 Статистика</button>
+      </div>
+      <div id="tabNew" class="tab-panel">
+        <div id="newList"></div>
+      </div>
+      <div id="tabActive" class="tab-panel hidden">
+        <div id="activeList"></div>
+      </div>
+      <div id="tabSearch" class="tab-panel hidden">
+        <input type="text" id="searchInput" placeholder="Номер заявки или фамилия">
+        <button type="button" id="searchBtn">Искать</button>
+        <div id="searchResults"></div>
+      </div>
+      <div id="tabStats" class="tab-panel hidden">
+        <div id="statsContent"></div>
+      </div>
+    </main>
+  </div>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/dispatcher.js"></script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Бронирование</title>
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/booking.css">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>Бронирование</h1>
+      <p id="routeSummary" class="subtitle"></p>
+    </header>
+
+    <main class="main">
+      <div id="step1" class="step">
+        <h2>Шаг 1. Пассажиры</h2>
+        <div id="passengerCount">
+          <label>Количество</label>
+          <div class="count-control">
+            <button type="button" id="passengerMinus">−</button>
+            <span id="passengerNum">1</span>
+            <button type="button" id="passengerPlus">+</button>
+          </div>
+        </div>
+        <label class="checkbox-label">
+          <input type="checkbox" id="forAnotherPerson"> Бронь для другого человека
+        </label>
+        <div id="anotherPhoneBlock" class="hidden">
+          <input type="tel" id="anotherPersonPhone" placeholder="Телефон получателя">
+        </div>
+        <div id="passengersList"></div>
+        <p id="borderDocs" class="border-docs"></p>
+        <button type="button" id="toStep2" class="btn btn-primary">Продолжить</button>
+      </div>
+
+      <div id="step2" class="step hidden">
+        <h2>Шаг 2. Контакт и оплата</h2>
+        <input type="tel" id="phone" placeholder="Телефон" required>
+        <label class="checkbox-label">
+          <input type="checkbox" id="savePhone"> Сохранить в профиль
+        </label>
+        <div class="payment-methods">
+          <label class="radio-label"><input type="radio" name="payment" value="webpay" checked> Онлайн (WebPay)</label>
+          <label class="radio-label"><input type="radio" name="payment" value="cash"> Наличными у водителя</label>
+          <label class="radio-label"><input type="radio" name="payment" value="callback"> Перезвоните мне</label>
+        </div>
+        <div id="paymentTimer" class="timer hidden">30:00</div>
+        <p id="priceSummary"></p>
+        <button type="button" id="submitBooking" class="btn btn-primary">Забронировать</button>
+      </div>
+    </main>
+  </div>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/booking.js"></script>
+</body>
+</html>

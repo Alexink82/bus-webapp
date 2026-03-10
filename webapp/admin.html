@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Админ</title>
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/dispatcher.css">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>⚙️ Админ-панель</h1>
+    </header>
+    <div id="loginWarning" class="warning hidden">Войдите через Telegram (как администратор).</div>
+    <main id="adminMain" class="main hidden">
+      <div id="statsPanel" class="tab-panel">
+        <h2>Статистика</h2>
+        <div id="statsContent"></div>
+        <button type="button" id="exportCsv" class="btn btn-small">Экспорт CSV</button>
+      </div>
+      <div id="logsPanel" class="tab-panel">
+        <h2>Логи</h2>
+        <div id="logsContent"></div>
+      </div>
+    </main>
+  </div>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    (function() {
+      const uid = getTelegramUserId();
+      if (!uid) {
+        document.getElementById('loginWarning').classList.remove('hidden');
+        return;
+      }
+      const headers = { 'X-Telegram-User-Id': String(uid) };
+      function api(path) { return fetch(BASE_URL + path, { headers }).then(r => r.json()); }
+      api('/api/admin/stats').then(data => {
+        document.getElementById('loginWarning').classList.add('hidden');
+        document.getElementById('adminMain').classList.remove('hidden');
+        document.getElementById('statsContent').innerHTML = `
+          <p>Период: ${data.from_date} — ${data.to_date}</p>
+          <p>Заявок: <strong>${data.total_bookings}</strong>, сумма: <strong>${data.total_sum} BYN</strong></p>
+        `;
+        document.getElementById('exportCsv').onclick = () => {
+          fetch(BASE_URL + '/api/admin/export?from_date=' + data.from_date + '&to_date=' + data.to_date, { headers })
+            .then(r => r.blob()).then(blob => {
+              const a = document.createElement('a');
+              a.href = URL.createObjectURL(blob);
+              a.download = 'bookings.csv';
+              a.click();
+            });
+        };
+      }).catch(() => { document.getElementById('loginWarning').innerHTML = 'Нет доступа (не админ).'; });
+      api('/api/admin/logs?limit=50').then(data => {
+        const logs = data.logs || [];
+        document.getElementById('logsContent').innerHTML = logs.map(l => 
+          `<div class="dispatcher-card"><small>${l.timestamp}</small> ${l.level} ${l.source} ${l.action}</div>`
+        ).join('');
+      }).catch(() => {});
+    })();
+  </script>
+</body>
+</html>

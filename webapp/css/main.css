@@ -1,0 +1,196 @@
+:root {
+  --bg: #1a1a2e;
+  --surface: #16213e;
+  --primary: #0f3460;
+  --accent: #e94560;
+  --text: #eee;
+  --text-muted: #aaa;
+  --radius: 12px;
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding-bottom: 70px;
+}
+
+.container {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.header {
+  text-align: center;
+  padding: 24px 0;
+}
+
+.header h1 {
+  font-size: 1.5rem;
+  margin-bottom: 4px;
+}
+
+.subtitle {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.field {
+  margin-bottom: 12px;
+}
+
+.field label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.field input,
+.field select {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--primary);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.btn {
+  display: inline-block;
+  padding: 12px 24px;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+}
+
+.btn-primary {
+  width: 100%;
+  background: var(--accent);
+  color: #fff;
+  margin-top: 8px;
+}
+
+.btn-small {
+  padding: 8px 16px;
+  background: var(--primary);
+  color: var(--text);
+  margin-top: 8px;
+}
+
+.swap-btn {
+  width: 100%;
+  padding: 8px;
+  background: var(--surface);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius);
+  color: var(--text);
+  cursor: pointer;
+  margin-bottom: 12px;
+}
+
+.search-form {
+  background: var(--surface);
+  padding: 20px;
+  border-radius: var(--radius);
+  margin-bottom: 24px;
+}
+
+.results {
+  margin-bottom: 24px;
+}
+
+.results.hidden {
+  display: none;
+}
+
+.results h2 {
+  font-size: 1.1rem;
+  margin-bottom: 12px;
+}
+
+.trip-card {
+  background: var(--surface);
+  padding: 16px;
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+}
+
+.trip-time {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.trip-route {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+
+.trip-price {
+  font-size: 0.9rem;
+  margin-top: 4px;
+}
+
+.actual-info {
+  background: var(--surface);
+  padding: 16px;
+  border-radius: var(--radius);
+}
+
+.actual-info h3 {
+  font-size: 1rem;
+  margin-bottom: 12px;
+}
+
+.info-block {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.actual-info a {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.tab-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  display: flex;
+  justify-content: space-around;
+  padding: 10px 0;
+  border-top: 1px solid var(--primary);
+}
+
+.tab-bar .tab {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.85rem;
+}
+
+.tab-bar .tab.active {
+  color: var(--accent);
+}
+
+.hidden {
+  display: none !important;
+}

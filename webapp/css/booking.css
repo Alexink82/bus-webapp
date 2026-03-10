@@ -1,0 +1,84 @@
+.count-control {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0;
+}
+
+.count-control button {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--primary);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.passenger-block {
+  background: var(--surface);
+  padding: 16px;
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+}
+
+.passenger-block label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.85rem;
+}
+
+.passenger-block input {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  border: 1px solid var(--primary);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.checkbox-label, .radio-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0;
+  cursor: pointer;
+}
+
+.border-docs {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 12px 0;
+}
+
+.timer {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--accent);
+  margin: 12px 0;
+}
+
+.payment-methods {
+  margin: 12px 0;
+}
+
+.step {
+  margin-bottom: 24px;
+}
+
+.step h2 {
+  font-size: 1.1rem;
+  margin-bottom: 12px;
+}
+
+#anotherPhoneBlock input {
+  width: 100%;
+  padding: 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--primary);
+  background: var(--surface);
+  color: var(--text);
+  margin-top: 8px;
+}

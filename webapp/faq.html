@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FAQ</title>
+  <link rel="stylesheet" href="css/main.css">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>❓ Частые вопросы</h1>
+    </header>
+    <main class="main">
+      <input type="text" id="faqSearch" placeholder="Поиск..." style="width:100%; padding:12px; margin-bottom:16px; border-radius:8px;">
+      <div id="faqList"></div>
+      <p style="margin-top:16px;"><a href="https://t.me/bus_news" target="_blank" rel="noopener">Написать в поддержку (Telegram)</a></p>
+    </main>
+    <nav class="tab-bar">
+      <a href="index.html" class="tab">🎫 Бронь</a>
+      <a href="profile.html" class="tab">👤 Профиль</a>
+      <a href="faq.html" class="tab active">❓ FAQ</a>
+    </nav>
+  </div>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    (function() {
+      const lang = localStorage.getItem('lang') || 'ru';
+      const qKey = lang === 'en' ? 'question_en' : 'question_ru';
+      const aKey = lang === 'en' ? 'answer_en' : 'answer_ru';
+      fetch(BASE_URL + '/api/faq?lang=' + lang).then(r => r.json()).then(data => {
+        const items = data.items || [];
+        const list = document.getElementById('faqList');
+        list.innerHTML = items.map(item => `
+          <div class="trip-card faq-item">
+            <strong>${item.question}</strong>
+            <p style="margin-top:8px; color:var(--text-muted);">${item.answer}</p>
+          </div>
+        `).join('');
+      }).catch(() => { document.getElementById('faqList').innerHTML = '<p>Не удалось загрузить FAQ.</p>'; });
+      document.getElementById('faqSearch').addEventListener('input', function() {
+        const q = this.value.toLowerCase();
+        document.querySelectorAll('.faq-item').forEach(el => {
+          el.style.display = el.textContent.toLowerCase().includes(q) ? '' : 'none';
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

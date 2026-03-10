@@ -1,0 +1,70 @@
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.tabs button {
+  padding: 10px 16px;
+  border: 1px solid var(--primary);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.tabs button.active {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.tab-panel.hidden {
+  display: none;
+}
+
+.warning {
+  background: #4a1c1c;
+  color: #f88;
+  padding: 16px;
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+}
+
+.dispatcher-card {
+  background: var(--surface);
+  padding: 16px;
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+}
+
+.dispatcher-card .status {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.dispatcher-card .actions {
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dispatcher-card .actions button {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--primary);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+#searchInput {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 8px;
+  border-radius: var(--radius);
+  border: 1px solid var(--primary);
+  background: var(--surface);
+  color: var(--text);
+}

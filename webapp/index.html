@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Бронирование автобуса</title>
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/telegram-theme.css">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>🚌 Бронирование билетов</h1>
+      <p class="subtitle">Выберите маршрут и дату</p>
+    </header>
+
+    <main class="main">
+      <form id="searchForm" class="search-form">
+        <div class="field">
+          <label for="fromCity">Откуда</label>
+          <select id="fromCity" required></select>
+        </div>
+        <button type="button" id="swapBtn" class="swap-btn" title="Поменять местами">⇅</button>
+        <div class="field">
+          <label for="toCity">Куда</label>
+          <select id="toCity" required></select>
+        </div>
+        <div class="field">
+          <label for="travelDate">Дата</label>
+          <input type="date" id="travelDate" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Найти рейсы</button>
+      </form>
+
+      <section id="results" class="results hidden">
+        <h2>Рейсы на <span id="resultsDate"></span></h2>
+        <div id="resultsList"></div>
+      </section>
+
+      <section id="actualInfo" class="actual-info">
+        <h3>Актуальная информация</h3>
+        <div id="borderInfo" class="info-block">Загрузка...</div>
+        <div id="weatherInfo" class="info-block">Загрузка...</div>
+        <a id="channelLink" href="https://t.me/bus_news" target="_blank" rel="noopener">📰 Канал @bus_news</a>
+      </section>
+    </main>
+
+    <nav class="tab-bar">
+      <a href="index.html" class="tab active">🎫 Бронь</a>
+      <a href="profile.html" class="tab">👤 Профиль</a>
+      <a href="faq.html" class="tab">❓ FAQ</a>
+    </nav>
+  </div>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/i18n.js"></script>
+  <script>
+    (function() {
+      const fromSelect = document.getElementById('fromCity');
+      const toSelect = document.getElementById('toCity');
+      const travelDate = document.getElementById('travelDate');
+      const searchForm = document.getElementById('searchForm');
+      const resultsSection = document.getElementById('results');
+      const resultsList = document.getElementById('resultsList');
+      const resultsDateSpan = document.getElementById('resultsDate');
+      const swapBtn = document.getElementById('swapBtn');
+
+      let routes = [];
+      let selectedRoute = null;
+
+      function setMinDate() {
+        const today = new Date().toISOString().slice(0, 10);
+        travelDate.setAttribute('min', today);
+      }
+
+      function fillCities() {
+        const cities = new Set();
+        routes.forEach(r => {
+          (r.stops || []).forEach(s => { if (s.city) cities.add(s.city); });
+        });
+        const arr = Array.from(cities).sort();
+        fromSelect.innerHTML = '<option value="">—</option>' + arr.map(c => `<option value="${c}">${c}</option>`).join('');
+        toSelect.innerHTML = '<option value="">—</option>' + arr.map(c => `<option value="${c}">${c}</option>`).join('');
+      }
+
+      function getTripsForDate(route, dateStr) {
+        const day = new Date(dateStr).getDay();
+        const schedule = route.schedule_days || [0,1,2,3,4,5,6];
+        if (!schedule.includes(day)) return [];
+        const stops = route.stops || [];
+        const boarding = stops.filter(s => s.is_boarding);
+        return boarding.map(s => ({ stop: s, time: s.time }));
+      }
+
+      function showResults(routeId, dateStr) {
+        const route = routes.find(r => r.id === routeId);
+        if (!route) return;
+        selectedRoute = route;
+        const fromCity = fromSelect.value;
+        const toCity = toSelect.value;
+        const trips = getTripsForDate(route, dateStr);
+        resultsDateSpan.textContent = dateStr;
+        resultsList.innerHTML = trips.map(t => `
+          <div class="trip-card" data-time="${t.time}">
+            <div class="trip-time">${t.time}</div>
+            <div class="trip-route">${fromCity} → ${toCity}</div>
+            <div class="trip-price">от ${route.base_price} BYN</div>
+            <button type="button" class="btn btn-small" data-route-id="${route.id}" data-date="${dateStr}" data-time="${t.time}">Выбрать</button>
+          </div>
+        `).join('') || '<p>На эту дату рейсов нет.</p>';
+        resultsList.querySelectorAll('.btn-small').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const url = `booking.html?route_id=${btn.dataset.routeId}&from=${encodeURIComponent(fromCity)}&to=${encodeURIComponent(toCity)}&date=${btn.dataset.date}&time=${btn.dataset.time}`;
+            window.location.href = url;
+          });
+        });
+        resultsSection.classList.remove('hidden');
+      }
+
+      swapBtn.addEventListener('click', () => {
+        const a = fromSelect.value;
+        const b = toSelect.value;
+        fromSelect.value = b;
+        toSelect.value = a;
+      });
+
+      searchForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const fromCity = fromSelect.value;
+        const toCity = toSelect.value;
+        const dateStr = travelDate.value;
+        if (!fromCity || !toCity || !dateStr) return;
+        const route = routes.find(r => {
+          const stops = r.stops || [];
+          const fromOk = stops.some(s => s.city === fromCity);
+          const toOk = stops.some(s => s.city === toCity);
+          if (!fromOk || !toOk) return false;
+          const iFrom = stops.findIndex(s => s.city === fromCity);
+          const iTo = stops.findIndex(s => s.city === toCity);
+          return iFrom < iTo;
+        });
+        if (route) showResults(route.id, dateStr);
+        else resultsList.innerHTML = '<p>Маршрут не найден.</p>', resultsSection.classList.remove('hidden');
+      });
+
+      fetch(BASE_URL + '/api/routes').then(r => r.json()).then(data => {
+        routes = data.routes || [];
+        fillCities();
+      }).catch(() => { routes = []; fillCities(); });
+
+      fetch(BASE_URL + '/api/news').then(r => r.json()).then(data => {
+        if (data.border) document.getElementById('borderInfo').textContent = data.border.message_ru || '—';
+        if (data.weather) document.getElementById('weatherInfo').textContent = data.weather.city + ': ' + data.weather.temp + '°C, ' + (data.weather.description_ru || '');
+      }).catch(() => {
+        document.getElementById('borderInfo').textContent = '—';
+        document.getElementById('weatherInfo').textContent = '—';
+      });
+
+      setMinDate();
+      if (window.Telegram && Telegram.WebApp) Telegram.WebApp.ready();
+    })();
+  </script>
+</body>
+</html>
