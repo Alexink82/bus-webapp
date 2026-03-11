@@ -59,7 +59,7 @@
             .then(function(ok) {
               if (!ok) return;
               cancelBtn.disabled = true;
-              api('/api/bookings/' + encodeURIComponent(id) + '/cancel', { method: 'POST' })
+              api('/api/bookings/' + encodeURIComponent(id) + '/cancel', { method: 'POST', body: JSON.stringify({}) })
                 .then(function() {
                   document.getElementById('statusText').textContent = 'Заявка отменена.';
                   cancelBtn.classList.add('hidden');
