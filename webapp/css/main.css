@@ -297,6 +297,63 @@ body {
   margin-top: 4px;
 }
 
+.schedule-section {
+  margin-bottom: 24px;
+}
+
+.schedule-section h3 {
+  font-size: 1.1rem;
+  margin-bottom: 6px;
+}
+
+.schedule-tz {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.schedule-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.schedule-card {
+  background: var(--surface);
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  border-left: 4px solid var(--accent);
+}
+
+.schedule-name {
+  font-weight: 600;
+  font-size: 1rem;
+  margin-bottom: 6px;
+}
+
+.schedule-time {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.schedule-stops {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  word-wrap: break-word;
+}
+
+.schedule-price {
+  font-size: 0.9rem;
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.text-secondary {
+  color: var(--text-muted);
+}
+
 .actual-info {
   background: var(--surface);
   padding: 16px;

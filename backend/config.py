@@ -5,6 +5,24 @@ from typing import List
 from pydantic_settings import BaseSettings
 
 
+def _env_ids_list(primary_key: str, fallback_key: str) -> List[int]:
+    """Список ID из env: primary_key (например ADMIN_IDS) или fallback_key (ADMIN_ID) для совместимости."""
+    raw = os.environ.get(primary_key) or os.environ.get(fallback_key) or ""
+    raw = (raw or "").strip()
+    if not raw:
+        return []
+    out = []
+    for x in raw.split(","):
+        x = x.strip()
+        if not x:
+            continue
+        try:
+            out.append(int(x))
+        except ValueError:
+            continue
+    return out
+
+
 class Settings(BaseSettings):
     """Application settings."""
 
@@ -38,6 +56,10 @@ class Settings(BaseSettings):
 
     @property
     def admin_ids_list(self) -> List[int]:
+        # Поддержка ADMIN_IDS и опечатки ADMIN_ID в Render
+        env_list = _env_ids_list("ADMIN_IDS", "ADMIN_ID")
+        if env_list:
+            return env_list
         if not self.admin_ids:
             return []
         out = []
@@ -53,6 +75,10 @@ class Settings(BaseSettings):
 
     @property
     def dispatcher_ids_list(self) -> List[int]:
+        # Поддержка DISPATCHER_IDS и опечатки DISPATCHER_ID в Render
+        env_list = _env_ids_list("DISPATCHER_IDS", "DISPATCHER_ID")
+        if env_list:
+            return env_list
         if not self.dispatcher_ids:
             return []
         out = []

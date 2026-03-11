@@ -31,6 +31,7 @@ def _env_int_list(name: str) -> list:
 
 
 # ─── Routes (same as bus-bot core/constants.py) ───
+# В боте нет поля schedule_days — рейсы ежедневно. Здесь schedule_days [0..6] = то же самое.
 ROUTES = {
     "mozyr_moscow": {
         "id": "mozyr_moscow",

@@ -22,6 +22,12 @@ def validate_passport(passport: str, route_type: str) -> bool:
 def validate_passenger(passenger: dict, route_type: str, travel_date: date) -> tuple[bool, str]:
     if not passenger:
         return False, "empty"
+    # Внутренние рейсы: достаточно имени (first_name). Телефон — отдельно в заявке.
+    if route_type != "international":
+        if not passenger.get("first_name") or not str(passenger.get("first_name", "")).strip():
+            return False, "name_required"
+        return True, ""
+    # Международные: полные данные
     if not passenger.get("last_name") or not passenger.get("first_name"):
         return False, "name_required"
     bd = passenger.get("birth_date")

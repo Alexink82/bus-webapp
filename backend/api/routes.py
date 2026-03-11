@@ -13,10 +13,18 @@ async def list_routes():
     for rid, r in ROUTES.items():
         route_type = r.get("type", "local")
         discount_rules = DISCOUNT_RULES.get(route_type, {})
-        stops_for_api = [
-            {"city": city, "time": r.get("departure") if i == 0 else r.get("arrival"), "price_offset": 0, "is_boarding": True, "is_exit": i == len(r["stops"]) - 1}
-            for i, city in enumerate(r["stops"])
-        ]
+        stops_for_api = []
+        for i, city in enumerate(r["stops"]):
+            is_first = i == 0
+            is_last = i == len(r["stops"]) - 1
+            t = r.get("departure") if is_first else r.get("arrival")
+            stops_for_api.append({
+                "city": city,
+                "time": t,
+                "price_offset": 0,
+                "is_boarding": is_first,
+                "is_exit": is_last,
+            })
         if len(stops_for_api) > 1:
             stops_for_api[0]["time"] = r.get("departure")
             stops_for_api[-1]["time"] = r.get("arrival")

@@ -27,40 +27,61 @@
 
     <main class="main">
       <div id="step1" class="step">
+        <p class="step-nav"><a href="index.html" id="backToRoutes">← Изменить маршрут</a></p>
         <h2>Шаг 1. Пассажиры</h2>
-        <div id="passengerCount">
-          <label>Количество</label>
+        <div id="passengerCount" class="field-group">
+          <label for="passengerNum">Количество пассажиров</label>
+          <p class="field-hint">Укажите число мест для бронирования (1–10).</p>
           <div class="count-control">
-            <button type="button" id="passengerMinus">−</button>
-            <span id="passengerNum">1</span>
-            <button type="button" id="passengerPlus">+</button>
+            <button type="button" id="passengerMinus" aria-label="Уменьшить">−</button>
+            <span id="passengerNum" aria-live="polite">1</span>
+            <button type="button" id="passengerPlus" aria-label="Увеличить">+</button>
           </div>
+          <span id="passengerCountError" class="field-error" aria-live="polite"></span>
         </div>
         <label class="checkbox-label">
           <input type="checkbox" id="forAnotherPerson"> Бронь для другого человека
         </label>
-        <div id="anotherPhoneBlock" class="hidden">
-          <input type="tel" id="anotherPersonPhone" placeholder="Телефон получателя">
+        <p class="field-hint">Если бронируете не для себя, укажите телефон получателя напоминания.</p>
+        <div id="anotherPhoneBlock" class="hidden field-group">
+          <label for="anotherPersonPhone">Телефон получателя</label>
+          <input type="tel" id="anotherPersonPhone" placeholder="+375 29 123 45 67">
+          <span id="anotherPersonPhoneError" class="field-error"></span>
         </div>
         <div id="passengersList"></div>
+        <span id="step1Errors" class="field-error block-error" aria-live="polite"></span>
         <p id="borderDocs" class="border-docs"></p>
-        <button type="button" id="toStep2" class="btn btn-primary">Продолжить</button>
+        <div class="step-actions">
+          <button type="button" id="toStep2" class="btn btn-primary">Продолжить</button>
+        </div>
       </div>
 
       <div id="step2" class="step hidden">
         <h2>Шаг 2. Контакт и оплата</h2>
-        <input type="tel" id="phone" placeholder="Телефон" required>
+        <div class="field-group">
+          <label for="phone">Контактный телефон <span class="required">*</span></label>
+          <p class="field-hint">Номер для связи и подтверждения брони. Формат: +375 29 123 45 67.</p>
+          <input type="tel" id="phone" placeholder="+375 29 123 45 67" required>
+          <span id="phoneError" class="field-error" aria-live="polite"></span>
+        </div>
         <label class="checkbox-label">
-          <input type="checkbox" id="savePhone"> Сохранить в профиль
+          <input type="checkbox" id="savePhone"> Сохранить номер в профиль
         </label>
-        <div class="payment-methods">
-          <label class="radio-label"><input type="radio" name="payment" value="webpay" checked> Онлайн (WebPay)</label>
-          <label class="radio-label"><input type="radio" name="payment" value="cash"> Наличными у водителя</label>
-          <label class="radio-label"><input type="radio" name="payment" value="callback"> Перезвоните мне</label>
+        <div class="field-group">
+          <label>Способ оплаты</label>
+          <p class="field-hint">Онлайн — оплата картой; наличные или перезвон — при посадке или по договорённости.</p>
+          <div class="payment-methods">
+            <label class="radio-label"><input type="radio" name="payment" value="webpay" checked> Онлайн (WebPay)</label>
+            <label class="radio-label"><input type="radio" name="payment" value="cash"> Наличными у водителя</label>
+            <label class="radio-label"><input type="radio" name="payment" value="callback"> Перезвоните мне</label>
+          </div>
         </div>
         <div id="paymentTimer" class="timer hidden">30:00</div>
         <p id="priceSummary"></p>
-        <button type="button" id="submitBooking" class="btn btn-primary">Забронировать</button>
+        <div class="step-actions">
+          <button type="button" id="backToStep1" class="btn btn-secondary">← Назад</button>
+          <button type="button" id="submitBooking" class="btn btn-primary">Забронировать</button>
+        </div>
       </div>
     </main>
   </div>

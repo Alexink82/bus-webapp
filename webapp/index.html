@@ -51,6 +51,12 @@
         <div id="resultsList"></div>
       </section>
 
+      <section id="scheduleSection" class="schedule-section">
+        <h3>📋 Расписание</h3>
+        <p class="schedule-tz">Минск (UTC+3). Рейсы по маршрутам — как в боте.</p>
+        <div id="scheduleList" class="schedule-list"></div>
+      </section>
+
       <section id="actualInfo" class="actual-info">
         <h3>Актуальная информация</h3>
         <div id="borderInfo" class="info-block">Загрузка...</div>
@@ -108,6 +114,27 @@
         const esc = typeof escapeHtml === 'function' ? escapeHtml : (s) => (s == null ? '' : String(s));
         fromSelect.innerHTML = '<option value="">—</option>' + arr.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
         toSelect.innerHTML = '<option value="">—</option>' + arr.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+      }
+
+      function renderSchedule() {
+        const list = document.getElementById('scheduleList');
+        if (!list) return;
+        if (!routes.length) {
+          list.innerHTML = '<p class="text-secondary">Загрузка маршрутов...</p>';
+          return;
+        }
+        const esc = typeof escapeHtml === 'function' ? escapeHtml : (s) => (s == null ? '' : String(s));
+        list.innerHTML = routes.map(r => {
+          const stopsStr = (r.stops || []).map(s => s.city).filter(Boolean).join(' → ');
+          return (
+            '<div class="schedule-card">' +
+              '<div class="schedule-name">🚌 ' + esc(r.name) + '</div>' +
+              '<div class="schedule-time">⏰ ' + esc(r.stops && r.stops[0] ? r.stops[0].time : '') + ' — ' + esc(r.stops && r.stops.length ? r.stops[r.stops.length - 1].time : '') + '</div>' +
+              '<div class="schedule-stops">📍 ' + esc(stopsStr) + '</div>' +
+              '<div class="schedule-price">💰 от ' + esc(r.base_price) + ' BYN</div>' +
+            '</div>'
+          );
+        }).join('');
       }
 
       function getTripsForDate(route, dateStr) {
@@ -176,7 +203,8 @@
       ).then(data => {
         routes = data.routes || [];
         fillCities();
-      }).catch(() => { routes = []; fillCities(); if (resultsList) resultsList.innerHTML = '<p class="text-secondary">Не удалось загрузить маршруты.</p>'; resultsSection.classList.remove('hidden'); });
+        renderSchedule();
+      }).catch(() => { routes = []; fillCities(); renderSchedule(); if (resultsList) resultsList.innerHTML = '<p class="text-secondary">Не удалось загрузить маршруты.</p>'; resultsSection.classList.remove('hidden'); });
 
       fetch(BASE_URL + '/api/news').then(r => r.json()).then(data => {
         if (data.border) document.getElementById('borderInfo').textContent = data.border.message_ru || '—';

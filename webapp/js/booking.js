@@ -21,7 +21,9 @@
     route = (data.routes || []).find(function(r) { return r.id === routeId; });
     if (!route) { window.location.href = 'index.html'; return; }
     var borderEl = document.getElementById('borderDocs');
-    if (route.border_docs_text) borderEl.textContent = '\u0414\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u044b \u0434\u043b\u044f \u0433\u0440\u0430\u043d\u0438\u0446\u044b: ' + route.border_docs_text;
+    if (route.border_docs_text) borderEl.textContent = 'Документы для границы: ' + route.border_docs_text;
+    else borderEl.textContent = '';
+    renderPassengers();
   });
 
   document.getElementById('forAnotherPerson').addEventListener('change', function() {
@@ -35,22 +37,45 @@
     document.getElementById('passengerNum').textContent = passengerCount;
   }
 
+  function getEl(id) { return document.getElementById(id); }
+  function setError(id, text) { var el = getEl(id); if (el) { el.textContent = text || ''; } }
+  function clearStep1Errors() {
+    setError('step1Errors');
+    setError('passengerCountError');
+    document.querySelectorAll('.passenger-block .field-error, .passenger-block-error').forEach(function(e) { e.textContent = ''; });
+  }
+  function clearStep2Errors() { setError('phoneError'); }
+
   function renderPassengers() {
-    var list = document.getElementById('passengersList');
+    var list = getEl('passengersList');
     list.innerHTML = '';
+    var isInternational = route && route.type === 'international';
     for (var i = 0; i < passengerCount; i++) {
       var p = passengers[i] || { last_name: '', first_name: '', middle_name: '', birth_date: '', passport: '' };
       var div = document.createElement('div');
       div.className = 'passenger-block';
-      div.innerHTML = '<label>\u041f\u0430\u0441\u0441\u0430\u0436\u0438\u0440 ' + (i + 1) + '</label>' +
-        '<input type="text" placeholder="\u0424\u0430\u043c\u0438\u043b\u0438\u044f" data-i="' + i + '" data-f="last_name" value="' + (p.last_name || '') + '">' +
-        '<input type="text" placeholder="\u0418\u043c\u044f" data-i="' + i + '" data-f="first_name" value="' + (p.first_name || '') + '">' +
-        '<input type="text" placeholder="\u041e\u0442\u0447\u0435\u0441\u0442\u0432\u043e" data-i="' + i + '" data-f="middle_name" value="' + (p.middle_name || '') + '">' +
-        '<input type="date" data-i="' + i + '" data-f="birth_date" value="' + (p.birth_date || '') + '">' +
-        (route && route.type === 'international' ? '<input type="text" placeholder="\u041f\u0430\u0441\u043f\u043e\u0440\u0442 \u041c\u04211234567" data-i="' + i + '" data-f="passport" value="' + (p.passport || '') + '">' : '');
+      div.setAttribute('data-passenger-index', i);
+      if (isInternational) {
+        var passportRow = '<div class="field-group"><label>Паспорт (международный) <span class="required">*</span></label><p class="field-hint">Серия и номер, например МР1234567</p><input type="text" placeholder="МР1234567" data-i="' + i + '" data-f="passport" value="' + (p.passport || '') + '"><span class="field-error" data-passenger-error="' + i + '"></span></div>';
+        div.innerHTML =
+          '<label class="passenger-block__title">Пассажир ' + (i + 1) + '</label>' +
+          '<div class="field-group"><label>Фамилия <span class="required">*</span></label><input type="text" placeholder="Иванов" data-i="' + i + '" data-f="last_name" value="' + (p.last_name || '') + '"></div>' +
+          '<div class="field-group"><label>Имя <span class="required">*</span></label><input type="text" placeholder="Иван" data-i="' + i + '" data-f="first_name" value="' + (p.first_name || '') + '"></div>' +
+          '<div class="field-group"><label>Отчество</label><input type="text" placeholder="Иванович" data-i="' + i + '" data-f="middle_name" value="' + (p.middle_name || '') + '"></div>' +
+          '<div class="field-group"><label>Дата рождения пассажира <span class="required">*</span></label><p class="field-hint">Укажите дату рождения этого пассажира (год, месяц, день). Формат: ГГГГ-ММ-ДД</p><input type="date" data-i="' + i + '" data-f="birth_date" value="' + (p.birth_date || '') + '"></div>' +
+          passportRow +
+          '<span class="field-error passenger-block-error" data-passenger-index="' + i + '"></span>';
+      } else {
+        div.innerHTML =
+          '<label class="passenger-block__title">Пассажир ' + (i + 1) + '</label>' +
+          '<p class="field-hint field-hint--block">Для внутреннего рейса достаточно имени и контактного телефона (телефон — на следующем шаге).</p>' +
+          '<div class="field-group"><label>Имя пассажира <span class="required">*</span></label><input type="text" placeholder="Иван Иванов" data-i="' + i + '" data-f="first_name" value="' + (p.first_name || '') + '"></div>' +
+          '<span class="field-error passenger-block-error" data-passenger-index="' + i + '"></span>';
+      }
       list.appendChild(div);
     }
     list.querySelectorAll('input').forEach(function(inp) {
+      inp.addEventListener('input', function() { clearStep1Errors(); });
       inp.addEventListener('change', function() {
         var i = parseInt(this.getAttribute('data-i'), 10);
         var f = this.getAttribute('data-f');
@@ -67,29 +92,68 @@
       if (!passengers[i]) passengers[i] = {};
       passengers[i][f] = inp.value;
     });
+    var isInternational = route && route.type === 'international';
     return passengers.slice(0, passengerCount).map(function(p) {
-      return { last_name: p.last_name || '', first_name: p.first_name || '', middle_name: p.middle_name || '', birth_date: p.birth_date || '', passport: p.passport || '' };
+      if (isInternational) {
+        return { last_name: p.last_name || '', first_name: p.first_name || '', middle_name: p.middle_name || '', birth_date: p.birth_date || '', passport: p.passport || '' };
+      }
+      return { last_name: '', first_name: (p.first_name || '').trim(), middle_name: '', birth_date: '', passport: '' };
     });
   }
 
   document.getElementById('toStep2').addEventListener('click', function() {
     collectPassengers();
-    var valid = passengers.slice(0, passengerCount).every(function(p) { return p.last_name && p.first_name && p.birth_date; });
-    if (!valid) { alert('\u0417\u0430\u043f\u043e\u043b\u043d\u0438\u0442\u0435 \u0424\u0418\u041e \u0438 \u0434\u0430\u0442\u0443 \u0440\u043e\u0436\u0434\u0435\u043d\u0438\u044f \u0432\u0441\u0435\u0445 \u043f\u0430\u0441\u0441\u0430\u0436\u0438\u0440\u043e\u0432.'); return; }
-    if (route && route.type === 'international') {
-      var hasPassport = passengers.slice(0, passengerCount).every(function(p) { return p.passport && /^[A-Z]{2}\d{7}$/i.test((p.passport || '').replace(/\s/g, '')); });
-      if (!hasPassport) { alert('\u0414\u043b\u044f \u043c\u0435\u0436\u0434\u0443\u043d\u0430\u0440\u043e\u0434\u043d\u043e\u0433\u043e \u0440\u0435\u0439\u0441\u0430 \u0443\u043a\u0430\u0436\u0438\u0442\u0435 \u043f\u0430\u0441\u043f\u043e\u0440\u0442 (\u043d\u0430\u043f\u0440\u0438\u043c\u0435\u0440 \u041c\u04211234567).'); return; }
+    clearStep1Errors();
+    var isInternational = route && route.type === 'international';
+    var list = passengers.slice(0, passengerCount);
+    if (isInternational) {
+      var valid = list.every(function(p) { return p.last_name && p.first_name && p.birth_date; });
+      if (!valid) {
+        setError('step1Errors', 'Заполните фамилию, имя и дату рождения у всех пассажиров.');
+        var firstInvalid = list.findIndex(function(p) { return !p.last_name || !p.first_name || !p.birth_date; });
+        var errEl = document.querySelector('.passenger-block-error[data-passenger-index="' + firstInvalid + '"]');
+        if (errEl) errEl.textContent = 'Укажите фамилию, имя и дату рождения.';
+        return;
+      }
+      var hasPassport = list.every(function(p) { return p.passport && /^[A-Z]{2}\d{7}$/i.test((p.passport || '').replace(/\s/g, '')); });
+      if (!hasPassport) {
+        setError('step1Errors', 'Для международного рейса укажите паспорт у каждого пассажира (формат: МР1234567).');
+        return;
+      }
+    } else {
+      var validLocal = list.every(function(p) { return (p.first_name || '').trim(); });
+      if (!validLocal) {
+        setError('step1Errors', 'Укажите имя каждого пассажира.');
+        var firstInvalid = list.findIndex(function(p) { return !(p.first_name || '').trim(); });
+        var errEl = document.querySelector('.passenger-block-error[data-passenger-index="' + firstInvalid + '"]');
+        if (errEl) errEl.textContent = 'Введите имя пассажира.';
+        return;
+      }
     }
-    document.getElementById('step1').classList.add('hidden');
-    document.getElementById('step2').classList.remove('hidden');
-    document.getElementById('phone').value = (typeof getTelegramUserId === 'function' && getTelegramUserId() ? '' : '');
+    getEl('step1').classList.add('hidden');
+    getEl('step2').classList.remove('hidden');
+    clearStep2Errors();
+    var phoneVal = (typeof getTelegramUserId === 'function' && getTelegramUserId() ? '' : '');
+    if (getEl('phone').value.trim() === '' && phoneVal) getEl('phone').value = phoneVal;
     var oneWay = route ? (route.base_price || 0) * passengerCount : 0;
-    document.getElementById('priceSummary').textContent = '\u0418\u0442\u043e\u0433\u043e: ' + oneWay.toFixed(2) + ' BYN';
+    getEl('priceSummary').textContent = 'Итого: ' + oneWay.toFixed(2) + ' BYN';
   });
 
+  getEl('backToStep1').addEventListener('click', function() {
+    getEl('step2').classList.add('hidden');
+    getEl('step1').classList.remove('hidden');
+    clearStep2Errors();
+  });
+
+  getEl('phone').addEventListener('input', function() { clearStep2Errors(); });
+
   document.getElementById('submitBooking').addEventListener('click', function() {
-    var phone = document.getElementById('phone').value.trim();
-    if (!phone) { alert('\u0423\u043a\u0430\u0436\u0438\u0442\u0435 \u0442\u0435\u043b\u0435\u0444\u043e\u043d.'); return; }
+    var phone = getEl('phone').value.trim();
+    clearStep2Errors();
+    if (!phone) {
+      setError('phoneError', 'Укажите контактный телефон.');
+      return;
+    }
     var paymentMethod = document.querySelector('input[name="payment"]:checked').value;
     var pass = collectPassengers();
     var payload = {
@@ -100,17 +164,20 @@
       departure_time: timeStr,
       passengers: pass,
       is_round_trip: false,
-      is_for_another_person: document.getElementById('forAnotherPerson').checked,
-      another_person_phone: document.getElementById('forAnotherPerson').checked ? document.getElementById('anotherPersonPhone').value : null,
+      is_for_another_person: getEl('forAnotherPerson').checked,
+      another_person_phone: getEl('forAnotherPerson').checked ? getEl('anotherPersonPhone').value : null,
       phone: phone,
-      save_phone_in_profile: document.getElementById('savePhone').checked,
+      save_phone_in_profile: getEl('savePhone').checked,
       payment_method: paymentMethod,
       user_id: typeof getTelegramUserId === 'function' && getTelegramUserId() ? parseInt(getTelegramUserId(), 10) : null
     };
     var base = typeof BASE_URL !== 'undefined' ? BASE_URL : '';
-    var submitBtn = document.getElementById('submitBooking');
+    var submitBtn = getEl('submitBooking');
     submitBtn.disabled = true;
-    function onError(e) { alert(e.message || '\u041e\u0448\u0438\u0431\u043a\u0430 \u0441\u043e\u0437\u0434\u0430\u043d\u0438\u044f \u0437\u0430\u044f\u0432\u043a\u0438'); submitBtn.disabled = false; }
+    function onError(e) {
+      setError('phoneError', e.message || 'Ошибка создания заявки. Попробуйте ещё раз.');
+      submitBtn.disabled = false;
+    }
     if (typeof api === 'function') {
       api('/api/bookings', { method: 'POST', body: JSON.stringify(payload) })
         .then(function(res) { window.location.href = 'success.html?booking_id=' + encodeURIComponent(res.booking_id); })
