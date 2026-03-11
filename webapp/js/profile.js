@@ -11,6 +11,7 @@
     var o = opts || {};
     var headers = { 'Content-Type': 'application/json' };
     if (typeof getTelegramUserId === 'function' && getTelegramUserId()) headers['X-Telegram-User-Id'] = String(getTelegramUserId());
+    if (typeof getTelegramInitData === 'function' && getTelegramInitData()) headers['X-Telegram-Init-Data'] = getTelegramInitData();
     if (o.headers) Object.assign(headers, o.headers);
     return fetch(base + path, Object.assign({}, o, { headers: headers }))
       .then(function(r) { return r.json().catch(function() { return {}; }).then(function(data) {

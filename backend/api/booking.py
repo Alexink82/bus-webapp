@@ -271,21 +271,25 @@ async def cancel_booking(
     if not (is_owner or is_admin_user or is_dispatcher_user):
         raise HTTPException(403, detail="not_authorized_to_cancel")
 
-    # Правила отмены: владелец может отменить не позднее чем за 2 ч до отправления; иначе только диспетчер с указанием причины.
+    # Правила отмены:
+    # — Владелец: заявка в статусе "new" (не взята диспетчером) — можно отменить в любой момент.
+    #   Если заявка уже в работе (active и т.д.) — только не позднее чем за 2 ч до отправления.
+    # — Диспетчер/админ — отмена с обязательной причиной.
     now = get_local_time()
-    try:
-        dep_date = date.fromisoformat(b.date) if b.date else None
-        dep_time_str = (b.departure or "").strip()[:8]
-        if dep_time_str and len(dep_time_str) >= 5:
-            parts = dep_time_str.split(":")
-            h, m = int(parts[0]), int(parts[1]) if len(parts) > 1 else 0
-            departure_dt = datetime(dep_date.year, dep_date.month, dep_date.day, h, m, 0)
-            if is_owner and (now >= departure_dt - timedelta(hours=2)):
-                raise HTTPException(400, detail="cancel_only_via_dispatcher")
-        else:
-            departure_dt = None
-    except (ValueError, TypeError):
-        departure_dt = None
+    if is_owner and b.status != "new":
+        try:
+            dep_date = date.fromisoformat(b.date) if b.date else None
+            dep_time_str = (b.departure or "").strip()[:8]
+            if dep_date and dep_time_str and len(dep_time_str) >= 5:
+                parts = dep_time_str.split(":")
+                h, m = int(parts[0]), int(parts[1]) if len(parts) > 1 else 0
+                departure_dt = datetime(dep_date.year, dep_date.month, dep_date.day, h, m, 0)
+                if now >= departure_dt - timedelta(hours=2):
+                    raise HTTPException(400, detail="cancel_only_via_dispatcher")
+        except HTTPException:
+            raise
+        except (ValueError, TypeError):
+            pass
 
     if is_dispatcher_user or is_admin_user:
         reason = (body.reason or "").strip()
