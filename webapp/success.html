@@ -27,13 +27,16 @@
     <main class="main">
       <p id="bookingId" class="booking-id"></p>
       <p id="statusText">Ожидает подтверждения диспетчером</p>
-      <button type="button" id="cancelBookingBtn" class="btn" style="margin-top:8px; display:none;">Отменить заявку</button>
-      <a id="backSearch" href="index.html" class="btn btn-primary">Новый поиск</a>
-      <a id="myBookings" href="profile.html" class="btn" style="margin-top:8px; display:inline-block;">Мои заявки</a>
+      <div class="success-actions">
+        <button type="button" id="cancelBookingBtn" class="btn btn-outline success-btn hidden">Отменить заявку</button>
+        <a id="myBookings" href="profile.html" class="btn btn-outline success-btn">Мои заявки</a>
+        <a id="backSearch" href="index.html" class="btn btn-primary success-btn">Новый поиск</a>
+      </div>
     </main>
   </div>
   <script src="js/api.js"></script>
   <script src="js/auth.js"></script>
+  <script src="js/app-modal.js"></script>
   <script src="js/theme.js"></script>
   <script>
     (function() {
@@ -49,13 +52,24 @@
       else document.getElementById('bookingId').textContent = 'Заявка создана.';
       var cancelBtn = document.getElementById('cancelBookingBtn');
       if (id && typeof api === 'function') {
-        cancelBtn.style.display = 'inline-block';
+        cancelBtn.classList.remove('hidden');
         cancelBtn.onclick = function() {
-          if (!confirm('Отменить заявку?')) return;
-          cancelBtn.disabled = true;
-          api('/api/bookings/' + encodeURIComponent(id) + '/cancel', { method: 'POST' })
-            .then(function() { document.getElementById('statusText').textContent = 'Заявка отменена.'; cancelBtn.style.display = 'none'; })
-            .catch(function(e) { alert(e.message || 'Ошибка'); cancelBtn.disabled = false; });
+          var msg = 'Вы уверены, что хотите отменить заявку?';
+          (typeof showAppConfirm === 'function' ? showAppConfirm(msg, 'Отмена заявки') : Promise.resolve(confirm(msg)))
+            .then(function(ok) {
+              if (!ok) return;
+              cancelBtn.disabled = true;
+              api('/api/bookings/' + encodeURIComponent(id) + '/cancel', { method: 'POST' })
+                .then(function() {
+                  document.getElementById('statusText').textContent = 'Заявка отменена.';
+                  cancelBtn.classList.add('hidden');
+                })
+                .catch(function(e) {
+                  var text = (typeof errorToMessage === 'function' ? errorToMessage(e) : (e && e.message ? e.message : 'Ошибка'));
+                  (typeof showAppAlert === 'function' ? showAppAlert(text, 'Ошибка') : alert(text));
+                  cancelBtn.disabled = false;
+                });
+            });
         };
       }
       if (window.Telegram && Telegram.WebApp) Telegram.WebApp.ready();

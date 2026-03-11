@@ -30,20 +30,25 @@
   var savedPassengersForFill = [];
 
   function loadSavedPassengersForFill() {
-    if (!route || route.type !== 'international') return;
     var apiFn = typeof api === 'function' ? api : null;
     if (!apiFn || (typeof getTelegramUserId === 'function' && !getTelegramUserId())) return;
     apiFn('/api/user/passengers').then(function(data) {
-      savedPassengersForFill = data.passengers || [];
+      savedPassengersForFill = (data.passengers || []).filter(function(p) {
+        return (p.last_name || '').trim() && (p.first_name || '').trim() && (p.birth_date || '').trim() &&
+          (!route || route.type !== 'international' || ((p.passport || '').replace(/\s/g, '').length >= 9));
+      });
       var wrap = document.getElementById('fillFromProfileWrap');
-      if (wrap && savedPassengersForFill.length) wrap.classList.remove('hidden');
+      if (wrap) wrap.classList.toggle('hidden', !savedPassengersForFill.length);
     }).catch(function() {});
   }
 
   function fillFromSavedPassengers() {
+    if (!savedPassengersForFill.length) {
+      if (typeof showAppAlert === 'function') showAppAlert('В профиле нет сохранённых данных пассажира или они неполные.', 'Профиль');
+      return;
+    }
     for (var i = 0; i < passengerCount && i < savedPassengersForFill.length; i++) {
       var s = savedPassengersForFill[i];
-      var bd = s.birth_date ? (typeof isoToDob === 'function' ? isoToDob(s.birth_date) : s.birth_date) : '';
       passengers[i] = { last_name: s.last_name || '', first_name: s.first_name || '', middle_name: s.middle_name || '', birth_date: s.birth_date || '', passport: s.passport || '' };
     }
     renderPassengers();
@@ -165,6 +170,20 @@
         if (errEl) errEl.textContent = 'Укажите фамилию, имя и дату рождения.';
         return;
       }
+      var invalidDob = list.findIndex(function(p) {
+        var raw = (p.birth_date || '').trim();
+        if (!raw) return true;
+        var iso = typeof dobToIso === 'function' ? dobToIso(raw) : '';
+        return !iso || iso.length !== 10;
+      });
+      if (invalidDob >= 0) {
+        setError('step1Errors', 'Проверьте дату рождения (день.месяц.год, месяц 01–12).');
+        var errEl = document.querySelector('.passenger-block-error[data-passenger-index="' + invalidDob + '"]');
+        if (errEl) errEl.textContent = 'Неверная дата (например 31.12.1990).';
+        var dobErr = document.querySelector('[data-dob-error="' + invalidDob + '"]');
+        if (dobErr) dobErr.textContent = 'Неверная дата.';
+        return;
+      }
       var hasPassport = list.every(function(p) {
         var raw = p.passport || '';
         var pass = typeof passportToApi === 'function' ? passportToApi(raw) : raw.replace(/\s/g, '');
@@ -230,7 +249,8 @@
     var submitBtn = getEl('submitBooking');
     submitBtn.disabled = true;
     function onError(e) {
-      setError('phoneError', e.message || 'Ошибка создания заявки. Попробуйте ещё раз.');
+      var msg = typeof errorToMessage === 'function' ? errorToMessage(e) : (e && e.message ? e.message : 'Ошибка создания заявки. Попробуйте ещё раз.');
+      setError('phoneError', msg);
       submitBtn.disabled = false;
     }
     if (typeof api === 'function') {

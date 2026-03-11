@@ -24,18 +24,27 @@ function isoToDob(iso) {
 }
 
 /**
- * Паспорт: маска "МР 1234567" или "MR 1234567", пробел после серии, только заглавные.
- * Кириллица МР и латиница MR принимаются; при сохранении нормализуем в латиницу для API.
+ * Паспорт: маска "ХХ 1234567" — 2 буквы (кириллица или латиница), пробел, 7 цифр.
+ * Серии РБ: МР, АВ, НВ и др. Кириллица приводится к латинице для API.
  */
-var passportCyrillicToLatin = { 'М': 'M', 'Р': 'R', 'м': 'M', 'р': 'R' };
+var passportCyrillicToLatin = {
+  'А':'A','Б':'B','В':'V','Г':'G','Д':'D','Е':'E','Ё':'E','Ж':'Z','З':'Z','И':'I','Й':'J','К':'K','Л':'L','М':'M','Н':'N','О':'O','П':'P','Р':'R','С':'S','Т':'T','У':'U','Ф':'F','Х':'H','Ц':'C','Ч':'CH','Ш':'SH','Щ':'SCH','Ъ':'','Ы':'Y','Ь':'','Э':'E','Ю':'U','Я':'YA'
+};
+function _passportCharToLatin(ch) {
+  var u = ch.toUpperCase();
+  var l = ch.toLowerCase();
+  if (passportCyrillicToLatin[u]) return passportCyrillicToLatin[u].charAt(0).toUpperCase();
+  if (passportCyrillicToLatin[ch]) return passportCyrillicToLatin[ch].charAt(0).toUpperCase();
+  return /[A-Z]/.test(ch) ? ch : '';
+}
 
 function formatPassportInput(value) {
-  var s = (value || '').toUpperCase();
+  var s = value || '';
   var out = '';
   for (var i = 0; i < s.length; i++) {
     var c = s[i];
-    if (passportCyrillicToLatin[c] !== undefined) c = passportCyrillicToLatin[c];
-    if (/[A-Z]/.test(c) && out.length < 2) out += c;
+    var letter = _passportCharToLatin(c);
+    if (letter && out.replace(/[^A-Z]/g, '').length < 2) out += letter;
     else if (/\d/.test(c) && out.replace(/\D/g, '').length < 7) {
       if (out.length === 2 && out.indexOf(' ') === -1) out += ' ';
       out += c;
@@ -47,8 +56,13 @@ function formatPassportInput(value) {
 
 function passportToApi(value) {
   var s = (value || '').replace(/\s/g, '');
-  for (var k in passportCyrillicToLatin) { s = s.split(k).join(passportCyrillicToLatin[k]); s = s.split(k.toLowerCase()).join(passportCyrillicToLatin[k]); }
-  return s.toUpperCase().replace(/\s/g, '');
+  var out = '';
+  for (var i = 0; i < s.length; i++) {
+    var c = _passportCharToLatin(s[i]);
+    if (c) out += c;
+    else if (/\d/.test(s[i])) out += s[i];
+  }
+  return out.toUpperCase();
 }
 
 window.formatDobInput = formatDobInput;
