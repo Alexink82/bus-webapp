@@ -31,12 +31,35 @@ body {
 
 .header {
   display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0 0 16px;
+  position: relative;
+}
+
+.header__logo-bar {
+  padding: 12px 16px;
+  padding-top: max(12px, env(safe-area-inset-top));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+}
+
+.header__logo {
+  display: block;
+  max-height: 40px;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.header__row {
+  display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 16px 0;
-  position: relative;
-  min-height: 52px;
+  min-height: 44px;
 }
 
 .header__brand {
