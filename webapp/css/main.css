@@ -556,6 +556,7 @@ body {
 .search-field-block__date-display {
   display: block;
   width: 100%;
+  min-height: 1.5em;
   border: none;
   background: none;
   font-size: 1rem;

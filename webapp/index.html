@@ -248,7 +248,18 @@
       if (dateDisplay && dateCalendar) {
         dateDisplay.addEventListener('click', function(e) {
           e.preventDefault();
+          e.stopPropagation();
           openDateCalendar();
+        });
+        if (dateLabel) {
+          dateLabel.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            openDateCalendar();
+          });
+        }
+        dateBlock.addEventListener('click', function(e) {
+          if (e.target === dateBlock) openDateCalendar();
         });
         dateBlock.addEventListener('focusout', function(e) {
           if (!dateBlock.contains(e.relatedTarget)) setTimeout(closeDateCalendar, 150);
