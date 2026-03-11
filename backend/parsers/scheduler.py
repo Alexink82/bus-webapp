@@ -17,6 +17,11 @@ logger = logging.getLogger(__name__)
 scheduler = AsyncIOScheduler()
 
 
+def _naive_utc_now():
+    """Return current time as naive UTC (for PostgreSQL TIMESTAMP WITHOUT TIME ZONE)."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
 def _get_engine():
     settings = get_settings()
     url = settings.database_url
@@ -36,7 +41,7 @@ async def _update_cache():
         try:
             border = await fetch_border_status()
             if border:
-                now = datetime.now(timezone.utc)
+                now = _naive_utc_now()
                 exp = now + timedelta(minutes=60)
                 stmt = select(CachedData).where(CachedData.key == "border_status")
                 result = await session.execute(stmt)
@@ -50,7 +55,7 @@ async def _update_cache():
 
             weather = await fetch_weather()
             if weather:
-                now = datetime.now(timezone.utc)
+                now = _naive_utc_now()
                 exp = now + timedelta(minutes=30)
                 stmt = select(CachedData).where(CachedData.key == "weather")
                 result = await session.execute(stmt)
