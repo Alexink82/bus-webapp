@@ -17,7 +17,8 @@
       .then(function(r) { return r.json().catch(function() { return {}; }).then(function(data) {
         if (!r.ok) {
           var msg = userMsg(data.detail) || (data.detail && data.detail.code) || (data.detail && typeof data.detail === 'string' ? data.detail : null) || r.statusText;
-          throw new Error(typeof msg === 'string' ? msg : r.statusText);
+          var msgStr = (typeof msg === 'string' ? msg : null) || r.statusText;
+          throw new Error(msgStr);
         }
         return data;
       }); });

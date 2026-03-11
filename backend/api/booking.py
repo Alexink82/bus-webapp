@@ -17,7 +17,7 @@ from models import Booking, UserProfile, Dispatcher, Blacklist
 from services.roles import is_admin, get_dispatcher_route_ids
 from services.price_calc import calculate_booking_totals
 from services.validators import validate_phone, validate_passenger, validate_booking_dates
-from services.notification import notify_booking_created
+from services.notification import notify_booking_created, notify_booking_status
 from logging_config import log_action
 
 router = APIRouter(prefix="/api", tags=["booking"])
@@ -301,4 +301,6 @@ async def cancel_booking(
 
     b.status = "cancelled"
     await db.commit()
+    if b.contact_tg_id:
+        await notify_booking_status(b.contact_tg_id, booking_id, "cancelled", "ru")
     return {"success": True, "status": "cancelled"}

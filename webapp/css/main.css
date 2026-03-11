@@ -624,6 +624,12 @@ body {
   gap: 8px;
   align-items: center;
 }
+.booking-card__actions .btn,
+.booking-card__actions .booking-details {
+  text-decoration: none;
+  cursor: pointer;
+  appearance: button;
+}
 .booking-card__actions .btn-small {
   margin-top: 0;
 }

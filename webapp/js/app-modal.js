@@ -82,7 +82,7 @@
   function errorToMessage(e) {
     if (!e) return 'Ошибка';
     if (typeof e === 'string') return e;
-    if (e.message) return String(e.message);
+    if (e.message) return typeof e.message === 'string' ? e.message : 'Ошибка';
     if (e.detail && typeof e.detail === 'string') return e.detail;
     if (e.detail && e.detail.code && typeof userFriendlyMessage === 'function') return userFriendlyMessage(e.detail);
     return 'Ошибка';
