@@ -56,6 +56,10 @@
   margin-bottom: 12px;
 }
 
+.fill-from-profile-wrap {
+  margin: 12px 0;
+}
+
 .step-nav {
   margin-bottom: 12px;
 }
@@ -159,4 +163,18 @@
   background: var(--surface);
   color: var(--text);
   margin-top: 8px;
+}
+
+.phone-field-group {
+  text-align: center;
+}
+
+.phone-input {
+  font-size: 1.25rem;
+  padding: 14px 16px;
+  text-align: center;
+  max-width: 320px;
+  margin-left: auto;
+  margin-right: auto;
+  display: block;
 }

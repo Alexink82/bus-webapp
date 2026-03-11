@@ -13,7 +13,19 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-  <div class="container">
+  <div id="appLoader" class="app-loader">
+    <img src="img/logo.png" alt="СТОЛИЦА" class="app-loader__logo" width="160" height="40">
+  </div>
+  <div id="maintenanceOverlay" class="maintenance-overlay hidden">
+    <div class="maintenance-overlay__inner">
+      <img src="img/logo.png" alt="СТОЛИЦА" class="maintenance-overlay__logo" width="160" height="40">
+      <h1>Технические работы</h1>
+      <p>Приносим извинения за неудобства. Мы обновляем сервис.</p>
+      <p>Примерное время возобновления: <span id="maintenanceUntil">—</span></p>
+      <p class="maintenance-overlay__countdown" id="maintenanceCountdown">—</p>
+    </div>
+  </div>
+  <div class="container" id="appContent">
     <header class="header">
       <div class="header__logo-bar">
         <img src="img/logo.png" alt="СТОЛИЦА" class="header__logo" width="160" height="40">
@@ -30,18 +42,34 @@
 
     <main class="main">
       <form id="searchForm" class="search-form">
-        <div class="field">
-          <label for="fromCity">Откуда</label>
-          <select id="fromCity" required></select>
+        <div class="search-field-block" id="fromBlock">
+          <button type="button" class="search-field-block__trigger" id="fromTrigger" aria-haspopup="listbox" aria-expanded="false">
+            <span class="search-field-block__label" id="fromLabel">Откуда</span>
+            <span class="search-field-block__value" id="fromValue"></span>
+            <span class="search-field-block__chevron">▼</span>
+          </button>
+          <div class="search-field-block__dropdown hidden" id="fromDropdown" role="listbox">
+            <div class="search-field-block__dropdown-inner" id="fromOptions"></div>
+          </div>
+          <select id="fromCity" required aria-hidden="true" tabindex="-1" class="search-field-block__hidden-select"></select>
         </div>
         <button type="button" id="swapBtn" class="swap-btn" title="Поменять местами">⇅</button>
-        <div class="field">
-          <label for="toCity">Куда</label>
-          <select id="toCity" required></select>
+        <div class="search-field-block" id="toBlock">
+          <button type="button" class="search-field-block__trigger" id="toTrigger" aria-haspopup="listbox" aria-expanded="false">
+            <span class="search-field-block__label" id="toLabel">Куда</span>
+            <span class="search-field-block__value" id="toValue"></span>
+            <span class="search-field-block__chevron">▼</span>
+          </button>
+          <div class="search-field-block__dropdown hidden" id="toDropdown" role="listbox">
+            <div class="search-field-block__dropdown-inner" id="toOptions"></div>
+          </div>
+          <select id="toCity" required aria-hidden="true" tabindex="-1" class="search-field-block__hidden-select"></select>
         </div>
-        <div class="field">
-          <label for="travelDate">Дата</label>
-          <input type="date" id="travelDate" required>
+        <div class="search-field-block search-field-block--date" id="dateBlock">
+          <span class="search-field-block__date-label" id="dateLabel">Дата</span>
+          <button type="button" class="search-field-block__date-display" id="dateDisplay"></button>
+          <input type="date" id="travelDate" required class="search-field-block__date-input">
+          <div class="search-field-block__calendar hidden" id="dateCalendar"></div>
         </div>
         <button type="submit" class="btn btn-primary">Найти рейсы</button>
       </form>
@@ -52,8 +80,8 @@
       </section>
 
       <section id="scheduleSection" class="schedule-section">
-        <h3>📋 Расписание</h3>
-        <p class="schedule-tz">Минск (UTC+3). Рейсы по маршрутам — как в боте.</p>
+        <h3 class="schedule-section__toggle" id="scheduleToggle" tabindex="0" role="button" aria-expanded="false">📋 Расписание <span class="schedule-section__chevron">▼</span></h3>
+        <p class="schedule-tz schedule-section__detail">Минск (UTC+3). Рейсы по маршрутам — как в боте.</p>
         <div id="scheduleList" class="schedule-list"></div>
       </section>
 
@@ -71,10 +99,12 @@
       <a href="faq.html" class="tab">❓ FAQ</a>
     </nav>
   </div>
+  <script src="js/maintenance.js"></script>
   <script src="js/api.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/theme.js"></script>
   <script src="js/nav.js"></script>
+  <script src="js/prefetch.js"></script>
   <script src="js/i18n.js"></script>
   <script>
     (function() {
@@ -96,14 +126,135 @@
       const resultsList = document.getElementById('resultsList');
       const resultsDateSpan = document.getElementById('resultsDate');
       const swapBtn = document.getElementById('swapBtn');
+      const fromTrigger = document.getElementById('fromTrigger');
+      const toTrigger = document.getElementById('toTrigger');
+      const fromBlock = document.getElementById('fromBlock');
+      const toBlock = document.getElementById('toBlock');
+      const fromOptions = document.getElementById('fromOptions');
+      const toOptions = document.getElementById('toOptions');
+      const fromDropdown = document.getElementById('fromDropdown');
+      const toDropdown = document.getElementById('toDropdown');
+      const dateBlock = document.getElementById('dateBlock');
+      const dateDisplay = document.getElementById('dateDisplay');
+      const dateLabel = document.getElementById('dateLabel');
+      const dateCalendar = document.getElementById('dateCalendar');
 
       let routes = [];
       let selectedRoute = null;
+      let dateCalendarMonth = null;
+
+      function closeFromDropdown() {
+        if (fromBlock) fromBlock.classList.remove('search-field-block--open');
+        if (fromDropdown) fromDropdown.classList.add('hidden');
+        if (fromTrigger) fromTrigger.setAttribute('aria-expanded', 'false');
+      }
+      function closeToDropdown() {
+        if (toBlock) toBlock.classList.remove('search-field-block--open');
+        if (toDropdown) toDropdown.classList.add('hidden');
+        if (toTrigger) toTrigger.setAttribute('aria-expanded', 'false');
+      }
+      function updateFromValue() {
+        var v = fromSelect ? fromSelect.value : '';
+        var el = document.getElementById('fromValue');
+        if (el) el.textContent = v || '';
+        if (fromBlock) fromBlock.classList.toggle('search-field-block--has-value', !!v);
+      }
+      function updateToValue() {
+        var v = toSelect ? toSelect.value : '';
+        var el = document.getElementById('toValue');
+        if (el) el.textContent = v || '';
+        if (toBlock) toBlock.classList.toggle('search-field-block--has-value', !!v);
+      }
 
       function setMinDate() {
         const today = new Date().toISOString().slice(0, 10);
         travelDate.setAttribute('min', today);
       }
+
+      function renderDateCalendar(year, month) {
+        dateCalendarMonth = { year: year, month: month };
+        var first = new Date(year, month, 1);
+        var today = new Date();
+        today.setHours(0, 0, 0, 0);
+        var current = travelDate.value ? new Date(travelDate.value + 'T12:00:00') : null;
+        var minDate = travelDate.min ? new Date(travelDate.min + 'T12:00:00') : today;
+        var weekdays = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+        var html = '<div class="search-field-block__calendar-header">' +
+          '<button type="button" class="search-field-block__calendar-prev" aria-label="Предыдущий месяц">←</button>' +
+          '<span class="search-field-block__calendar-title">' + first.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' }) + '</span>' +
+          '<button type="button" class="search-field-block__calendar-next" aria-label="Следующий месяц">→</button></div>' +
+          '<div class="search-field-block__calendar-grid">';
+        weekdays.forEach(function(w) { html += '<span class="search-field-block__calendar-weekday">' + w + '</span>'; });
+        var startDay = first.getDay();
+        var d = 1 - startDay;
+        for (var i = 0; i < 42; i++) {
+          var dayDate = new Date(year, month, d);
+          var inMonth = dayDate.getMonth() === month;
+          var disabled = dayDate < minDate;
+          var selected = current && dayDate.getTime() === current.getTime();
+          var cls = 'search-field-block__calendar-day';
+          if (!inMonth) cls += ' other-month';
+          if (disabled) cls += ' disabled';
+          if (selected) cls += ' selected';
+          var dayNum = dayDate.getDate();
+          if (inMonth && !disabled) {
+            html += '<button type="button" class="' + cls + '" data-date="' + dayDate.getFullYear() + '-' + String(dayDate.getMonth() + 1).padStart(2, '0') + '-' + String(dayNum).padStart(2, '0') + '">' + dayNum + '</button>';
+          } else {
+            html += '<span class="' + cls + '">' + dayNum + '</span>';
+          }
+          d++;
+        }
+        html += '</div>';
+        dateCalendar.innerHTML = html;
+        dateCalendar.querySelector('.search-field-block__calendar-prev').addEventListener('click', function() {
+          if (month === 0) renderDateCalendar(year - 1, 11); else renderDateCalendar(year, month - 1);
+        });
+        dateCalendar.querySelector('.search-field-block__calendar-next').addEventListener('click', function() {
+          if (month === 11) renderDateCalendar(year + 1, 0); else renderDateCalendar(year, month + 1);
+        });
+        dateCalendar.querySelectorAll('.search-field-block__calendar-day[data-date]').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            var dateStr = this.getAttribute('data-date');
+            travelDate.value = dateStr;
+            updateDateDisplay();
+            closeDateCalendar();
+          });
+        });
+      }
+
+      function openDateCalendar() {
+        dateBlock.classList.add('search-field-block--date-open');
+        dateCalendar.classList.remove('hidden');
+        var now = new Date();
+        if (!dateCalendarMonth) renderDateCalendar(now.getFullYear(), now.getMonth());
+        else renderDateCalendar(dateCalendarMonth.year, dateCalendarMonth.month);
+      }
+
+      function closeDateCalendar() {
+        dateBlock.classList.remove('search-field-block--date-open');
+        dateCalendar.classList.add('hidden');
+      }
+
+      function updateDateDisplay() {
+        if (travelDate.value) {
+          dateDisplay.textContent = new Date(travelDate.value + 'T12:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+          dateBlock.classList.add('search-field-block--date-has-value');
+        } else {
+          dateDisplay.textContent = '';
+          dateBlock.classList.remove('search-field-block--date-has-value');
+        }
+      }
+
+      if (dateDisplay && dateCalendar) {
+        dateDisplay.addEventListener('click', function(e) {
+          e.preventDefault();
+          openDateCalendar();
+        });
+        dateBlock.addEventListener('focusout', function(e) {
+          if (!dateBlock.contains(e.relatedTarget)) setTimeout(closeDateCalendar, 150);
+        });
+      }
+      travelDate.addEventListener('change', updateDateDisplay);
 
       function fillCities() {
         const cities = new Set();
@@ -114,7 +265,53 @@
         const esc = typeof escapeHtml === 'function' ? escapeHtml : (s) => (s == null ? '' : String(s));
         fromSelect.innerHTML = '<option value="">—</option>' + arr.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
         toSelect.innerHTML = '<option value="">—</option>' + arr.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+        if (fromOptions) {
+          fromOptions.innerHTML = arr.map(c => '<button type="button" class="search-field-block__option" role="option" data-value="' + esc(c) + '">' + esc(c) + '</button>').join('');
+          fromOptions.querySelectorAll('.search-field-block__option').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+              fromSelect.value = this.getAttribute('data-value');
+              updateFromValue();
+              closeFromDropdown();
+            });
+          });
+        }
+        if (toOptions) {
+          toOptions.innerHTML = arr.map(c => '<button type="button" class="search-field-block__option" role="option" data-value="' + esc(c) + '">' + esc(c) + '</button>').join('');
+          toOptions.querySelectorAll('.search-field-block__option').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+              toSelect.value = this.getAttribute('data-value');
+              updateToValue();
+              closeToDropdown();
+            });
+          });
+        }
+        updateFromValue();
+        updateToValue();
       }
+
+      if (fromTrigger && fromDropdown) {
+        fromTrigger.addEventListener('click', function(e) {
+          e.preventDefault();
+          var isOpen = fromBlock.classList.toggle('search-field-block--open');
+          fromDropdown.classList.toggle('hidden', !isOpen);
+          fromTrigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+          if (isOpen) closeToDropdown();
+        });
+      }
+      if (toTrigger && toDropdown) {
+        toTrigger.addEventListener('click', function(e) {
+          e.preventDefault();
+          var isOpen = toBlock.classList.toggle('search-field-block--open');
+          toDropdown.classList.toggle('hidden', !isOpen);
+          toTrigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+          if (isOpen) closeFromDropdown();
+        });
+      }
+      document.addEventListener('click', function(e) {
+        if (fromBlock && !fromBlock.contains(e.target)) closeFromDropdown();
+        if (toBlock && !toBlock.contains(e.target)) closeToDropdown();
+        if (dateBlock && dateCalendar && !dateCalendar.classList.contains('hidden') && !dateBlock.contains(e.target)) closeDateCalendar();
+      });
 
       function renderSchedule() {
         const list = document.getElementById('scheduleList');
@@ -177,6 +374,8 @@
         const b = toSelect.value;
         fromSelect.value = b;
         toSelect.value = a;
+        updateFromValue();
+        updateToValue();
       });
 
       searchForm.addEventListener('submit', (e) => {
@@ -185,15 +384,21 @@
         const toCity = toSelect.value;
         const dateStr = travelDate.value;
         if (!fromCity || !toCity || !dateStr) return;
-        const route = routes.find(r => {
-          const stops = r.stops || [];
-          const fromOk = stops.some(s => s.city === fromCity);
-          const toOk = stops.some(s => s.city === toCity);
-          if (!fromOk || !toOk) return false;
-          const iFrom = stops.findIndex(s => s.city === fromCity);
-          const iTo = stops.findIndex(s => s.city === toCity);
-          return iFrom < iTo;
+        var stops, iFrom, iTo;
+        var matching = routes.filter(function(r) {
+          stops = r.stops || [];
+          iFrom = stops.findIndex(function(s) { return s.city === fromCity; });
+          iTo = stops.findIndex(function(s) { return s.city === toCity; });
+          return iFrom !== -1 && iTo !== -1 && iFrom < iTo;
         });
+        // На участке Гомель–Мозырь продаём только внутренние рейсы; международные (Москва–Мозырь) не предлагаем
+        var hasLocal = matching.some(function(r) { return r.type === 'local'; });
+        if (hasLocal) matching = matching.filter(function(r) { return r.type === 'local'; });
+        // Прямой маршрут: отправление из fromCity = первая остановка
+        var route = matching.find(function(r) {
+          var first = (r.stops || [])[0];
+          return first && first.city === fromCity;
+        }) || matching[0];
         if (route) showResults(route.id, dateStr);
         else resultsList.innerHTML = '<p>Маршрут не найден.</p>', resultsSection.classList.remove('hidden');
       });
@@ -206,6 +411,21 @@
         renderSchedule();
       }).catch(() => { routes = []; fillCities(); renderSchedule(); if (resultsList) resultsList.innerHTML = '<p class="text-secondary">Не удалось загрузить маршруты.</p>'; resultsSection.classList.remove('hidden'); });
 
+      (function() {
+        var scheduleSection = document.getElementById('scheduleSection');
+        var scheduleToggle = document.getElementById('scheduleToggle');
+        var scheduleDetail = scheduleSection && scheduleSection.querySelector('.schedule-section__detail');
+        var scheduleList = document.getElementById('scheduleList');
+        if (scheduleSection && scheduleToggle && scheduleList) {
+          scheduleSection.classList.add('schedule-section--collapsed');
+          scheduleToggle.addEventListener('click', function() {
+            scheduleSection.classList.toggle('schedule-section--collapsed');
+            scheduleToggle.setAttribute('aria-expanded', scheduleSection.classList.contains('schedule-section--collapsed') ? 'false' : 'true');
+          });
+          scheduleToggle.addEventListener('keydown', function(e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); scheduleToggle.click(); } });
+        }
+      })();
+
       fetch(BASE_URL + '/api/news').then(r => r.json()).then(data => {
         if (data.border) document.getElementById('borderInfo').textContent = data.border.message_ru || '—';
         if (data.weather) document.getElementById('weatherInfo').textContent = data.weather.city + ': ' + data.weather.temp + '°C, ' + (data.weather.description_ru || '');
@@ -215,7 +435,16 @@
       });
 
       setMinDate();
+      updateDateDisplay();
       if (window.Telegram && Telegram.WebApp) Telegram.WebApp.ready();
+
+      var loader = document.getElementById('appLoader');
+      if (loader) {
+        function hideLoader() { loader.classList.add('hidden'); }
+        if (document.readyState === 'complete') hideLoader();
+        else window.addEventListener('load', hideLoader);
+        setTimeout(hideLoader, 2500);
+      }
     })();
   </script>
 </body>

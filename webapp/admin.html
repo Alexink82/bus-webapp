@@ -15,10 +15,12 @@
     </div>
     <header class="admin-header">
       <span class="admin-header__title">⚙️ Админ-панель</span>
+      <a href="index.html" class="admin-header__exit">Выйти</a>
     </header>
     <div id="loginWarning" class="warning hidden">Войдите через Telegram (как администратор).</div>
     <div id="adminTabs" class="admin-tabs hidden">
       <button type="button" class="admin-tab admin-tab--active" data-panel="statsPanel">Статистика</button>
+      <button type="button" class="admin-tab" data-panel="adminsPanel">Администраторы</button>
       <button type="button" class="admin-tab" data-panel="logsPanel">Логи</button>
       <button type="button" class="admin-tab" data-panel="dispatchersPanel">Диспетчеры</button>
     </div>
@@ -39,6 +41,19 @@
           </div>
           <div class="admin-actions">
             <button type="button" id="exportCsv" class="btn btn--secondary btn--block">📥 Экспорт CSV</button>
+          </div>
+        </section>
+        <section id="adminsPanel" class="hidden">
+          <h2 class="admin-section__title">Администраторы</h2>
+          <p class="text-secondary text-small mb-4">Список Telegram ID с правами админа (из переменной ADMIN_IDS на Render и из базы). Добавление сохраняет в базу — новый админ увидит вкладку «Админ» после обновления страницы.</p>
+          <div class="form-group">
+            <label class="form-label" for="adminTelegramId">Telegram ID (число)</label>
+            <input type="number" id="adminTelegramId" class="input" placeholder="123456789" min="1" step="1">
+          </div>
+          <button type="button" id="addAdminBtn" class="btn btn--primary btn--block mb-6">➕ Добавить администратора</button>
+          <div class="admin-logs">
+            <div class="admin-logs__title">Список администраторов</div>
+            <div id="adminsList"></div>
           </div>
         </section>
         <section id="logsPanel" class="hidden">
@@ -127,10 +142,33 @@
         btn.addEventListener('click', function() {
           var panel = this.getAttribute('data-panel');
           document.querySelectorAll('.admin-tab').forEach(function(b) { b.classList.remove('admin-tab--active'); });
-          document.querySelectorAll('#statsPanel, #logsPanel, #dispatchersPanel').forEach(function(p) { p.classList.add('hidden'); });
+          document.querySelectorAll('#statsPanel, #adminsPanel, #logsPanel, #dispatchersPanel').forEach(function(p) { p.classList.add('hidden'); });
           this.classList.add('admin-tab--active');
           if (panel) document.getElementById(panel).classList.remove('hidden');
         });
+      });
+
+      function loadAdmins() {
+        api('/api/admin/admins').then(function(data) {
+          var ids = data.admin_ids || [];
+          var esc = function(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
+          document.getElementById('adminsList').innerHTML = ids.length ? ids.map(function(id) { return '<div class="admin-log-item">' + esc(id) + '</div>'; }).join('') : '<div class="admin-log-item text-tertiary">Нет записей. Добавьте ID выше или укажите ADMIN_IDS на Render.</div>';
+        }).catch(function() { document.getElementById('adminsList').innerHTML = '<div class="admin-log-item text-error">Не удалось загрузить</div>'; });
+      }
+      loadAdmins();
+
+      document.getElementById('addAdminBtn').addEventListener('click', function() {
+        var tidEl = document.getElementById('adminTelegramId');
+        var tid = parseInt(tidEl.value, 10);
+        if (!tid || isNaN(tid)) { alert('Введите Telegram ID (число).'); return; }
+        fetch(base + '/api/admin/admins', {
+          method: 'POST',
+          headers: Object.assign({}, headers, { 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ telegram_id: tid })
+        })
+          .then(function(r) { return r.json().then(function(d) { if (!r.ok) throw new Error(d.detail || 'Ошибка'); return d; }); })
+          .then(function() { tidEl.value = ''; loadAdmins(); })
+          .catch(function(e) { alert(e.message); });
       });
 
       function loadDispatchers() {
@@ -139,10 +177,11 @@
           var esc = function(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
           document.getElementById('dispatchersList').innerHTML = list.length ? list.map(function(d) {
             var status = d.is_active ? '<span class="badge badge--success">активен</span>' : '<span class="badge badge--neutral">неактивен</span>';
-            var delBtn = d.is_active ? '<button type="button" class="btn btn--ghost btn--small" data-tid="' + d.telegram_id + '">Удалить</button>' : '';
+            var fromEnv = d.from_env ? ' <span class="badge badge--neutral">из Render</span>' : '';
+            var delBtn = d.is_active && !d.from_env ? '<button type="button" class="btn btn--ghost btn--small" data-tid="' + d.telegram_id + '">Удалить</button>' : '';
             return '<div class="admin-log-item" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">' +
-              '<span><strong>' + esc(d.telegram_id) + '</strong> ' + esc(d.name || '—') + ' ' + esc(d.phone || '') + ' ' + status + '</span>' + delBtn + '</div>';
-          }).join('') : '<div class="admin-log-item text-tertiary">Нет диспетчеров. Добавьте Telegram ID выше.</div>';
+              '<span><strong>' + esc(d.telegram_id) + '</strong> ' + esc(d.name || '—') + ' ' + esc(d.phone || '') + ' ' + status + fromEnv + '</span>' + delBtn + '</div>';
+          }).join('') : '<div class="admin-log-item text-tertiary">Нет диспетчеров. Добавьте Telegram ID выше или DISPATCHER_IDS на Render.</div>';
           document.querySelectorAll('#dispatchersList [data-tid]').forEach(function(btn) {
             btn.addEventListener('click', function() {
               var tid = this.getAttribute('data-tid');

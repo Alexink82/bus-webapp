@@ -71,7 +71,7 @@ _rate_limit_store: dict[str, list[float]] = defaultdict(list)
 RATE_WINDOW = 60.0
 
 # GET-запросы к этим путям не считаются в лимите (чтение, много параллельных при загрузке)
-_RATE_LIMIT_SKIP_PATHS = frozenset(["/api/routes", "/api/news", "/api/faq", "/api/user/roles"])
+_RATE_LIMIT_SKIP_PATHS = frozenset(["/api/routes", "/api/news", "/api/faq", "/api/user/roles", "/api/health"])
 
 
 @app.middleware("http")
@@ -125,4 +125,27 @@ if os.path.isdir(webapp_path):
 
 @app.get("/api/health")
 async def health():
-    return {"status": "ok"}
+    """Статус сервиса. При MAINTENANCE_UNTIL (ISO дата-время) в будущем возвращает режим технических работ."""
+    import os
+    from datetime import datetime, timezone
+    until_raw = (os.environ.get("MAINTENANCE_UNTIL") or "").strip()
+    if not until_raw:
+        return {"status": "ok", "maintenance": False}
+    try:
+        # Поддержка формата с Z и без (считаем UTC если нет таймзоны)
+        if until_raw.endswith("Z"):
+            until = datetime.fromisoformat(until_raw.replace("Z", "+00:00"))
+        else:
+            until = datetime.fromisoformat(until_raw)
+            if until.tzinfo is None:
+                until = until.replace(tzinfo=timezone.utc)
+    except ValueError:
+        return {"status": "ok", "maintenance": False}
+    now = datetime.now(timezone.utc)
+    if now < until:
+        return {
+            "status": "maintenance",
+            "maintenance": True,
+            "maintenance_until": until.isoformat(),
+        }
+    return {"status": "ok", "maintenance": False}

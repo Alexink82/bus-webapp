@@ -49,6 +49,7 @@
           <span id="anotherPersonPhoneError" class="field-error"></span>
         </div>
         <div id="passengersList"></div>
+        <p id="fillFromProfileWrap" class="fill-from-profile-wrap hidden"><button type="button" id="fillFromProfile" class="btn btn-secondary">Подставить из профиля</button></p>
         <span id="step1Errors" class="field-error block-error" aria-live="polite"></span>
         <p id="borderDocs" class="border-docs"></p>
         <div class="step-actions">
@@ -58,14 +59,17 @@
 
       <div id="step2" class="step hidden">
         <h2>Шаг 2. Контакт и оплата</h2>
-        <div class="field-group">
+        <div class="field-group phone-field-group">
           <label for="phone">Контактный телефон <span class="required">*</span></label>
           <p class="field-hint">Номер для связи и подтверждения брони. Формат: +375 29 123 45 67.</p>
-          <input type="tel" id="phone" placeholder="+375 29 123 45 67" required>
+          <input type="tel" id="phone" class="phone-input" placeholder="+375 29 123 45 67" required>
           <span id="phoneError" class="field-error" aria-live="polite"></span>
         </div>
         <label class="checkbox-label">
           <input type="checkbox" id="savePhone"> Сохранить номер в профиль
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" id="savePassengers"> Сохранить пассажиров в профиль для быстрого ввода
         </label>
         <div class="field-group">
           <label>Способ оплаты</label>
@@ -87,6 +91,7 @@
   </div>
   <script src="js/api.js"></script>
   <script src="js/auth.js"></script>
+  <script src="js/input-masks.js"></script>
   <script src="js/theme.js"></script>
   <script src="js/booking.js"></script>
 </body>

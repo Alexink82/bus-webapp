@@ -117,10 +117,10 @@ async def list_passengers(
 
 
 class PassengerIn(BaseModel):
-    last_name: str
+    last_name: str = ""
     first_name: str
     middle_name: str = ""
-    birth_date: str
+    birth_date: str | None = None
     passport: str = ""
 
 

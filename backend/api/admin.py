@@ -14,7 +14,8 @@ from database import get_db
 from config import get_settings
 from api.auth_deps import get_verified_telegram_user_id
 from services.roles import is_admin
-from models import Booking, Dispatcher, LogEntry
+from services.roles import get_all_admin_ids, get_all_dispatcher_ids
+from models import Booking, Dispatcher, LogEntry, BotRole
 from core.constants import ROUTES
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -116,27 +117,62 @@ async def run_archive(
     return {"archived": result.rowcount, "message": f"Archived bookings with date < {threshold}"}
 
 
+@router.get("/admins")
+async def list_admins(admin_id: int = Depends(get_admin_id)):
+    """Список ID администраторов (из env + bot_roles)."""
+    return {"admin_ids": get_all_admin_ids()}
+
+
+class AdminIn(BaseModel):
+    telegram_id: int
+
+
+@router.post("/admins")
+async def add_admin(
+    body: AdminIn,
+    db: AsyncSession = Depends(get_db),
+    admin_id: int = Depends(get_admin_id),
+):
+    """Добавить администратора (запись в bot_roles). После добавления обновите страницу."""
+    existing = await db.execute(select(BotRole).where(BotRole.user_id == body.telegram_id))
+    row = existing.scalar_one_or_none()
+    if row:
+        row.is_admin = True
+    else:
+        db.add(BotRole(user_id=body.telegram_id, is_admin=True, is_dispatcher=False))
+    await db.commit()
+    from services.roles import load_roles
+    await load_roles(db)
+    return {"success": True}
+
+
 @router.get("/dispatchers")
 async def list_dispatchers(
     db: AsyncSession = Depends(get_db),
     admin_id: int = Depends(get_admin_id),
 ):
-    """List dispatchers."""
-    result = await db.execute(select(Dispatcher).order_by(Dispatcher.telegram_id))
+    """List dispatchers (из БД и из переменной DISPATCHER_IDS на Render)."""
+    result = await db.execute(select(Dispatcher).where(Dispatcher.is_active == True).order_by(Dispatcher.telegram_id))
     rows = result.scalars().all()
-    return {
-        "dispatchers": [
-            {
-                "telegram_id": r.telegram_id,
-                "name": r.name,
-                "phone": r.phone,
-                "routes": r.routes or [],
-                "direction": r.direction,
-                "is_active": r.is_active,
-            }
-            for r in rows
-        ]
-    }
+    env_ids = set(get_all_dispatcher_ids())
+    db_ids = {r.telegram_id for r in rows}
+    list_ = [
+        {
+            "telegram_id": r.telegram_id,
+            "name": r.name,
+            "phone": r.phone,
+            "routes": r.routes or [],
+            "direction": r.direction,
+            "is_active": r.is_active,
+            "from_env": False,
+        }
+        for r in rows
+    ]
+    for uid in env_ids:
+        if uid not in db_ids:
+            list_.append({"telegram_id": uid, "name": None, "phone": None, "routes": [], "direction": None, "is_active": True, "from_env": True})
+    list_.sort(key=lambda x: x["telegram_id"])
+    return {"dispatchers": list_}
 
 
 class DispatcherIn(BaseModel):

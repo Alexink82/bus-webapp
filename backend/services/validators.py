@@ -15,8 +15,10 @@ def validate_passport(passport: str, route_type: str) -> bool:
         return True
     if not passport or not isinstance(passport, str):
         return False
-    # МС1234567 or similar
-    return bool(re.match(r"^[A-Z]{2}\d{7}$", passport.strip().upper()))
+    s = passport.strip().upper().replace(" ", "")
+    for cyr, lat in (("М", "M"), ("Р", "R")):
+        s = s.replace(cyr, lat)
+    return bool(re.match(r"^[A-Z]{2}\d{7}$", s))
 
 
 def validate_passenger(passenger: dict, route_type: str, travel_date: date) -> tuple[bool, str]:
