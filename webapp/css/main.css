@@ -46,6 +46,10 @@
   padding: 0;
 }
 
+html {
+  overflow-x: hidden;
+}
+
 body {
   font-family: var(--font);
   background: var(--bg);
@@ -53,12 +57,17 @@ body {
   min-height: 100vh;
   padding-bottom: 76px;
   transition: background-color 0.25s ease, color 0.2s ease;
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
 }
 
 .container {
   max-width: 480px;
   margin: 0 auto;
   padding: 16px;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 .header {
@@ -108,16 +117,23 @@ body {
   min-width: 0;
   text-align: center;
   padding: 0 4px;
+  overflow: hidden;
 }
 
 .header__title-wrap h1 {
   font-size: 1.25rem;
   margin-bottom: 2px;
   color: var(--text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .header__title-wrap .subtitle {
   margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .tg-close-btn {
@@ -261,6 +277,8 @@ body {
   padding: 16px;
   border-radius: var(--radius);
   margin-bottom: 12px;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
 }
 
 .trip-time {
@@ -283,6 +301,8 @@ body {
   background: var(--surface);
   padding: 16px;
   border-radius: var(--radius);
+  overflow-wrap: break-word;
+  word-wrap: break-word;
 }
 
 .actual-info h3 {
@@ -330,6 +350,7 @@ body {
   font-size: clamp(0.875rem, 2.5vw + 0.65rem, 1rem);
   font-weight: 500;
   flex: 1;
+  min-width: 0;
   text-align: center;
   padding: 8px 4px;
   min-height: 48px;
@@ -338,6 +359,9 @@ body {
   align-items: center;
   justify-content: center;
   gap: 2px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .tab-bar .tab.active {
@@ -375,11 +399,15 @@ body {
   font-weight: 600;
   margin-bottom: 8px;
   color: var(--text);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 .faq-item__answer {
   font-size: 0.95rem;
   color: var(--text-muted);
   line-height: 1.4;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 .faq-support {
   background: var(--surface);
@@ -396,4 +424,8 @@ body {
   color: var(--accent);
   text-decoration: none;
   font-size: 0.95rem;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  display: inline-block;
+  max-width: 100%;
 }

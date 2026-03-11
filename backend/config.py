@@ -31,8 +31,8 @@ class Settings(BaseSettings):
     # WebPay callback (проверка подписи/секрета в проде)
     webpay_callback_secret: str = ""
 
-    # Rate limiting (requests per minute)
-    rate_limit: int = 10
+    # Rate limiting (requests per minute per IP; 0 = off)
+    rate_limit: int = 120
 
     @property
     def admin_ids_list(self) -> List[int]:

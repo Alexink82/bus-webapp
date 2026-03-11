@@ -70,12 +70,17 @@ app.add_middleware(
 _rate_limit_store: dict[str, list[float]] = defaultdict(list)
 RATE_WINDOW = 60.0
 
+# GET-запросы к этим путям не считаются в лимите (чтение, много параллельных при загрузке)
+_RATE_LIMIT_SKIP_PATHS = frozenset(["/api/routes", "/api/news", "/api/faq", "/api/user/roles"])
+
 
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
-    """Лимит запросов в минуту на IP (только /api/)."""
+    """Лимит запросов в минуту на IP (только /api/). Часть read-only GET не учитывается."""
     path = request.url.path
     if not path.startswith("/api/") or get_settings().rate_limit <= 0:
+        return await call_next(request)
+    if request.method == "GET" and path in _RATE_LIMIT_SKIP_PATHS:
         return await call_next(request)
     client = request.client.host if request.client else "0.0.0.0"
     now = time.monotonic()
