@@ -7,7 +7,16 @@
   <title>Частые вопросы — Bus Booking</title>
   <link rel="stylesheet" href="css/main.css">
   <link rel="stylesheet" href="css/telegram-theme.css">
-  <script>(function(){var t=localStorage.getItem('theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);})();</script>
+  <link rel="stylesheet" href="css/animations.css">
+  <script>
+    (function(){
+      var lang = localStorage.getItem('lang');
+      if (lang === 'ru' || lang === 'en' || lang === 'be') document.documentElement.setAttribute('lang', lang);
+      var t = localStorage.getItem('theme');
+      if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+      if (localStorage.getItem('reduceMotion') === '1') document.documentElement.classList.add('reduce-motion');
+    })();
+  </script>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
@@ -28,19 +37,19 @@
       <div class="header__row">
         <button type="button" id="themeToggle" class="theme-toggle" aria-label="Сменить тему" title="Светлая/тёмная тема">☀️</button>
         <div class="header__title-wrap">
-          <h1>Частые вопросы</h1>
+          <h1 data-i18n="faqTitle">Частые вопросы</h1>
         </div>
         <button type="button" id="tgCloseBtn" class="tg-close-btn" aria-label="Закрыть" title="Закрыть">✕</button>
       </div>
     </header>
     <div class="faq-search-wrap">
-      <input type="text" id="faqSearch" class="faq-search" placeholder="Поиск по вопросам..." aria-label="Поиск">
+      <input type="text" id="faqSearch" class="faq-search" data-i18n-placeholder="faqSearchPlaceholder" placeholder="Поиск по вопросам..." aria-label="Поиск">
     </div>
     <main class="main">
       <div id="faqList" class="faq-list"></div>
       <section class="faq-support">
-        <div class="faq-support__title">Не нашли ответ?</div>
-        <a href="https://t.me/bus_news" target="_blank" rel="noopener" class="faq-support__link">📨 Написать в поддержку (Telegram)</a>
+        <div class="faq-support__title" data-i18n="faqSupportTitle">Не нашли ответ?</div>
+        <a href="https://t.me/bus_news" target="_blank" rel="noopener" class="faq-support__link" data-i18n="faqSupportLink">📨 Написать в поддержку (Telegram)</a>
       </section>
     </main>
     <nav class="tab-bar" id="tabBar">
@@ -52,31 +61,41 @@
   <script src="js/maintenance.js"></script>
   <script src="js/api.js"></script>
   <script src="js/auth.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/settings.js"></script>
   <script src="js/theme.js"></script>
   <script src="js/nav.js"></script>
   <script src="js/prefetch.js"></script>
   <script>
     (function() {
+      if (typeof applyI18nToPage === 'function') applyI18nToPage();
       var closeBtn = document.getElementById('tgCloseBtn');
       if (closeBtn) {
         var inTelegram = window.Telegram && Telegram.WebApp && Telegram.WebApp.initData;
         if (inTelegram) closeBtn.style.display = 'none';
         else { closeBtn.style.display = ''; closeBtn.addEventListener('click', function() { if (window.Telegram && Telegram.WebApp) Telegram.WebApp.close(); }); }
       }
-      const lang = localStorage.getItem('lang') || 'ru';
-      const qKey = lang === 'en' ? 'question_en' : 'question_ru';
-      const aKey = lang === 'en' ? 'answer_en' : 'answer_ru';
+      const lang = typeof getLang === 'function' ? getLang() : (localStorage.getItem('lang') || 'ru');
+      const qKey = lang === 'en' ? 'question_en' : (lang === 'be' ? 'question_be' : 'question_ru');
+      const aKey = lang === 'en' ? 'answer_en' : (lang === 'be' ? 'answer_be' : 'answer_ru');
       fetch((typeof BASE_URL !== 'undefined' ? BASE_URL : '') + '/api/faq?lang=' + lang).then(r => r.json()).then(data => {
         const items = data.items || [];
         const list = document.getElementById('faqList');
         const esc = (s) => (s == null ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'));
-        list.innerHTML = items.map(item => `
+        list.innerHTML = items.map(item => {
+          const q = item[qKey] || item.question_ru || item.question_en || item.question;
+          const a = item[aKey] || item.answer_ru || item.answer_en || item.answer;
+          return `
           <div class="faq-item faq-item-dynamic">
-            <div class="faq-item__question">${esc(item.question || item.question_ru)}</div>
-            <div class="faq-item__answer">${esc(item.answer || item.answer_ru)}</div>
+            <div class="faq-item__question">${esc(q)}</div>
+            <div class="faq-item__answer">${esc(a)}</div>
           </div>
-        `).join('');
-      }).catch(() => { document.getElementById('faqList').innerHTML = '<p class="text-secondary p-4">Не удалось загрузить FAQ.</p>'; });
+        `;
+        }).join('');
+      }).catch(() => {
+        const msg = typeof t === 'function' ? t('faqLoadError') : 'Не удалось загрузить FAQ.';
+        document.getElementById('faqList').innerHTML = '<p class="text-secondary p-4">' + msg + '</p>';
+      });
       document.getElementById('faqSearch').addEventListener('input', function() {
         const q = this.value.toLowerCase().trim();
         document.querySelectorAll('.faq-item-dynamic').forEach(el => {

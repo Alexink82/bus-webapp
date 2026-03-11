@@ -178,3 +178,8 @@
   margin-right: auto;
   display: block;
 }
+
+.phone-field-group--error .phone-input {
+  border-color: var(--accent, #e74c3c);
+  box-shadow: 0 0 0 1px var(--accent, #e74c3c);
+}

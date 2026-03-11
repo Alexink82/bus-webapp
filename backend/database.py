@@ -77,6 +77,10 @@ _BOOKINGS_ADD_ARCHIVED = """
 ALTER TABLE bookings ADD COLUMN IF NOT EXISTS is_archived BOOLEAN NOT NULL DEFAULT FALSE
 """
 
+_BOOKINGS_ADD_CANCEL_REASON = """
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS cancel_reason TEXT
+"""
+
 
 async def init_db():
     """Create tables: shared (bookings, bot_roles) IF NOT EXISTS, then webapp-only."""
@@ -85,6 +89,10 @@ async def init_db():
         await conn.execute(text(_BOT_ROLES_CREATE))
         try:
             await conn.execute(text(_BOOKINGS_ADD_ARCHIVED))
+        except Exception:
+            pass
+        try:
+            await conn.execute(text(_BOOKINGS_ADD_CANCEL_REASON))
         except Exception:
             pass
         webapp_tables = [

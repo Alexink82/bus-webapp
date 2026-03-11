@@ -7,7 +7,16 @@
   <title>Заявка создана</title>
   <link rel="stylesheet" href="css/main.css">
   <link rel="stylesheet" href="css/telegram-theme.css">
-  <script>(function(){var t=localStorage.getItem('theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);})();</script>
+  <link rel="stylesheet" href="css/animations.css">
+  <script>
+    (function(){
+      var lang = localStorage.getItem('lang');
+      if (lang === 'ru' || lang === 'en' || lang === 'be') document.documentElement.setAttribute('lang', lang);
+      var t = localStorage.getItem('theme');
+      if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+      if (localStorage.getItem('reduceMotion') === '1') document.documentElement.classList.add('reduce-motion');
+    })();
+  </script>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
@@ -19,24 +28,30 @@
       <div class="header__row">
         <button type="button" id="themeToggle" class="theme-toggle" aria-label="Сменить тему" title="Светлая/тёмная тема">☀️</button>
         <div class="header__title-wrap">
-          <h1>Заявка создана</h1>
+          <h1 data-i18n="success">Заявка создана</h1>
         </div>
         <button type="button" id="tgCloseBtn" class="tg-close-btn" aria-label="Закрыть" title="Закрыть">✕</button>
       </div>
     </header>
     <main class="main">
       <p id="bookingId" class="booking-id"></p>
-      <p id="statusText">Ожидает подтверждения диспетчером</p>
-      <button type="button" id="cancelBookingBtn" class="btn" style="margin-top:8px; display:none;">Отменить заявку</button>
-      <a id="backSearch" href="index.html" class="btn btn-primary">Новый поиск</a>
-      <a id="myBookings" href="profile.html" class="btn" style="margin-top:8px; display:inline-block;">Мои заявки</a>
+      <p id="statusText" data-i18n="pending">Ожидает подтверждения диспетчером</p>
+      <div class="success-actions">
+        <button type="button" id="cancelBookingBtn" class="btn btn-outline success-btn hidden" data-i18n="cancelBooking">Отменить заявку</button>
+        <a id="myBookings" href="profile.html" class="btn btn-outline success-btn" data-i18n="myBookings">Мои заявки</a>
+        <a id="backSearch" href="index.html" class="btn btn-primary success-btn" data-i18n="newSearch">Новый поиск</a>
+      </div>
     </main>
   </div>
   <script src="js/api.js"></script>
   <script src="js/auth.js"></script>
+  <script src="js/app-modal.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/settings.js"></script>
   <script src="js/theme.js"></script>
   <script>
     (function() {
+      if (typeof applyI18nToPage === 'function') applyI18nToPage();
       var closeBtn = document.getElementById('tgCloseBtn');
       if (closeBtn) {
         var inTelegram = window.Telegram && Telegram.WebApp && Telegram.WebApp.initData;
@@ -45,17 +60,30 @@
       }
       const params = new URLSearchParams(window.location.search);
       const id = params.get('booking_id');
-      if (id) document.getElementById('bookingId').textContent = 'Номер заявки: ' + id;
-      else document.getElementById('bookingId').textContent = 'Заявка создана.';
+      var bookingIdEl = document.getElementById('bookingId');
+      if (id) bookingIdEl.textContent = (typeof t === 'function' ? t('bookingId') : 'Номер заявки') + ': ' + id;
+      else bookingIdEl.textContent = (typeof t === 'function' ? t('success') : 'Заявка создана') + '.';
       var cancelBtn = document.getElementById('cancelBookingBtn');
       if (id && typeof api === 'function') {
-        cancelBtn.style.display = 'inline-block';
+        cancelBtn.classList.remove('hidden');
         cancelBtn.onclick = function() {
-          if (!confirm('Отменить заявку?')) return;
-          cancelBtn.disabled = true;
-          api('/api/bookings/' + encodeURIComponent(id) + '/cancel', { method: 'POST' })
-            .then(function() { document.getElementById('statusText').textContent = 'Заявка отменена.'; cancelBtn.style.display = 'none'; })
-            .catch(function(e) { alert(e.message || 'Ошибка'); cancelBtn.disabled = false; });
+          var msg = typeof t === 'function' ? t('cancelConfirm') : 'Вы уверены, что хотите отменить заявку?';
+          var title = typeof t === 'function' ? t('cancelConfirmTitle') : 'Отмена заявки';
+          (typeof showAppConfirm === 'function' ? showAppConfirm(msg, title) : Promise.resolve(confirm(msg)))
+            .then(function(ok) {
+              if (!ok) return;
+              cancelBtn.disabled = true;
+              api('/api/bookings/' + encodeURIComponent(id) + '/cancel', { method: 'POST', body: JSON.stringify({}) })
+                .then(function() {
+                  document.getElementById('statusText').textContent = typeof t === 'function' ? t('bookingCancelled') : 'Заявка отменена.';
+                  cancelBtn.classList.add('hidden');
+                })
+                .catch(function(e) {
+                  var text = (typeof errorToMessage === 'function' ? errorToMessage(e) : (e && e.message ? e.message : (typeof t === 'function' ? t('error') : 'Ошибка')));
+                  (typeof showAppAlert === 'function' ? showAppAlert(text, typeof t === 'function' ? t('error') : 'Ошибка') : alert(text));
+                  cancelBtn.disabled = false;
+                });
+            });
         };
       }
       if (window.Telegram && Telegram.WebApp) Telegram.WebApp.ready();

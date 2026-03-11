@@ -9,6 +9,8 @@ var ERROR_MESSAGES = {
   route_not_found: 'Маршрут не найден.',
   booking_not_found: 'Заявка не найдена.',
   cannot_cancel: 'Эту заявку нельзя отменить.',
+  cancel_only_via_dispatcher: 'Отмена менее чем за 2 часа до отправления возможна только через диспетчера. Обратитесь в поддержку.',
+  reason_required: 'Укажите причину отмены.',
   not_authorized_to_cancel: 'Нет прав на отмену этой заявки.',
   passenger_not_found: 'Пассажир не найден.',
   invalid_birth_date: 'Неверная дата рождения.',

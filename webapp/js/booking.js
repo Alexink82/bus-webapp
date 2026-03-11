@@ -30,20 +30,25 @@
   var savedPassengersForFill = [];
 
   function loadSavedPassengersForFill() {
-    if (!route || route.type !== 'international') return;
     var apiFn = typeof api === 'function' ? api : null;
     if (!apiFn || (typeof getTelegramUserId === 'function' && !getTelegramUserId())) return;
     apiFn('/api/user/passengers').then(function(data) {
-      savedPassengersForFill = data.passengers || [];
+      savedPassengersForFill = (data.passengers || []).filter(function(p) {
+        return (p.last_name || '').trim() && (p.first_name || '').trim() && (p.birth_date || '').trim() &&
+          (!route || route.type !== 'international' || ((p.passport || '').replace(/\s/g, '').length >= 9));
+      });
       var wrap = document.getElementById('fillFromProfileWrap');
-      if (wrap && savedPassengersForFill.length) wrap.classList.remove('hidden');
+      if (wrap) wrap.classList.toggle('hidden', !savedPassengersForFill.length);
     }).catch(function() {});
   }
 
   function fillFromSavedPassengers() {
+    if (!savedPassengersForFill.length) {
+      if (typeof showAppAlert === 'function') showAppAlert('В профиле нет сохранённых данных пассажира или они неполные.', 'Профиль');
+      return;
+    }
     for (var i = 0; i < passengerCount && i < savedPassengersForFill.length; i++) {
       var s = savedPassengersForFill[i];
-      var bd = s.birth_date ? (typeof isoToDob === 'function' ? isoToDob(s.birth_date) : s.birth_date) : '';
       passengers[i] = { last_name: s.last_name || '', first_name: s.first_name || '', middle_name: s.middle_name || '', birth_date: s.birth_date || '', passport: s.passport || '' };
     }
     renderPassengers();
@@ -69,7 +74,7 @@
     setError('passengerCountError');
     document.querySelectorAll('.passenger-block .field-error, .passenger-block-error').forEach(function(e) { e.textContent = ''; });
   }
-  function clearStep2Errors() { setError('phoneError'); }
+  function clearStep2Errors() { setError('phoneError'); var g = document.querySelector('.phone-field-group'); if (g) g.classList.remove('phone-field-group--error'); }
 
   function renderPassengers() {
     var list = getEl('passengersList');
@@ -107,6 +112,14 @@
     }
     list.querySelectorAll('input').forEach(function(inp) {
       inp.addEventListener('input', function() { clearStep1Errors(); });
+      var f = inp.getAttribute('data-f');
+      if (f === 'last_name' || f === 'first_name' || f === 'middle_name') {
+        inp.addEventListener('input', function() {
+          var start = this.selectionStart, end = this.selectionEnd;
+          this.value = this.value.toUpperCase();
+          this.setSelectionRange(start, end);
+        });
+      }
       inp.addEventListener('change', function() {
         var i = parseInt(this.getAttribute('data-i'), 10);
         var f = this.getAttribute('data-f');
@@ -165,6 +178,20 @@
         if (errEl) errEl.textContent = 'Укажите фамилию, имя и дату рождения.';
         return;
       }
+      var invalidDob = list.findIndex(function(p) {
+        var raw = (p.birth_date || '').trim();
+        if (!raw) return true;
+        var iso = typeof dobToIso === 'function' ? dobToIso(raw) : '';
+        return !iso || iso.length !== 10;
+      });
+      if (invalidDob >= 0) {
+        setError('step1Errors', 'Проверьте дату рождения (день.месяц.год, месяц 01–12).');
+        var errEl = document.querySelector('.passenger-block-error[data-passenger-index="' + invalidDob + '"]');
+        if (errEl) errEl.textContent = 'Неверная дата (например 31.12.1990).';
+        var dobErr = document.querySelector('[data-dob-error="' + invalidDob + '"]');
+        if (dobErr) dobErr.textContent = 'Неверная дата.';
+        return;
+      }
       var hasPassport = list.every(function(p) {
         var raw = p.passport || '';
         var pass = typeof passportToApi === 'function' ? passportToApi(raw) : raw.replace(/\s/g, '');
@@ -186,6 +213,7 @@
     }
     getEl('step1').classList.add('hidden');
     getEl('step2').classList.remove('hidden');
+    if (typeof getTheme === 'function') document.documentElement.setAttribute('data-theme', getTheme());
     clearStep2Errors();
     var phoneVal = (typeof getTelegramUserId === 'function' && getTelegramUserId() ? '' : '');
     if (getEl('phone').value.trim() === '' && phoneVal) getEl('phone').value = phoneVal;
@@ -196,16 +224,31 @@
   getEl('backToStep1').addEventListener('click', function() {
     getEl('step2').classList.add('hidden');
     getEl('step1').classList.remove('hidden');
+    if (typeof getTheme === 'function') document.documentElement.setAttribute('data-theme', getTheme());
     clearStep2Errors();
   });
 
-  getEl('phone').addEventListener('input', function() { clearStep2Errors(); });
+  getEl('phone').addEventListener('input', function() {
+    clearStep2Errors();
+    if (typeof formatPhoneInput === 'function') {
+      var v = formatPhoneInput(this.value);
+      if (v !== this.value) { this.value = v; }
+    }
+    var res = typeof validatePhoneStep === 'function' ? validatePhoneStep(this.value) : null;
+    var errEl = getEl('phoneError');
+    var wrap = this.closest('.phone-field-group');
+    if (wrap) wrap.classList.toggle('phone-field-group--error', res && !res.valid && this.value.trim().length > 0);
+    if (errEl && res && !res.valid && this.value.trim().length > 0) errEl.textContent = res.message; else if (errEl) errEl.textContent = '';
+  });
 
   document.getElementById('submitBooking').addEventListener('click', function() {
-    var phone = getEl('phone').value.trim();
+    var phoneRaw = getEl('phone').value.trim();
     clearStep2Errors();
+    var phone = typeof phoneToApi === 'function' ? phoneToApi(phoneRaw) : phoneRaw.replace(/\D/g, '');
     if (!phone) {
-      setError('phoneError', 'Укажите контактный телефон.');
+      var stepRes = typeof validatePhoneStep === 'function' ? validatePhoneStep(phoneRaw) : null;
+      setError('phoneError', stepRes && stepRes.message ? stepRes.message : 'Укажите контактный телефон (+375 или +7 и номер).');
+      getEl('phone').closest('.phone-field-group') && getEl('phone').closest('.phone-field-group').classList.add('phone-field-group--error');
       return;
     }
     var paymentMethod = document.querySelector('input[name="payment"]:checked').value;
@@ -230,7 +273,8 @@
     var submitBtn = getEl('submitBooking');
     submitBtn.disabled = true;
     function onError(e) {
-      setError('phoneError', e.message || 'Ошибка создания заявки. Попробуйте ещё раз.');
+      var msg = typeof errorToMessage === 'function' ? errorToMessage(e) : (e && e.message ? e.message : 'Ошибка создания заявки. Попробуйте ещё раз.');
+      setError('phoneError', msg);
       submitBtn.disabled = false;
     }
     if (typeof api === 'function') {

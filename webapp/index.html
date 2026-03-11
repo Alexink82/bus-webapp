@@ -7,8 +7,15 @@
   <title>Бронирование автобуса</title>
   <link rel="stylesheet" href="css/main.css">
   <link rel="stylesheet" href="css/telegram-theme.css">
+  <link rel="stylesheet" href="css/animations.css">
   <script>
-    (function(){var t=localStorage.getItem('theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);})();
+    (function(){
+      var lang = localStorage.getItem('lang');
+      if (lang === 'ru' || lang === 'en' || lang === 'be') document.documentElement.setAttribute('lang', lang);
+      var t = localStorage.getItem('theme');
+      if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+      if (localStorage.getItem('reduceMotion') === '1') document.documentElement.classList.add('reduce-motion');
+    })();
   </script>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
@@ -44,7 +51,7 @@
       <form id="searchForm" class="search-form">
         <div class="search-field-block" id="fromBlock">
           <button type="button" class="search-field-block__trigger" id="fromTrigger" aria-haspopup="listbox" aria-expanded="false">
-            <span class="search-field-block__label" id="fromLabel">Откуда</span>
+            <span class="search-field-block__label" id="fromLabel" data-i18n="from">Откуда</span>
             <span class="search-field-block__value" id="fromValue"></span>
             <span class="search-field-block__chevron">▼</span>
           </button>
@@ -56,7 +63,7 @@
         <button type="button" id="swapBtn" class="swap-btn" title="Поменять местами">⇅</button>
         <div class="search-field-block" id="toBlock">
           <button type="button" class="search-field-block__trigger" id="toTrigger" aria-haspopup="listbox" aria-expanded="false">
-            <span class="search-field-block__label" id="toLabel">Куда</span>
+            <span class="search-field-block__label" id="toLabel" data-i18n="to">Куда</span>
             <span class="search-field-block__value" id="toValue"></span>
             <span class="search-field-block__chevron">▼</span>
           </button>
@@ -66,12 +73,12 @@
           <select id="toCity" required aria-hidden="true" tabindex="-1" class="search-field-block__hidden-select"></select>
         </div>
         <div class="search-field-block search-field-block--date" id="dateBlock">
-          <span class="search-field-block__date-label" id="dateLabel">Дата</span>
+          <span class="search-field-block__date-label" id="dateLabel" data-i18n="date">Дата</span>
           <button type="button" class="search-field-block__date-display" id="dateDisplay"></button>
           <input type="date" id="travelDate" required class="search-field-block__date-input">
           <div class="search-field-block__calendar hidden" id="dateCalendar"></div>
         </div>
-        <button type="submit" class="btn btn-primary">Найти рейсы</button>
+        <button type="submit" class="btn btn-primary" id="findTripsBtn" data-i18n="findTrips">Найти рейсы</button>
       </form>
 
       <section id="results" class="results hidden">
@@ -103,9 +110,11 @@
   <script src="js/api.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/theme.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/settings.js"></script>
   <script src="js/nav.js"></script>
   <script src="js/prefetch.js"></script>
-  <script src="js/i18n.js"></script>
+  <script src="js/consent.js"></script>
   <script>
     (function() {
       var closeBtn = document.getElementById('tgCloseBtn');
@@ -248,7 +257,18 @@
       if (dateDisplay && dateCalendar) {
         dateDisplay.addEventListener('click', function(e) {
           e.preventDefault();
+          e.stopPropagation();
           openDateCalendar();
+        });
+        if (dateLabel) {
+          dateLabel.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            openDateCalendar();
+          });
+        }
+        dateBlock.addEventListener('click', function(e) {
+          if (e.target === dateBlock) openDateCalendar();
         });
         dateBlock.addEventListener('focusout', function(e) {
           if (!dateBlock.contains(e.relatedTarget)) setTimeout(closeDateCalendar, 150);
@@ -409,6 +429,17 @@
         routes = data.routes || [];
         fillCities();
         renderSchedule();
+        var params = new URLSearchParams(window.location.search);
+        var fromUrl = params.get('from');
+        var toUrl = params.get('to');
+        if (fromUrl && toUrl && fromSelect && toSelect) {
+          var cities = new Set();
+          routes.forEach(r => { (r.stops || []).forEach(s => { if (s.city) cities.add(s.city); }); });
+          if (cities.has(fromUrl)) fromSelect.value = fromUrl;
+          if (cities.has(toUrl)) toSelect.value = toUrl;
+          updateFromValue();
+          updateToValue();
+        }
       }).catch(() => { routes = []; fillCities(); renderSchedule(); if (resultsList) resultsList.innerHTML = '<p class="text-secondary">Не удалось загрузить маршруты.</p>'; resultsSection.classList.remove('hidden'); });
 
       (function() {

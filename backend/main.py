@@ -117,11 +117,6 @@ app.include_router(admin_router)
 app.include_router(ws_router)
 app.include_router(faq_router)
 
-# Mount static webapp (HTML/CSS/JS)
-webapp_path = os.path.join(os.path.dirname(__file__), "..", "webapp")
-if os.path.isdir(webapp_path):
-    app.mount("/", StaticFiles(directory=webapp_path, html=True), name="webapp")
-
 
 @app.get("/api/health")
 async def health():
@@ -149,3 +144,10 @@ async def health():
             "maintenance_until": until.isoformat(),
         }
     return {"status": "ok", "maintenance": False}
+
+# Mount static webapp (HTML/CSS/JS) — после всех API-маршрутов, иначе /api/health отдаёт статика
+webapp_path = os.path.join(os.path.dirname(__file__), "..", "webapp")
+if os.path.isdir(webapp_path):
+    app.mount("/", StaticFiles(directory=webapp_path, html=True), name="webapp")
+
+
