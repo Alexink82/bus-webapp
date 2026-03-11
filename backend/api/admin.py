@@ -172,6 +172,24 @@ async def add_dispatcher(
     return {"success": True}
 
 
+@router.delete("/dispatchers/{telegram_id}")
+async def remove_dispatcher(
+    telegram_id: int,
+    db: AsyncSession = Depends(get_db),
+    admin_id: int = Depends(get_admin_id),
+):
+    """Деактивировать диспетчера (is_active=False). Вкладка «Диспетчер» у него пропадёт."""
+    result = await db.execute(
+        select(Dispatcher).where(Dispatcher.telegram_id == telegram_id)
+    )
+    d = result.scalar_one_or_none()
+    if not d:
+        raise HTTPException(404, detail="dispatcher_not_found")
+    d.is_active = False
+    await db.commit()
+    return {"success": True}
+
+
 @router.get("/export")
 async def export_bookings(
     from_date: date | None = Query(None),

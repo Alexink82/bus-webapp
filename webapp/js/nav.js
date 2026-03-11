@@ -1,13 +1,19 @@
 /**
  * Injects Admin / Dispatcher tabs into .tab-bar based on GET /api/user/roles.
  * Call after DOM ready. Tab bar must have id="tabBar" and contain base tabs (Бронь, Профиль, FAQ).
+ * Для появления вкладки «Админ»: на сервере в ADMIN_IDS должен быть ваш Telegram user_id (число) или запись в bot_roles с is_admin=true.
  */
 (function() {
   function injectRoleTabs() {
     var tabBar = document.getElementById('tabBar');
-    if (!tabBar || typeof api !== 'function') return;
+    if (!tabBar) return;
+    var apiFn = typeof window.api === 'function' ? window.api : null;
+    if (!apiFn) {
+      setTimeout(injectRoleTabs, 50);
+      return;
+    }
 
-    api('/api/user/roles')
+    apiFn('/api/user/roles')
       .then(function(data) {
         var isDispatcher = data.is_dispatcher === true;
         var isAdmin = data.is_admin === true;

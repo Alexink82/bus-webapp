@@ -23,6 +23,7 @@ var ERROR_MESSAGES = {
   not_your_booking: 'Это не ваша заявка.',
   invalid_status: 'Недопустимый статус.',
   dispatcher_exists: 'Диспетчер с таким ID уже добавлен.',
+  dispatcher_not_found: 'Диспетчер не найден.',
   name_required: 'Укажите фамилию и имя пассажира.',
   birth_date_future: 'Дата рождения не может быть в будущем.',
   passport_required: 'Укажите паспорт для международного рейса.',

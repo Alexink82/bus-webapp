@@ -12,7 +12,9 @@ class Settings(BaseSettings):
     bot_token: str = ""
     channel_id: str = ""
 
-    # Access
+    # Access (для вкладок Админ/Диспетчер и доступа к API)
+    # ADMIN_IDS — через запятую Telegram user_id администраторов (числа)
+    # DISPATCHER_IDS — через запятую Telegram user_id диспетчеров (или добавлять через bot_roles)
     admin_ids: str = ""
     dispatcher_ids: str = ""
 

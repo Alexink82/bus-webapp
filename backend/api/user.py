@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import date
+import logging
 
 from database import get_db
 from api.auth_deps import get_verified_telegram_user_id, get_optional_verified_telegram_user_id
@@ -12,6 +13,7 @@ from services.roles import is_admin
 from services.roles import get_dispatcher_route_ids
 
 router = APIRouter(prefix="/api/user", tags=["user"])
+log = logging.getLogger(__name__)
 
 
 @router.get("/roles")
@@ -23,8 +25,11 @@ async def get_roles(
     if user_id is None:
         return {"is_admin": False, "is_dispatcher": False}
     route_ids = await get_dispatcher_route_ids(db, user_id)
+    admin = is_admin(user_id)
+    if not admin:
+        log.info("roles: user_id=%s is_admin=False — добавьте этот ID в ADMIN_IDS на сервере или в bot_roles.is_admin", user_id)
     return {
-        "is_admin": is_admin(user_id),
+        "is_admin": admin,
         "is_dispatcher": route_ids is not None,
     }
 
