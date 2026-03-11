@@ -1,12 +1,43 @@
 :root {
+  /* Тёмная тема (по умолчанию) — удобно для глаз, контрастный текст */
   --bg: #1a1a2e;
   --surface: #16213e;
+  --surface-elevated: #1f2f4a;
   --primary: #0f3460;
   --accent: #e94560;
-  --text: #eee;
-  --text-muted: #aaa;
+  --accent-hover: #ff6b7a;
+  --text: #e8e8ee;
+  --text-muted: #a0a8b8;
+  --text-strong: #ffffff;
+  --border: #2a3a5a;
   --radius: 12px;
   --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Светлая тема — читабельные шрифты, мягкий фон */
+[data-theme="light"] {
+  --bg: #f0f2f5;
+  --surface: #ffffff;
+  --surface-elevated: #ffffff;
+  --primary: #d0d5dd;
+  --accent: #c73e54;
+  --accent-hover: #a83346;
+  --text: #1d1d21;
+  --text-muted: #6e6e73;
+  --text-strong: #000000;
+  --border: #e5e7eb;
+}
+
+[data-theme="light"] .header__logo {
+  filter: invert(1);
+}
+
+[data-theme="light"] .tg-close-btn {
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--text);
+}
+[data-theme="light"] .tg-close-btn:hover {
+  background: rgba(0, 0, 0, 0.14);
 }
 
 * {
@@ -20,7 +51,8 @@ body {
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
-  padding-bottom: 70px;
+  padding-bottom: 76px;
+  transition: background-color 0.25s ease, color 0.2s ease;
 }
 
 .container {
@@ -34,7 +66,9 @@ body {
   flex-direction: column;
   gap: 0;
   padding: 0 0 16px;
+  margin-bottom: 8px;
   position: relative;
+  flex-shrink: 0;
 }
 
 .header__logo-bar {
@@ -58,8 +92,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   min-height: 44px;
+  padding: 0 4px;
 }
 
 .header__brand {
@@ -72,11 +107,13 @@ body {
   flex: 1;
   min-width: 0;
   text-align: center;
+  padding: 0 4px;
 }
 
 .header__title-wrap h1 {
   font-size: 1.25rem;
   margin-bottom: 2px;
+  color: var(--text-strong);
 }
 
 .header__title-wrap .subtitle {
@@ -87,6 +124,8 @@ body {
   flex-shrink: 0;
   width: 40px;
   height: 40px;
+  min-width: 40px;
+  min-height: 40px;
   padding: 0;
   border: none;
   border-radius: var(--radius);
@@ -98,6 +137,35 @@ body {
 }
 .tg-close-btn:hover {
   background: rgba(0, 0, 0, 0.5);
+}
+
+.theme-toggle {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius);
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  transition: background 0.2s;
+}
+.theme-toggle:hover {
+  background: rgba(0, 0, 0, 0.35);
+}
+[data-theme="light"] .theme-toggle {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text);
+}
+[data-theme="light"] .theme-toggle:hover {
+  background: rgba(0, 0, 0, 0.12);
 }
 
 .subtitle {
@@ -120,7 +188,7 @@ body {
 .field select {
   width: 100%;
   padding: 12px;
-  border: 1px solid var(--primary);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
   color: var(--text);
@@ -145,6 +213,9 @@ body {
   color: #fff;
   margin-top: 8px;
 }
+.btn-primary:hover {
+  background: var(--accent-hover);
+}
 
 .btn-small {
   padding: 8px 16px;
@@ -157,7 +228,7 @@ body {
   width: 100%;
   padding: 8px;
   background: var(--surface);
-  border: 1px solid var(--primary);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   color: var(--text);
   cursor: pointer;
@@ -169,6 +240,7 @@ body {
   padding: 20px;
   border-radius: var(--radius);
   margin-bottom: 24px;
+  transition: background-color 0.25s ease;
 }
 
 .results {
@@ -230,6 +302,10 @@ body {
   font-size: 0.9rem;
 }
 
+.main {
+  margin-top: 0;
+}
+
 .tab-bar {
   position: fixed;
   bottom: 0;
@@ -239,24 +315,29 @@ body {
   display: flex;
   justify-content: space-around;
   align-items: center;
-  padding: 10px 8px;
+  padding: 10px 6px;
   padding-bottom: max(10px, env(safe-area-inset-bottom));
-  border-top: 1px solid var(--primary);
-  gap: 4px;
+  border-top: 1px solid var(--border);
+  gap: 6px;
+  min-height: 56px;
+  transition: background-color 0.25s ease, border-color 0.2s ease;
 }
 
+/* Шрифты меню: адаптивно под экран телефона (как в типичных мобильных приложениях 14–16px) */
 .tab-bar .tab {
   color: var(--text-muted);
   text-decoration: none;
-  font-size: 0.8rem;
+  font-size: clamp(0.875rem, 2.5vw + 0.65rem, 1rem);
+  font-weight: 500;
   flex: 1;
   text-align: center;
-  padding: 6px 4px;
-  min-height: 44px;
+  padding: 8px 4px;
+  min-height: 48px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 2px;
 }
 
 .tab-bar .tab.active {
@@ -269,12 +350,13 @@ body {
 
 /* FAQ page */
 .faq-search-wrap {
+  margin-top: 4px;
   margin-bottom: 16px;
 }
 .faq-search {
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid var(--primary);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
   color: var(--text);
