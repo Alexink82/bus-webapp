@@ -11,7 +11,6 @@
     var o = opts || {};
     var headers = { 'Content-Type': 'application/json' };
     if (typeof getTelegramUserId === 'function' && getTelegramUserId()) headers['X-Telegram-User-Id'] = String(getTelegramUserId());
-    if (typeof getTelegramInitData === 'function' && getTelegramInitData()) headers['X-Telegram-Init-Data'] = getTelegramInitData();
     if (o.headers) Object.assign(headers, o.headers);
     return fetch(base + path, Object.assign({}, o, { headers: headers }))
       .then(function(r) { return r.json().catch(function() { return {}; }).then(function(data) {
@@ -85,10 +84,12 @@
       var items = data.bookings || [];
       list.innerHTML = items.length ? items.map(function(b) {
         var esc = function(s) { if (s == null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
-        var cancelBtn = (b.status !== 'cancelled' && b.status !== 'done' && b.status !== 'ticket_sent') ? ' <button type="button" class="btn btn-small cancel-booking" data-id="' + esc(b.booking_id) + '">Отменить</button>' : '';
-        return '<div class="trip-card"><strong>' + esc(b.booking_id) + '</strong> — ' + esc(b.route_name) + '<br>' +
-          esc(b.departure_date) + ' ' + esc(b.departure_time) + ' | ' + esc(b.price_total) + ' ' + esc(b.currency) + ' | ' + esc(b.status) + '<br>' +
-          '<a href="success.html?booking_id=' + encodeURIComponent(b.booking_id) + '">Подробнее</a>' + cancelBtn + '</div>';
+        var cancelBtn = (b.status !== 'cancelled' && b.status !== 'done' && b.status !== 'ticket_sent') ? ' <button type="button" class="btn btn-outline btn-small cancel-booking" data-id="' + esc(b.booking_id) + '">Отменить</button>' : '';
+        var detailsBtn = '<button type="button" class="btn btn-outline btn-small booking-details" data-id="' + esc(b.booking_id) + '">Подробнее</button>';
+        return '<div class="trip-card booking-card">' +
+          '<div class="booking-card__head"><strong>' + esc(b.booking_id) + '</strong> — ' + esc(b.route_name) + '</div>' +
+          '<div class="booking-card__meta">' + esc(b.departure_date) + ' ' + esc(b.departure_time) + ' | ' + esc(b.price_total) + ' ' + esc(b.currency) + ' | ' + esc(b.status) + '</div>' +
+          '<div class="booking-card__actions">' + detailsBtn + cancelBtn + '</div></div>';
       }).join('') : '<p>Нет заявок.</p>';
       list.querySelectorAll('.cancel-booking').forEach(function(btn) {
         btn.addEventListener('click', function() {
@@ -106,6 +107,12 @@
                   btn.disabled = false;
                 });
             });
+        });
+      });
+      list.querySelectorAll('.booking-details').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var bid = btn.getAttribute('data-id');
+          window.location.href = 'success.html?booking_id=' + encodeURIComponent(bid);
         });
       });
     }).catch(function() { document.getElementById('bookingsList').innerHTML = '<p>\u041e\u0448\u0438\u0431\u043a\u0430 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0438.</p>'; });

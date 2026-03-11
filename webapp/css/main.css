@@ -622,6 +622,23 @@ body {
   margin-top: 4px;
 }
 
+.booking-card { max-width: 100%; }
+.booking-card__head { font-size: 1rem; margin-bottom: 6px; }
+.booking-card__meta { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 10px; }
+.booking-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.booking-card__actions .btn,
+.booking-card__actions .booking-details {
+  text-decoration: none;
+  cursor: pointer;
+  appearance: button;
+}
+.booking-card__actions .btn-small { margin-top: 0; }
+
 .schedule-section {
   margin-bottom: 24px;
 }
