@@ -15,5 +15,8 @@ venv/
 .DS_Store
 Thumbs.db
 
+# Office temp files
+~$*
+
 # Frontend (if added later)
 node_modules/

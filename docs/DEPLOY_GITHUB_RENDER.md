@@ -15,9 +15,7 @@
    - **НЕ** ставьте галочки «Add a README», «Add .gitignore», «Choose a license» — репозиторий должен быть пустым.
 3. Нажмите **Create repository**.
 
-После создания GitHub покажет страницу с подсказками. **URL репозитория** будет вида:  
-`https://github.com/YOUR_USERNAME/bus-booking-webapp.git`  
-— он понадобится ниже (подставьте свой логин и имя репо).
+URL репозитория: `https://github.com/Alexink82/bus-webapp.git`
 
 ---
 
@@ -85,7 +83,7 @@ git push -u origin main
 
 ### Шаг 2.2. Выбрать репозиторий
 
-1. В списке репозиториев выберите **bus-booking-webapp** (тот, что только что создали).
+1. Выберите репозиторий **bus-webapp** (https://github.com/Alexink82/bus-webapp).
 2. Нажмите **Connect**.
 
 ### Шаг 2.3. Настройки сервиса
@@ -98,7 +96,7 @@ Render может подхватить настройки из `render.yaml` (Bl
 
 Либо создайте сервис вручную:
 
-- **Name:** `bus-booking-webapp`.
+- **Name:** `bus-booking-webapp` (или `bus-webapp`).
 - **Region:** выберите ближайший.
 - **Branch:** `main`.
 - **Runtime:** **Docker**.
