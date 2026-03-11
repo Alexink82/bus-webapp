@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1a1a2e">
+  <title>Заявка создана</title>
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/telegram-theme.css">
+  <script>(function(){var t=localStorage.getItem('theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);})();</script>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="header__logo-bar">
+        <img src="img/logo.png" alt="СТОЛИЦА" class="header__logo" width="160" height="40">
+      </div>
+      <div class="header__row">
+        <button type="button" id="themeToggle" class="theme-toggle" aria-label="Сменить тему" title="Светлая/тёмная тема">☀️</button>
+        <div class="header__title-wrap">
+          <h1>Заявка создана</h1>
+        </div>
+        <button type="button" id="tgCloseBtn" class="tg-close-btn" aria-label="Закрыть" title="Закрыть">✕</button>
+      </div>
+    </header>
+    <main class="main">
+      <p id="bookingId" class="booking-id"></p>
+      <p id="statusText">Ожидает подтверждения диспетчером</p>
+      <button type="button" id="cancelBookingBtn" class="btn" style="margin-top:8px; display:none;">Отменить заявку</button>
+      <a id="backSearch" href="index.html" class="btn btn-primary">Новый поиск</a>
+      <a id="myBookings" href="profile.html" class="btn" style="margin-top:8px; display:inline-block;">Мои заявки</a>
+    </main>
+  </div>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/theme.js"></script>
+  <script>
+    (function() {
+      var closeBtn = document.getElementById('tgCloseBtn');
+      if (closeBtn) {
+        var inTelegram = window.Telegram && Telegram.WebApp && Telegram.WebApp.initData;
+        if (inTelegram) closeBtn.style.display = 'none';
+        else { closeBtn.style.display = ''; closeBtn.addEventListener('click', function() { if (window.Telegram && Telegram.WebApp) Telegram.WebApp.close(); }); }
+      }
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get('booking_id');
+      if (id) document.getElementById('bookingId').textContent = 'Номер заявки: ' + id;
+      else document.getElementById('bookingId').textContent = 'Заявка создана.';
+      var cancelBtn = document.getElementById('cancelBookingBtn');
+      if (id && typeof api === 'function') {
+        cancelBtn.style.display = 'inline-block';
+        cancelBtn.onclick = function() {
+          if (!confirm('Отменить заявку?')) return;
+          cancelBtn.disabled = true;
+          api('/api/bookings/' + encodeURIComponent(id) + '/cancel', { method: 'POST' })
+            .then(function() { document.getElementById('statusText').textContent = 'Заявка отменена.'; cancelBtn.style.display = 'none'; })
+            .catch(function(e) { alert(e.message || 'Ошибка'); cancelBtn.disabled = false; });
+        };
+      }
+      if (window.Telegram && Telegram.WebApp) Telegram.WebApp.ready();
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "name": "Bus Booking",
+  "short_name": "Bus Booking",
+  "description": "Бронирование автобусных билетов",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1a2e",
+  "theme_color": "#e94560",
+  "orientation": "portrait"
+}

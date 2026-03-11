@@ -1,0 +1,25 @@
+/* Telegram WebApp theme - apply vars from Telegram */
+body {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: calc(76px + env(safe-area-inset-bottom));
+}
+
+body.telegram-theme {
+  background: var(--tg-theme-bg-color, var(--bg));
+  color: var(--tg-theme-text-color, var(--text));
+}
+
+.telegram-theme .search-form,
+.telegram-theme .trip-card,
+.telegram-theme .actual-info {
+  background: var(--tg-theme-secondary-bg-color, var(--surface));
+}
+
+.telegram-theme .btn-primary {
+  background: var(--tg-theme-button-color, var(--accent));
+  color: var(--tg-theme-button-text-color, #fff);
+}
+
+.telegram-theme .tab-bar .tab.active {
+  color: var(--tg-theme-button-color, var(--accent));
+}

@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#e94560">
+  <title>Админ-панель — Bus Booking</title>
+  <link rel="stylesheet" href="css/design-system.css">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+  <div class="app">
+    <div class="header__logo-bar">
+      <img src="img/logo.png" alt="СТОЛИЦА" class="header__logo" width="160" height="40">
+    </div>
+    <header class="admin-header">
+      <span class="admin-header__title">⚙️ Админ-панель</span>
+      <a href="index.html" class="admin-header__exit">Выйти</a>
+    </header>
+    <div id="loginWarning" class="warning hidden">Войдите через Telegram (как администратор).</div>
+    <div id="adminTabs" class="admin-tabs hidden">
+      <button type="button" class="admin-tab admin-tab--active" data-panel="statsPanel">Статистика</button>
+      <button type="button" class="admin-tab" data-panel="adminsPanel">Администраторы</button>
+      <button type="button" class="admin-tab" data-panel="logsPanel">Логи</button>
+      <button type="button" class="admin-tab" data-panel="dispatchersPanel">Диспетчеры</button>
+    </div>
+    <main id="adminMain" class="page hidden">
+      <div class="admin-panel">
+        <section id="statsPanel">
+          <h2 class="admin-section__title">Статистика</h2>
+          <div id="statsPeriod" class="admin-period"></div>
+          <div class="admin-stats">
+            <div class="admin-stat-card">
+              <div id="statsBookings" class="admin-stat-card__value">—</div>
+              <div class="admin-stat-card__label">Заявок</div>
+            </div>
+            <div class="admin-stat-card">
+              <div id="statsSum" class="admin-stat-card__value">—</div>
+              <div class="admin-stat-card__label">BYN</div>
+            </div>
+          </div>
+          <div class="admin-actions">
+            <button type="button" id="exportCsv" class="btn btn--secondary btn--block">📥 Экспорт CSV</button>
+          </div>
+        </section>
+        <section id="adminsPanel" class="hidden">
+          <h2 class="admin-section__title">Администраторы</h2>
+          <p class="text-secondary text-small mb-4">Список Telegram ID с правами админа (из переменной ADMIN_IDS на Render и из базы). Добавление сохраняет в базу — новый админ увидит вкладку «Админ» после обновления страницы.</p>
+          <div class="form-group">
+            <label class="form-label" for="adminTelegramId">Telegram ID (число)</label>
+            <input type="number" id="adminTelegramId" class="input" placeholder="123456789" min="1" step="1">
+          </div>
+          <button type="button" id="addAdminBtn" class="btn btn--primary btn--block mb-6">➕ Добавить администратора</button>
+          <div class="admin-logs">
+            <div class="admin-logs__title">Список администраторов</div>
+            <div id="adminsList"></div>
+          </div>
+        </section>
+        <section id="logsPanel" class="hidden">
+          <h2 class="admin-section__title">Логи</h2>
+          <div class="admin-logs">
+            <div class="admin-logs__title">Последние события</div>
+            <div id="logsContent"></div>
+          </div>
+        </section>
+        <section id="dispatchersPanel" class="hidden">
+          <h2 class="admin-section__title">Диспетчеры</h2>
+          <p class="text-secondary text-small mb-4">Добавленные диспетчеры видят вкладку «Диспетчер» в приложении. Удаление деактивирует доступ.</p>
+          <div class="form-group">
+            <label class="form-label" for="dispTelegramId">Telegram ID (число)</label>
+            <input type="number" id="dispTelegramId" class="input" placeholder="123456789" min="1" step="1">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="dispName">Имя (необязательно)</label>
+            <input type="text" id="dispName" class="input" placeholder="Иван">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="dispPhone">Телефон (необязательно)</label>
+            <input type="text" id="dispPhone" class="input" placeholder="+375...">
+          </div>
+          <button type="button" id="addDispatcherBtn" class="btn btn--primary btn--block mb-6">➕ Добавить диспетчера</button>
+          <div class="admin-logs">
+            <div class="admin-logs__title">Список диспетчеров</div>
+            <div id="dispatchersList"></div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    (function() {
+      const uid = typeof getTelegramUserId === 'function' ? getTelegramUserId() : null;
+      if (!uid) {
+        document.getElementById('loginWarning').classList.remove('hidden');
+        return;
+      }
+      const headers = { 'X-Telegram-User-Id': String(uid) };
+      if (typeof getTelegramInitData === 'function' && getTelegramInitData())
+        headers['X-Telegram-Init-Data'] = getTelegramInitData();
+      const base = typeof BASE_URL !== 'undefined' ? BASE_URL : '';
+      function api(path) {
+        return fetch(base + path, { headers }).then(r =>
+          r.json().catch(() => ({})).then(data => {
+            if (!r.ok) throw new Error(data.detail || r.statusText);
+            return data;
+          })
+        );
+      }
+      api('/api/admin/stats').then(data => {
+        document.getElementById('loginWarning').classList.add('hidden');
+        document.getElementById('adminTabs').classList.remove('hidden');
+        document.getElementById('adminMain').classList.remove('hidden');
+        document.getElementById('statsPeriod').innerHTML = 'Период: <strong>' + data.from_date + '</strong> — <strong>' + data.to_date + '</strong>';
+        document.getElementById('statsBookings').textContent = data.total_bookings != null ? data.total_bookings : '—';
+        document.getElementById('statsSum').textContent = data.total_sum != null ? data.total_sum : '—';
+        document.getElementById('exportCsv').onclick = function() {
+          const exportUrl = base + '/api/admin/export?from_date=' + encodeURIComponent(data.from_date) + '&to_date=' + encodeURIComponent(data.to_date);
+          fetch(exportUrl, { headers }).then(function(r) {
+            if (!r.ok) return r.json().catch(function() { return {}; }).then(function(d) { throw new Error(d.detail || 'Ошибка экспорта'); });
+            return r.blob();
+          }).then(function(blob) {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'bookings.csv';
+            a.click();
+            URL.revokeObjectURL(a.href);
+          }).catch(function(e) { alert(e.message || 'Ошибка экспорта'); });
+        };
+      }).catch(function() { document.getElementById('loginWarning').classList.remove('hidden'); document.getElementById('loginWarning').textContent = 'Нет доступа (не админ).'; });
+      api('/api/admin/logs?limit=50').then(data => {
+        const logs = data.logs || [];
+        const esc = (s) => (s == null ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'));
+        document.getElementById('logsContent').innerHTML = logs.length ? logs.map(function(l) {
+          var cls = (l.level || '').toLowerCase().indexOf('error') !== -1 ? 'admin-log-item__level--error' : 'admin-log-item__level--info';
+          return '<div class="admin-log-item"><span class="admin-log-item__time">' + esc(l.timestamp) + '</span> <span class="' + cls + '">' + esc(l.level) + '</span> ' + esc(l.source) + ' ' + esc(l.action || l.message || '') + '</div>';
+        }).join('') : '<div class="admin-log-item text-tertiary">Нет записей</div>';
+      }).catch(function() { document.getElementById('logsContent').innerHTML = '<div class="admin-log-item text-error">Не удалось загрузить логи</div>'; });
+
+      document.querySelectorAll('.admin-tab').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var panel = this.getAttribute('data-panel');
+          document.querySelectorAll('.admin-tab').forEach(function(b) { b.classList.remove('admin-tab--active'); });
+          document.querySelectorAll('#statsPanel, #adminsPanel, #logsPanel, #dispatchersPanel').forEach(function(p) { p.classList.add('hidden'); });
+          this.classList.add('admin-tab--active');
+          if (panel) document.getElementById(panel).classList.remove('hidden');
+        });
+      });
+
+      function loadAdmins() {
+        api('/api/admin/admins').then(function(data) {
+          var ids = data.admin_ids || [];
+          var esc = function(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
+          document.getElementById('adminsList').innerHTML = ids.length ? ids.map(function(id) { return '<div class="admin-log-item">' + esc(id) + '</div>'; }).join('') : '<div class="admin-log-item text-tertiary">Нет записей. Добавьте ID выше или укажите ADMIN_IDS на Render.</div>';
+        }).catch(function() { document.getElementById('adminsList').innerHTML = '<div class="admin-log-item text-error">Не удалось загрузить</div>'; });
+      }
+      loadAdmins();
+
+      document.getElementById('addAdminBtn').addEventListener('click', function() {
+        var tidEl = document.getElementById('adminTelegramId');
+        var tid = parseInt(tidEl.value, 10);
+        if (!tid || isNaN(tid)) { alert('Введите Telegram ID (число).'); return; }
+        fetch(base + '/api/admin/admins', {
+          method: 'POST',
+          headers: Object.assign({}, headers, { 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ telegram_id: tid })
+        })
+          .then(function(r) { return r.json().then(function(d) { if (!r.ok) throw new Error(d.detail || 'Ошибка'); return d; }); })
+          .then(function() { tidEl.value = ''; loadAdmins(); })
+          .catch(function(e) { alert(e.message); });
+      });
+
+      function loadDispatchers() {
+        api('/api/admin/dispatchers').then(function(data) {
+          var list = data.dispatchers || [];
+          var esc = function(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
+          document.getElementById('dispatchersList').innerHTML = list.length ? list.map(function(d) {
+            var status = d.is_active ? '<span class="badge badge--success">активен</span>' : '<span class="badge badge--neutral">неактивен</span>';
+            var fromEnv = d.from_env ? ' <span class="badge badge--neutral">из Render</span>' : '';
+            var delBtn = d.is_active && !d.from_env ? '<button type="button" class="btn btn--ghost btn--small" data-tid="' + d.telegram_id + '">Удалить</button>' : '';
+            return '<div class="admin-log-item" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">' +
+              '<span><strong>' + esc(d.telegram_id) + '</strong> ' + esc(d.name || '—') + ' ' + esc(d.phone || '') + ' ' + status + fromEnv + '</span>' + delBtn + '</div>';
+          }).join('') : '<div class="admin-log-item text-tertiary">Нет диспетчеров. Добавьте Telegram ID выше или DISPATCHER_IDS на Render.</div>';
+          document.querySelectorAll('#dispatchersList [data-tid]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+              var tid = this.getAttribute('data-tid');
+              if (!tid || !confirm('Деактивировать диспетчера? Вкладка «Диспетчер» у него пропадёт.')) return;
+              fetch(base + '/api/admin/dispatchers/' + tid, { method: 'DELETE', headers: headers })
+                .then(function(r) { return r.json().then(function(d) { if (!r.ok) throw new Error(d.detail || 'Ошибка'); return d; }); })
+                .then(function() { loadDispatchers(); })
+                .catch(function(e) { alert(e.message || 'Ошибка удаления'); });
+            });
+          });
+        }).catch(function() { document.getElementById('dispatchersList').innerHTML = '<div class="admin-log-item text-error">Не удалось загрузить список</div>'; });
+      }
+      loadDispatchers();
+
+      document.getElementById('addDispatcherBtn').addEventListener('click', function() {
+        var tidEl = document.getElementById('dispTelegramId');
+        var tid = parseInt(tidEl.value, 10);
+        if (!tid || isNaN(tid)) { alert('Введите Telegram ID (число).'); return; }
+        var name = (document.getElementById('dispName').value || '').trim();
+        var phone = (document.getElementById('dispPhone').value || '').trim();
+        fetch(base + '/api/admin/dispatchers', {
+          method: 'POST',
+          headers: Object.assign({}, headers, { 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ telegram_id: tid, name: name, phone: phone, routes: [], direction: '' })
+        })
+          .then(function(r) { return r.json().then(function(d) { if (!r.ok) throw new Error(d.detail === 'dispatcher_exists' ? 'Диспетчер с таким ID уже добавлен.' : (d.detail || 'Ошибка')); return d; }); })
+          .then(function() { tidEl.value = ''; document.getElementById('dispName').value = ''; document.getElementById('dispPhone').value = ''; loadDispatchers(); })
+          .catch(function(e) { alert(e.message); });
+      });
+
+      if (window.Telegram && Telegram.WebApp) Telegram.WebApp.ready();
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#1a1a2e">
+  <title>Частые вопросы — Bus Booking</title>
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/telegram-theme.css">
+  <script>(function(){var t=localStorage.getItem('theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);})();</script>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+  <div id="maintenanceOverlay" class="maintenance-overlay hidden">
+    <div class="maintenance-overlay__inner">
+      <img src="img/logo.png" alt="СТОЛИЦА" class="maintenance-overlay__logo" width="160" height="40">
+      <h1>Технические работы</h1>
+      <p>Приносим извинения за неудобства. Мы обновляем сервис.</p>
+      <p>Примерное время возобновления: <span id="maintenanceUntil">—</span></p>
+      <p class="maintenance-overlay__countdown" id="maintenanceCountdown">—</p>
+    </div>
+  </div>
+  <div class="container" id="appContent">
+    <header class="header">
+      <div class="header__logo-bar">
+        <img src="img/logo.png" alt="СТОЛИЦА" class="header__logo" width="160" height="40">
+      </div>
+      <div class="header__row">
+        <button type="button" id="themeToggle" class="theme-toggle" aria-label="Сменить тему" title="Светлая/тёмная тема">☀️</button>
+        <div class="header__title-wrap">
+          <h1>Частые вопросы</h1>
+        </div>
+        <button type="button" id="tgCloseBtn" class="tg-close-btn" aria-label="Закрыть" title="Закрыть">✕</button>
+      </div>
+    </header>
+    <div class="faq-search-wrap">
+      <input type="text" id="faqSearch" class="faq-search" placeholder="Поиск по вопросам..." aria-label="Поиск">
+    </div>
+    <main class="main">
+      <div id="faqList" class="faq-list"></div>
+      <section class="faq-support">
+        <div class="faq-support__title">Не нашли ответ?</div>
+        <a href="https://t.me/bus_news" target="_blank" rel="noopener" class="faq-support__link">📨 Написать в поддержку (Telegram)</a>
+      </section>
+    </main>
+    <nav class="tab-bar" id="tabBar">
+      <a href="index.html" class="tab">🎫 Бронь</a>
+      <a href="profile.html" class="tab">👤 Профиль</a>
+      <a href="faq.html" class="tab active">❓ FAQ</a>
+    </nav>
+  </div>
+  <script src="js/maintenance.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/theme.js"></script>
+  <script src="js/nav.js"></script>
+  <script src="js/prefetch.js"></script>
+  <script>
+    (function() {
+      var closeBtn = document.getElementById('tgCloseBtn');
+      if (closeBtn) {
+        var inTelegram = window.Telegram && Telegram.WebApp && Telegram.WebApp.initData;
+        if (inTelegram) closeBtn.style.display = 'none';
+        else { closeBtn.style.display = ''; closeBtn.addEventListener('click', function() { if (window.Telegram && Telegram.WebApp) Telegram.WebApp.close(); }); }
+      }
+      const lang = localStorage.getItem('lang') || 'ru';
+      const qKey = lang === 'en' ? 'question_en' : 'question_ru';
+      const aKey = lang === 'en' ? 'answer_en' : 'answer_ru';
+      fetch((typeof BASE_URL !== 'undefined' ? BASE_URL : '') + '/api/faq?lang=' + lang).then(r => r.json()).then(data => {
+        const items = data.items || [];
+        const list = document.getElementById('faqList');
+        const esc = (s) => (s == null ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'));
+        list.innerHTML = items.map(item => `
+          <div class="faq-item faq-item-dynamic">
+            <div class="faq-item__question">${esc(item.question || item.question_ru)}</div>
+            <div class="faq-item__answer">${esc(item.answer || item.answer_ru)}</div>
+          </div>
+        `).join('');
+      }).catch(() => { document.getElementById('faqList').innerHTML = '<p class="text-secondary p-4">Не удалось загрузить FAQ.</p>'; });
+      document.getElementById('faqSearch').addEventListener('input', function() {
+        const q = this.value.toLowerCase().trim();
+        document.querySelectorAll('.faq-item-dynamic').forEach(el => {
+          el.style.display = q === '' || el.textContent.toLowerCase().includes(q) ? '' : 'none';
+        });
+      });
+      if (window.Telegram && Telegram.WebApp) Telegram.WebApp.ready();
+    })();
+  </script>
+</body>
+</html>

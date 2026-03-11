@@ -1,0 +1,41 @@
+# Bus Booking Webapp — deploy on Render
+# https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: bus-booking-webapp
+    env: docker
+    dockerfilePath: Dockerfile
+    dockerContext: .
+
+    envVars:
+      - key: BOT_TOKEN
+        description: Telegram bot token from @BotFather
+        sync: false
+      - key: CHANNEL_ID
+        description: Telegram channel (e.g. @channelname or -100...)
+        sync: false
+      - key: ADMIN_IDS
+        description: Comma-separated admin Telegram IDs
+        sync: false
+      - key: DISPATCHER_IDS
+        description: Comma-separated dispatcher Telegram IDs
+        sync: false
+      - key: DATABASE_URL
+        description: PostgreSQL URL (create Postgres in Render Dashboard or use external)
+        sync: false
+      - key: WEBAPP_URL
+        description: Public HTTPS URL of this service (for Telegram Web App button)
+        value: ""
+      - key: BACKEND_URL
+        description: Same as WEBAPP_URL or your custom domain
+        value: ""
+      - key: WEBPAY_CALLBACK_SECRET
+        description: Secret for WebPay callback (production)
+        generateValue: true
+      - key: DEBUG
+        value: "false"
+        sync: false
+      - key: RATE_LIMIT
+        value: "60"
+        sync: false
