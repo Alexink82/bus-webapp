@@ -6,12 +6,17 @@
   <meta name="theme-color" content="#e94560">
   <title>Профиль</title>
   <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/telegram-theme.css">
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
   <div class="container">
     <header class="header">
-      <h1>👤 Профиль</h1>
+      <span class="header__brand" aria-hidden="true">👤</span>
+      <div class="header__title-wrap">
+        <h1>Профиль</h1>
+      </div>
+      <button type="button" id="tgCloseBtn" class="tg-close-btn" aria-label="Закрыть" title="Закрыть">✕</button>
     </header>
     <main class="main">
       <section id="bookingsSection">
@@ -24,7 +29,7 @@
         <button type="button" id="addPassenger" class="btn btn-small">Добавить</button>
       </section>
     </main>
-    <nav class="tab-bar">
+    <nav class="tab-bar" id="tabBar">
       <a href="index.html" class="tab">🎫 Бронь</a>
       <a href="profile.html" class="tab active">👤 Профиль</a>
       <a href="faq.html" class="tab">❓ FAQ</a>
@@ -32,6 +37,17 @@
   </div>
   <script src="js/api.js"></script>
   <script src="js/auth.js"></script>
+  <script src="js/nav.js"></script>
   <script src="js/profile.js"></script>
+  <script>
+    (function() {
+      var closeBtn = document.getElementById('tgCloseBtn');
+      if (closeBtn) {
+        var inTelegram = window.Telegram && Telegram.WebApp && Telegram.WebApp.initData;
+        if (inTelegram) closeBtn.style.display = 'none';
+        else { closeBtn.style.display = ''; closeBtn.addEventListener('click', function() { if (window.Telegram && Telegram.WebApp) Telegram.WebApp.close(); }); }
+      }
+    })();
+  </script>
 </body>
 </html>

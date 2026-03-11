@@ -2,51 +2,49 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <meta name="theme-color" content="#e94560">
   <title>Частые вопросы — Bus Booking</title>
-  <link rel="stylesheet" href="css/design-system.css">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/telegram-theme.css">
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-  <div class="app">
-    <header class="faq-header">
-      <h1 class="faq-header__title">❓ Частые вопросы</h1>
+  <div class="container">
+    <header class="header">
+      <span class="header__brand" aria-hidden="true">❓</span>
+      <div class="header__title-wrap">
+        <h1>Частые вопросы</h1>
+      </div>
+      <button type="button" id="tgCloseBtn" class="tg-close-btn" aria-label="Закрыть" title="Закрыть">✕</button>
     </header>
     <div class="faq-search-wrap">
       <input type="text" id="faqSearch" class="faq-search" placeholder="Поиск по вопросам..." aria-label="Поиск">
     </div>
-    <main class="page">
+    <main class="main">
       <div id="faqList" class="faq-list"></div>
       <section class="faq-support">
         <div class="faq-support__title">Не нашли ответ?</div>
-        <a href="https://t.me/bus_news" target="_blank" rel="noopener" class="faq-support__link">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
-          Написать в поддержку (Telegram)
-        </a>
+        <a href="https://t.me/bus_news" target="_blank" rel="noopener" class="faq-support__link">📨 Написать в поддержку (Telegram)</a>
       </section>
     </main>
-    <nav class="tab-bar">
-      <div class="tab-bar__content">
-        <a href="index.html" class="tab-bar__item">
-          <svg class="tab-bar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6v6"/><path d="M15 6v6"/><path d="M2 12h19.6"/><path d="M18 18h3s.5-1.7.8-2.8c.1-.4.2-.8.2-1.2 0-.4-.1-.8-.2-1.2l-1.4-5C20.1 6.8 19.1 6 18 6H4a2 2 0 0 0-2 2v10h3"/><circle cx="7" cy="18" r="2"/><path d="M9 18h5"/><circle cx="16" cy="18" r="2"/></svg>
-          <span class="tab-bar__label">Бронь</span>
-        </a>
-        <a href="profile.html" class="tab-bar__item">
-          <svg class="tab-bar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 1-4-4H9a4 4 0 0 1-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          <span class="tab-bar__label">Профиль</span>
-        </a>
-        <a href="faq.html" class="tab-bar__item tab-bar__item--active">
-          <svg class="tab-bar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
-          <span class="tab-bar__label">FAQ</span>
-        </a>
-      </div>
+    <nav class="tab-bar" id="tabBar">
+      <a href="index.html" class="tab">🎫 Бронь</a>
+      <a href="profile.html" class="tab">👤 Профиль</a>
+      <a href="faq.html" class="tab active">❓ FAQ</a>
     </nav>
   </div>
   <script src="js/api.js"></script>
   <script src="js/auth.js"></script>
+  <script src="js/nav.js"></script>
   <script>
     (function() {
+      var closeBtn = document.getElementById('tgCloseBtn');
+      if (closeBtn) {
+        var inTelegram = window.Telegram && Telegram.WebApp && Telegram.WebApp.initData;
+        if (inTelegram) closeBtn.style.display = 'none';
+        else { closeBtn.style.display = ''; closeBtn.addEventListener('click', function() { if (window.Telegram && Telegram.WebApp) Telegram.WebApp.close(); }); }
+      }
       const lang = localStorage.getItem('lang') || 'ru';
       const qKey = lang === 'en' ? 'question_en' : 'question_ru';
       const aKey = lang === 'en' ? 'answer_en' : 'answer_ru';

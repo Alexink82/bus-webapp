@@ -11,8 +11,11 @@
 <body>
   <div class="container">
     <header class="header">
+      <span class="header__brand" aria-hidden="true">✅</span>
+      <div class="header__title-wrap">
+        <h1>Заявка создана</h1>
+      </div>
       <button type="button" id="tgCloseBtn" class="tg-close-btn" aria-label="Закрыть" title="Закрыть">✕</button>
-      <h1>✅ Заявка создана</h1>
     </header>
     <main class="main">
       <p id="bookingId" class="booking-id"></p>
@@ -27,9 +30,11 @@
   <script>
     (function() {
       var closeBtn = document.getElementById('tgCloseBtn');
-      if (closeBtn && window.Telegram && Telegram.WebApp) {
-        closeBtn.addEventListener('click', function() { Telegram.WebApp.close(); });
-      } else if (closeBtn) closeBtn.style.display = 'none';
+      if (closeBtn) {
+        var inTelegram = window.Telegram && Telegram.WebApp && Telegram.WebApp.initData;
+        if (inTelegram) closeBtn.style.display = 'none';
+        else { closeBtn.style.display = ''; closeBtn.addEventListener('click', function() { if (window.Telegram && Telegram.WebApp) Telegram.WebApp.close(); }); }
+      }
       const params = new URLSearchParams(window.location.search);
       const id = params.get('booking_id');
       if (id) document.getElementById('bookingId').textContent = 'Номер заявки: ' + id;

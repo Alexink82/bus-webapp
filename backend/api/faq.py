@@ -34,7 +34,7 @@ async def list_faq(
 
 @router.get("/news")
 async def get_news(db: AsyncSession = Depends(get_db)):
-    """Cached border/weather (for 'Actual info' block)."""
+    """Cached border/weather (for 'Actual info' block). Falls back to stubs if cache empty."""
     result = await db.execute(
         select(CachedData).where(CachedData.key.in_(["border_status", "weather"]))
     )
@@ -42,4 +42,20 @@ async def get_news(db: AsyncSession = Depends(get_db)):
     data = {}
     for r in rows:
         data[r.key] = r.data
-    return {"border": data.get("border_status"), "weather": data.get("weather")}
+    border = data.get("border_status")
+    weather = data.get("weather")
+    if border is None:
+        border = {
+            "message_ru": "Актуальную информацию уточняйте на границе.",
+            "message_en": "Check actual info at the border.",
+            "source": "stub",
+        }
+    if weather is None:
+        weather = {
+            "city": "Minsk",
+            "temp": "—",
+            "description_ru": "Нет данных",
+            "description_en": "No data",
+            "source": "stub",
+        }
+    return {"border": border, "weather": weather}

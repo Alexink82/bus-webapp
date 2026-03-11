@@ -38,10 +38,11 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("Load roles at startup: %s", e)
     try:
-        from parsers.scheduler import start_scheduler
+        from parsers.scheduler import start_scheduler, _update_cache
         start_scheduler()
-    except Exception:
-        pass
+        await _update_cache()
+    except Exception as e:
+        logger.warning("Scheduler or startup cache update failed: %s", e)
     yield
     try:
         from parsers.scheduler import shutdown_scheduler

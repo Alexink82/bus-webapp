@@ -30,17 +30,40 @@ body {
 }
 
 .header {
-  text-align: center;
-  padding: 24px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 0;
   position: relative;
+  min-height: 52px;
+}
+
+.header__brand {
+  flex-shrink: 0;
+  font-size: 1.75rem;
+  line-height: 1;
+}
+
+.header__title-wrap {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
+
+.header__title-wrap h1 {
+  font-size: 1.25rem;
+  margin-bottom: 2px;
+}
+
+.header__title-wrap .subtitle {
+  margin: 0;
 }
 
 .tg-close-btn {
-  position: absolute;
-  top: 8px;
-  right: 0;
-  width: 36px;
-  height: 36px;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
   padding: 0;
   border: none;
   border-radius: var(--radius);
@@ -52,11 +75,6 @@ body {
 }
 .tg-close-btn:hover {
   background: rgba(0, 0, 0, 0.5);
-}
-
-.header h1 {
-  font-size: 1.5rem;
-  margin-bottom: 4px;
 }
 
 .subtitle {
@@ -197,14 +215,25 @@ body {
   background: var(--surface);
   display: flex;
   justify-content: space-around;
-  padding: 10px 0;
+  align-items: center;
+  padding: 10px 8px;
+  padding-bottom: max(10px, env(safe-area-inset-bottom));
   border-top: 1px solid var(--primary);
+  gap: 4px;
 }
 
 .tab-bar .tab {
   color: var(--text-muted);
   text-decoration: none;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
+  flex: 1;
+  text-align: center;
+  padding: 6px 4px;
+  min-height: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 .tab-bar .tab.active {
@@ -213,4 +242,53 @@ body {
 
 .hidden {
   display: none !important;
+}
+
+/* FAQ page */
+.faq-search-wrap {
+  margin-bottom: 16px;
+}
+.faq-search {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid var(--primary);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1rem;
+}
+.faq-list {
+  margin-bottom: 24px;
+}
+.faq-item {
+  background: var(--surface);
+  padding: 16px;
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+}
+.faq-item__question {
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+.faq-item__answer {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+.faq-support {
+  background: var(--surface);
+  padding: 16px;
+  border-radius: var(--radius);
+  text-align: center;
+}
+.faq-support__title {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+.faq-support__link {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 0.95rem;
 }
