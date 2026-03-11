@@ -1,61 +1,40 @@
 """Dispatcher API - bookings, take, status, stats."""
-from fastapi import APIRouter, Depends, HTTPException, Header, Query
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import select, func
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timezone
 
 from database import get_db
-from config import get_settings
+from api.auth_deps import get_verified_telegram_user_id
 from models import Booking, Dispatcher
+from core.constants import ROUTES
+from services.roles import get_dispatcher_route_ids
 from services.notification import notify_booking_status
 from logging_config import log_action
 
 router = APIRouter(prefix="/api/dispatcher", tags=["dispatcher"])
 
 
-def get_dispatcher_id(x_telegram_user_id: str | None = Header(None)) -> int:
-    if not x_telegram_user_id:
-        raise HTTPException(401, detail="telegram_id_required")
-    try:
-        uid = int(x_telegram_user_id)
-    except ValueError:
-        raise HTTPException(401, detail="invalid_telegram_id")
-    return uid
-
-
-async def require_dispatcher(
-    db: AsyncSession,
-    telegram_id: int,
-) -> Dispatcher:
-    result = await db.execute(
-        select(Dispatcher).where(
-            Dispatcher.telegram_id == telegram_id,
-            Dispatcher.is_active == True,
-        )
-    )
-    d = result.scalar_one_or_none()
-    if not d:
-        raise HTTPException(403, detail="not_dispatcher")
-    return d
+def _route_ids_list(route_ids: list | None) -> list:
+    """Пустой или None = все маршруты."""
+    if route_ids and len(route_ids) > 0:
+        return list(route_ids)
+    return list(ROUTES.keys())
 
 
 @router.get("/bookings")
 async def list_bookings(
-    status: str | None = Query(None),
+    status: str | None = None,
     db: AsyncSession = Depends(get_db),
-    dispatcher_id: int = Depends(get_dispatcher_id),
+    dispatcher_id: int = Depends(get_verified_telegram_user_id),
 ):
-    """List bookings for dispatcher's routes."""
-    disp = await require_dispatcher(db, dispatcher_id)
-    routes = disp.routes or []
-    if not routes:
-        return {"bookings": []}
-
-    q = select(Booking).where(
-        Booking.route_id.in_(routes),
-        Booking.is_archived == False,
-    )
+    """Список заявок: все маршруты если routes пустой, иначе по маршрутам диспетчера."""
+    route_ids = await get_dispatcher_route_ids(db, dispatcher_id)
+    if route_ids is None:
+        raise HTTPException(403, detail="not_dispatcher")
+    route_ids = _route_ids_list(route_ids)
+    q = select(Booking).where(Booking.route_id.in_(route_ids))
     if status:
         q = q.where(Booking.status == status)
     q = q.order_by(Booking.created_at.desc())
@@ -63,21 +42,24 @@ async def list_bookings(
     rows = result.scalars().all()
     items = []
     for r in rows:
+        route_name = ROUTES.get(r.route_id, {}).get("name", r.route_id or "")
+        passengers_count = len(r.passengers) if r.passengers else 0
+        payment_status = "paid" if (r.paid_at and r.paid_at.strip()) else "pending"
         items.append({
-            "booking_id": r.booking_id,
+            "booking_id": r.id,
             "status": r.status,
             "dispatcher_id": r.dispatcher_id,
-            "route_name": r.route_name,
+            "route_name": route_name,
             "from_city": r.from_city,
             "to_city": r.to_city,
-            "departure_date": str(r.departure_date),
-            "departure_time": r.departure_time,
-            "passengers_count": r.passengers_count,
+            "departure_date": r.date or "",
+            "departure_time": r.departure or "",
+            "passengers_count": passengers_count,
             "price_total": r.price_total,
-            "currency": r.currency,
-            "payment_status": r.payment_status,
-            "user_id": r.user_id,
-            "created_at": r.created_at.isoformat() if r.created_at else None,
+            "currency": "BYN",
+            "payment_status": payment_status,
+            "user_id": r.contact_tg_id,
+            "created_at": r.created_at,
         })
     return {"bookings": items}
 
@@ -86,14 +68,17 @@ async def list_bookings(
 async def take_booking(
     booking_id: str,
     db: AsyncSession = Depends(get_db),
-    dispatcher_id: int = Depends(get_dispatcher_id),
+    dispatcher_id: int = Depends(get_verified_telegram_user_id),
 ):
-    """Take booking in work."""
-    disp = await require_dispatcher(db, dispatcher_id)
+    """Взять заявку в работу."""
+    route_ids = await get_dispatcher_route_ids(db, dispatcher_id)
+    if route_ids is None:
+        raise HTTPException(403, detail="not_dispatcher")
+    route_ids = _route_ids_list(route_ids)
     result = await db.execute(
         select(Booking).where(
-            Booking.booking_id == booking_id,
-            Booking.route_id.in_(disp.routes or []),
+            Booking.id == booking_id,
+            Booking.route_id.in_(route_ids),
         )
     )
     b = result.scalar_one_or_none()
@@ -103,10 +88,11 @@ async def take_booking(
         raise HTTPException(409, detail="already_taken")
     b.dispatcher_id = dispatcher_id
     b.status = "active"
+    b.taken_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
     await log_action(db, "INFO", "dispatcher", "take_booking", user_id=dispatcher_id, details={"booking_id": booking_id})
     await db.commit()
-    if b.user_id:
-        await notify_booking_status(b.user_id, booking_id, "active", "ru")
+    if b.contact_tg_id:
+        await notify_booking_status(b.contact_tg_id, booking_id, "active", "ru")
     return {"success": True, "status": "active"}
 
 
@@ -119,14 +105,17 @@ async def set_booking_status(
     booking_id: str,
     body: SetStatusIn,
     db: AsyncSession = Depends(get_db),
-    dispatcher_id: int = Depends(get_dispatcher_id),
+    dispatcher_id: int = Depends(get_verified_telegram_user_id),
 ):
-    """Change booking status."""
-    disp = await require_dispatcher(db, dispatcher_id)
+    """Изменить статус заявки."""
+    route_ids = await get_dispatcher_route_ids(db, dispatcher_id)
+    if route_ids is None:
+        raise HTTPException(403, detail="not_dispatcher")
+    route_ids = _route_ids_list(route_ids)
     result = await db.execute(
         select(Booking).where(
-            Booking.booking_id == booking_id,
-            Booking.route_id.in_(disp.routes or []),
+            Booking.id == booking_id,
+            Booking.route_id.in_(route_ids),
         )
     )
     b = result.scalar_one_or_none()
@@ -139,38 +128,35 @@ async def set_booking_status(
         raise HTTPException(400, detail="invalid_status")
     b.status = body.status
     if body.status == "paid":
-        b.payment_status = "paid"
+        b.paid_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
     await log_action(db, "INFO", "dispatcher", "set_status", user_id=dispatcher_id, details={"booking_id": booking_id, "status": body.status})
     await db.commit()
-    if b.user_id:
-        await notify_booking_status(b.user_id, booking_id, body.status, "ru")
+    if b.contact_tg_id:
+        await notify_booking_status(b.contact_tg_id, booking_id, body.status, "ru")
     return {"success": True, "status": body.status}
 
 
 @router.get("/stats")
 async def dispatcher_stats(
     db: AsyncSession = Depends(get_db),
-    dispatcher_id: int = Depends(get_dispatcher_id),
+    dispatcher_id: int = Depends(get_verified_telegram_user_id),
 ):
-    """My stats for today."""
-    disp = await require_dispatcher(db, dispatcher_id)
-    today = date.today()
-    routes = disp.routes or []
-    if not routes:
-        return {"total": 0, "sum": 0, "by_status": {}}
-
-    q = select(
-        Booking.status,
-        func.count(Booking.id).label("cnt"),
-        func.coalesce(func.sum(Booking.price_total), 0).label("s"),
-    ).where(
-        Booking.route_id.in_(routes),
+    """Статистика диспетчера за сегодня (по дате создания заявки)."""
+    route_ids = await get_dispatcher_route_ids(db, dispatcher_id)
+    if route_ids is None:
+        raise HTTPException(403, detail="not_dispatcher")
+    route_ids = _route_ids_list(route_ids)
+    today_str = date.today().isoformat()
+    q = select(Booking).where(
+        Booking.route_id.in_(route_ids),
         Booking.dispatcher_id == dispatcher_id,
-        func.date(Booking.created_at) == today,
-    ).group_by(Booking.status)
+        Booking.created_at.startswith(today_str),
+    )
     result = await db.execute(q)
-    rows = result.all()
-    by_status = {r.status: r.cnt for r in rows}
-    total = sum(r.cnt for r in rows)
-    s = sum(float(r.s) for r in rows)
+    rows = result.scalars().all()
+    total = len(rows)
+    s = sum((r.price_total or 0) for r in rows)
+    by_status = {}
+    for r in rows:
+        by_status[r.status] = by_status.get(r.status, 0) + 1
     return {"total": total, "sum": round(s, 2), "by_status": by_status}

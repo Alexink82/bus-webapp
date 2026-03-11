@@ -1,32 +1,22 @@
 """User profile and saved passengers API."""
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import date
 
 from database import get_db
+from api.auth_deps import get_verified_telegram_user_id
 from models import UserProfile, SavedPassenger, Booking
 
 router = APIRouter(prefix="/api/user", tags=["user"])
 
 
-def get_telegram_user_id(x_telegram_user_id: str | None = Header(None)) -> int | None:
-    if not x_telegram_user_id:
-        return None
-    try:
-        return int(x_telegram_user_id)
-    except ValueError:
-        return None
-
-
 @router.get("/profile")
 async def get_profile(
     db: AsyncSession = Depends(get_db),
-    user_id: int | None = Depends(get_telegram_user_id),
+    user_id: int = Depends(get_verified_telegram_user_id),
 ):
-    if not user_id:
-        raise HTTPException(401, detail="telegram_id_required")
     result = await db.execute(select(UserProfile).where(UserProfile.user_id == user_id))
     p = result.scalar_one_or_none()
     if not p:
@@ -55,10 +45,8 @@ class UpdateProfileIn(BaseModel):
 async def update_profile(
     body: UpdateProfileIn,
     db: AsyncSession = Depends(get_db),
-    user_id: int | None = Depends(get_telegram_user_id),
+    user_id: int = Depends(get_verified_telegram_user_id),
 ):
-    if not user_id:
-        raise HTTPException(401, detail="telegram_id_required")
     result = await db.execute(select(UserProfile).where(UserProfile.user_id == user_id))
     p = result.scalar_one_or_none()
     if not p:
@@ -82,10 +70,8 @@ async def update_profile(
 @router.get("/passengers")
 async def list_passengers(
     db: AsyncSession = Depends(get_db),
-    user_id: int | None = Depends(get_telegram_user_id),
+    user_id: int = Depends(get_verified_telegram_user_id),
 ):
-    if not user_id:
-        raise HTTPException(401, detail="telegram_id_required")
     result = await db.execute(
         select(SavedPassenger)
         .where(SavedPassenger.user_id == user_id)
@@ -120,11 +106,12 @@ class PassengerIn(BaseModel):
 async def add_passenger(
     body: PassengerIn,
     db: AsyncSession = Depends(get_db),
-    user_id: int | None = Depends(get_telegram_user_id),
+    user_id: int = Depends(get_verified_telegram_user_id),
 ):
-    if not user_id:
-        raise HTTPException(401, detail="telegram_id_required")
-    bd = date.fromisoformat(body.birth_date) if body.birth_date else None
+    try:
+        bd = date.fromisoformat(body.birth_date) if body.birth_date else None
+    except (ValueError, TypeError):
+        raise HTTPException(400, detail="invalid_birth_date")
     p = SavedPassenger(
         user_id=user_id,
         last_name=body.last_name,
@@ -144,10 +131,8 @@ async def update_passenger(
     passenger_id: int,
     body: PassengerIn,
     db: AsyncSession = Depends(get_db),
-    user_id: int | None = Depends(get_telegram_user_id),
+    user_id: int = Depends(get_verified_telegram_user_id),
 ):
-    if not user_id:
-        raise HTTPException(401, detail="telegram_id_required")
     result = await db.execute(
         select(SavedPassenger).where(
             SavedPassenger.id == passenger_id,
@@ -157,10 +142,14 @@ async def update_passenger(
     p = result.scalar_one_or_none()
     if not p:
         raise HTTPException(404, detail="passenger_not_found")
+    try:
+        bd = date.fromisoformat(body.birth_date) if body.birth_date else None
+    except (ValueError, TypeError):
+        raise HTTPException(400, detail="invalid_birth_date")
     p.last_name = body.last_name
     p.first_name = body.first_name
     p.middle_name = body.middle_name
-    p.birth_date = date.fromisoformat(body.birth_date) if body.birth_date else None
+    p.birth_date = bd
     p.passport = body.passport or None
     await db.commit()
     return {"success": True}
@@ -170,10 +159,8 @@ async def update_passenger(
 async def delete_passenger(
     passenger_id: int,
     db: AsyncSession = Depends(get_db),
-    user_id: int | None = Depends(get_telegram_user_id),
+    user_id: int = Depends(get_verified_telegram_user_id),
 ):
-    if not user_id:
-        raise HTTPException(401, detail="telegram_id_required")
     result = await db.execute(
         select(SavedPassenger).where(
             SavedPassenger.id == passenger_id,
@@ -191,11 +178,9 @@ async def delete_passenger(
 @router.get("/bookings")
 async def list_my_bookings(
     db: AsyncSession = Depends(get_db),
-    user_id: int | None = Depends(get_telegram_user_id),
+    user_id: int = Depends(get_verified_telegram_user_id),
     status: str | None = None,
 ):
-    if not user_id:
-        raise HTTPException(401, detail="telegram_id_required")
     q = select(Booking).where(Booking.contact_tg_id == user_id).order_by(Booking.created_at.desc())
     if status:
         q = q.where(Booking.status == status)

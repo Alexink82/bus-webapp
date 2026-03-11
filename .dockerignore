@@ -1,0 +1,26 @@
+# Git and IDE
+.git
+.gitignore
+.idea
+.vscode
+*.md
+docs/
+
+# Secrets and local
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__
+*.py[cod]
+venv
+.venv
+*.egg-info
+
+# Tests (optional: remove to run in image)
+backend/tests/
+
+# OS
+.DS_Store
+Thumbs.db

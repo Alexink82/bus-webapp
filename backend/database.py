@@ -73,12 +73,20 @@ CREATE TABLE IF NOT EXISTS bot_roles (
 )
 """
 
+_BOOKINGS_ADD_ARCHIVED = """
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS is_archived BOOLEAN NOT NULL DEFAULT FALSE
+"""
+
 
 async def init_db():
     """Create tables: shared (bookings, bot_roles) IF NOT EXISTS, then webapp-only."""
     async with engine.begin() as conn:
         await conn.execute(text(_BOOKINGS_CREATE))
         await conn.execute(text(_BOT_ROLES_CREATE))
+        try:
+            await conn.execute(text(_BOOKINGS_ADD_ARCHIVED))
+        except Exception:
+            pass
         webapp_tables = [
             t for t in Base.metadata.sorted_tables
             if t.name not in ("bookings", "bot_roles")

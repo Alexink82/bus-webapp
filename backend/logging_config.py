@@ -1,6 +1,9 @@
-"""Structured logging configuration."""
+"""Structured logging configuration.
+Все ошибки и ключевые действия пишут в лог с указанием модуля и контекста.
+"""
 import logging
 import sys
+import inspect
 from typing import Any
 
 from config import get_settings
@@ -24,6 +27,18 @@ def get_logger(name: str) -> logging.Logger:
     return logging.getLogger(name)
 
 
+def _caller_context() -> str:
+    """Возвращает файл:строка вызывающего кода (для отладки)."""
+    try:
+        frame = inspect.currentframe()
+        if frame and frame.f_back and frame.f_back.f_back:
+            f = frame.f_back.f_back
+            return f"{f.f_code.co_filename}:{f.f_lineno}"
+    except Exception:
+        pass
+    return ""
+
+
 async def log_action(
     db,
     level: str,
@@ -33,7 +48,20 @@ async def log_action(
     details: dict | None = None,
     ip_address: str | None = None,
 ) -> None:
-    """Write action to log_entries table."""
+    """Write action to log_entries table. source/action попадают в лог сервера и в БД."""
+    logger = get_logger("api")
+    ctx = _caller_context()
+    msg = f"{source} | {action}"
+    if details:
+        msg += f" | {details}"
+    if user_id is not None:
+        msg += f" | user_id={user_id}"
+    if ctx:
+        msg += f" | at {ctx}"
+    if level == "ERROR":
+        logger.error(msg)
+    else:
+        logger.info(msg)
     try:
         from models import LogEntry
 
@@ -48,4 +76,4 @@ async def log_action(
         db.add(entry)
         await db.flush()
     except Exception as e:
-        logging.getLogger("logging_config").warning("Failed to write log entry: %s", e)
+        get_logger("logging_config").warning("Failed to write log entry: %s | at %s", e, _caller_context())

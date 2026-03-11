@@ -5,6 +5,7 @@ venv/
 .venv/
 .env
 *.egg-info/
+*.log
 
 # IDE
 .idea/
@@ -13,3 +14,6 @@ venv/
 # OS
 .DS_Store
 Thumbs.db
+
+# Frontend (if added later)
+node_modules/

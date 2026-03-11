@@ -2,27 +2,48 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Админ</title>
-  <link rel="stylesheet" href="css/main.css">
-  <link rel="stylesheet" href="css/dispatcher.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#e94560">
+  <title>Админ-панель — Bus Booking</title>
+  <link rel="stylesheet" href="css/design-system.css">
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-  <div class="container">
-    <header class="header">
-      <h1>⚙️ Админ-панель</h1>
+  <div class="app">
+    <header class="admin-header">
+      <span class="admin-header__title">⚙️ Админ-панель</span>
     </header>
     <div id="loginWarning" class="warning hidden">Войдите через Telegram (как администратор).</div>
-    <main id="adminMain" class="main hidden">
-      <div id="statsPanel" class="tab-panel">
-        <h2>Статистика</h2>
-        <div id="statsContent"></div>
-        <button type="button" id="exportCsv" class="btn btn-small">Экспорт CSV</button>
-      </div>
-      <div id="logsPanel" class="tab-panel">
-        <h2>Логи</h2>
-        <div id="logsContent"></div>
+    <div id="adminTabs" class="admin-tabs hidden">
+      <button type="button" class="admin-tab admin-tab--active" data-panel="statsPanel">Статистика</button>
+      <button type="button" class="admin-tab" data-panel="logsPanel">Логи</button>
+    </div>
+    <main id="adminMain" class="page hidden">
+      <div class="admin-panel">
+        <section id="statsPanel">
+          <h2 class="admin-section__title">Статистика</h2>
+          <div id="statsPeriod" class="admin-period"></div>
+          <div class="admin-stats">
+            <div class="admin-stat-card">
+              <div id="statsBookings" class="admin-stat-card__value">—</div>
+              <div class="admin-stat-card__label">Заявок</div>
+            </div>
+            <div class="admin-stat-card">
+              <div id="statsSum" class="admin-stat-card__value">—</div>
+              <div class="admin-stat-card__label">BYN</div>
+            </div>
+          </div>
+          <div class="admin-actions">
+            <button type="button" id="exportCsv" class="btn btn--secondary btn--block">📥 Экспорт CSV</button>
+          </div>
+        </section>
+        <section id="logsPanel" class="hidden">
+          <h2 class="admin-section__title">Логи</h2>
+          <div class="admin-logs">
+            <div class="admin-logs__title">Последние события</div>
+            <div id="logsContent"></div>
+          </div>
+        </section>
       </div>
     </main>
   </div>
@@ -30,36 +51,62 @@
   <script src="js/auth.js"></script>
   <script>
     (function() {
-      const uid = getTelegramUserId();
+      const uid = typeof getTelegramUserId === 'function' ? getTelegramUserId() : null;
       if (!uid) {
         document.getElementById('loginWarning').classList.remove('hidden');
         return;
       }
       const headers = { 'X-Telegram-User-Id': String(uid) };
-      function api(path) { return fetch(BASE_URL + path, { headers }).then(r => r.json()); }
+      if (typeof getTelegramInitData === 'function' && getTelegramInitData())
+        headers['X-Telegram-Init-Data'] = getTelegramInitData();
+      const base = typeof BASE_URL !== 'undefined' ? BASE_URL : '';
+      function api(path) {
+        return fetch(base + path, { headers }).then(r =>
+          r.json().catch(() => ({})).then(data => {
+            if (!r.ok) throw new Error(data.detail || r.statusText);
+            return data;
+          })
+        );
+      }
       api('/api/admin/stats').then(data => {
         document.getElementById('loginWarning').classList.add('hidden');
+        document.getElementById('adminTabs').classList.remove('hidden');
         document.getElementById('adminMain').classList.remove('hidden');
-        document.getElementById('statsContent').innerHTML = `
-          <p>Период: ${data.from_date} — ${data.to_date}</p>
-          <p>Заявок: <strong>${data.total_bookings}</strong>, сумма: <strong>${data.total_sum} BYN</strong></p>
-        `;
-        document.getElementById('exportCsv').onclick = () => {
-          fetch(BASE_URL + '/api/admin/export?from_date=' + data.from_date + '&to_date=' + data.to_date, { headers })
-            .then(r => r.blob()).then(blob => {
-              const a = document.createElement('a');
-              a.href = URL.createObjectURL(blob);
-              a.download = 'bookings.csv';
-              a.click();
-            });
+        document.getElementById('statsPeriod').innerHTML = 'Период: <strong>' + data.from_date + '</strong> — <strong>' + data.to_date + '</strong>';
+        document.getElementById('statsBookings').textContent = data.total_bookings != null ? data.total_bookings : '—';
+        document.getElementById('statsSum').textContent = data.total_sum != null ? data.total_sum : '—';
+        document.getElementById('exportCsv').onclick = function() {
+          const exportUrl = base + '/api/admin/export?from_date=' + encodeURIComponent(data.from_date) + '&to_date=' + encodeURIComponent(data.to_date);
+          fetch(exportUrl, { headers }).then(function(r) {
+            if (!r.ok) return r.json().catch(function() { return {}; }).then(function(d) { throw new Error(d.detail || 'Ошибка экспорта'); });
+            return r.blob();
+          }).then(function(blob) {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'bookings.csv';
+            a.click();
+            URL.revokeObjectURL(a.href);
+          }).catch(function(e) { alert(e.message || 'Ошибка экспорта'); });
         };
-      }).catch(() => { document.getElementById('loginWarning').innerHTML = 'Нет доступа (не админ).'; });
+      }).catch(function() { document.getElementById('loginWarning').classList.remove('hidden'); document.getElementById('loginWarning').textContent = 'Нет доступа (не админ).'; });
       api('/api/admin/logs?limit=50').then(data => {
         const logs = data.logs || [];
-        document.getElementById('logsContent').innerHTML = logs.map(l => 
-          `<div class="dispatcher-card"><small>${l.timestamp}</small> ${l.level} ${l.source} ${l.action}</div>`
-        ).join('');
-      }).catch(() => {});
+        const esc = (s) => (s == null ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'));
+        document.getElementById('logsContent').innerHTML = logs.length ? logs.map(function(l) {
+          var cls = (l.level || '').toLowerCase().indexOf('error') !== -1 ? 'admin-log-item__level--error' : 'admin-log-item__level--info';
+          return '<div class="admin-log-item"><span class="admin-log-item__time">' + esc(l.timestamp) + '</span> <span class="' + cls + '">' + esc(l.level) + '</span> ' + esc(l.source) + ' ' + esc(l.action || l.message || '') + '</div>';
+        }).join('') : '<div class="admin-log-item text-tertiary">Нет записей</div>';
+      }).catch(function() { document.getElementById('logsContent').innerHTML = '<div class="admin-log-item text-error">Не удалось загрузить логи</div>'; });
+      document.querySelectorAll('.admin-tab').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var panel = this.getAttribute('data-panel');
+          document.querySelectorAll('.admin-tab').forEach(function(b) { b.classList.remove('admin-tab--active'); });
+          document.querySelectorAll('#statsPanel, #logsPanel').forEach(function(p) { p.classList.add('hidden'); });
+          this.classList.add('admin-tab--active');
+          if (panel) document.getElementById(panel).classList.remove('hidden');
+        });
+      });
+      if (window.Telegram && Telegram.WebApp) Telegram.WebApp.ready();
     })();
   </script>
 </body>

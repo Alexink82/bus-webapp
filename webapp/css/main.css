@@ -32,6 +32,26 @@ body {
 .header {
   text-align: center;
   padding: 24px 0;
+  position: relative;
+}
+
+.tg-close-btn {
+  position: absolute;
+  top: 8px;
+  right: 0;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius);
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--text);
+  font-size: 1.2rem;
+  cursor: pointer;
+  line-height: 1;
+}
+.tg-close-btn:hover {
+  background: rgba(0, 0, 0, 0.5);
 }
 
 .header h1 {

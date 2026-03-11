@@ -132,6 +132,7 @@ class Booking(Base):
     dispatcher_id = Column(Integer)
     taken_at = Column(String(30))
     paid_at = Column(String(30))
+    is_archived = Column(Boolean, default=False)
 
 
 class BotRole(Base):
@@ -142,6 +143,17 @@ class BotRole(Base):
     user_id = Column(Integer, primary_key=True)
     is_admin = Column(Boolean, default=False)
     is_dispatcher = Column(Boolean, default=False)
+
+
+class Dispatcher(Base):
+    """Диспетчеры: telegram_id, маршруты (пусто = все)."""
+    __tablename__ = "dispatchers"
+    telegram_id = Column(Integer, primary_key=True)
+    name = Column(String(100), default="")
+    phone = Column(String(30), default="")
+    routes = Column(JSON, default=list)  # [] = все маршруты
+    direction = Column(String(50), default="")
+    is_active = Column(Boolean, default=True)
 
 
 class Blacklist(Base):

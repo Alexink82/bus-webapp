@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     webapp_url: str = "http://localhost:8000"
     backend_url: str = "http://localhost:8000"
 
+    # WebPay callback (проверка подписи/секрета в проде)
+    webpay_callback_secret: str = ""
+
     # Rate limiting (requests per minute)
     rate_limit: int = 10
 
@@ -35,13 +38,31 @@ class Settings(BaseSettings):
     def admin_ids_list(self) -> List[int]:
         if not self.admin_ids:
             return []
-        return [int(x.strip()) for x in self.admin_ids.split(",") if x.strip()]
+        out = []
+        for x in self.admin_ids.split(","):
+            x = x.strip()
+            if not x:
+                continue
+            try:
+                out.append(int(x))
+            except ValueError:
+                continue
+        return out
 
     @property
     def dispatcher_ids_list(self) -> List[int]:
         if not self.dispatcher_ids:
             return []
-        return [int(x.strip()) for x in self.dispatcher_ids.split(",") if x.strip()]
+        out = []
+        for x in self.dispatcher_ids.split(","):
+            x = x.strip()
+            if not x:
+                continue
+            try:
+                out.append(int(x))
+            except ValueError:
+                continue
+        return out
 
     class Config:
         env_file = [".env", "../.env"]

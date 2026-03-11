@@ -1,4 +1,6 @@
-"""Payment WebPay mock and callback."""
+"""Payment WebPay mock and callback.
+Использует Booking.id (не booking_id), paid_at для статуса оплаты.
+"""
 import uuid
 from datetime import datetime, timezone, timedelta
 
@@ -24,14 +26,14 @@ async def create_payment(
     body: CreatePaymentIn,
     db: AsyncSession = Depends(get_db),
 ):
-    """Create WebPay payment (mock)."""
+    """Создать платёж WebPay (mock)."""
     result = await db.execute(
-        select(Booking).where(Booking.booking_id == body.booking_id)
+        select(Booking).where(Booking.id == body.booking_id)
     )
     b = result.scalar_one_or_none()
     if not b:
         raise HTTPException(404, detail="booking_not_found")
-    if b.payment_status == "paid":
+    if b.paid_at and str(b.paid_at).strip():
         raise HTTPException(400, detail="already_paid")
 
     transaction_id = f"MOCK-{uuid.uuid4().hex[:12].upper()}"
@@ -46,8 +48,6 @@ async def create_payment(
         request_data={"amount": body.amount, "currency": body.currency},
     )
     db.add(txn)
-    b.webpay_transaction_id = transaction_id
-    b.status = "pending_payment"
     await db.flush()
     await db.commit()
 
@@ -71,6 +71,7 @@ async def create_payment(
 class CallbackIn(BaseModel):
     transaction_id: str
     success: bool = True
+    secret: str | None = None
 
 
 @router.post("/payment/callback")
@@ -78,7 +79,12 @@ async def payment_callback(
     body: CallbackIn,
     db: AsyncSession = Depends(get_db),
 ):
-    """Simulate WebPay callback (mock)."""
+    """WebPay callback. Если задан WEBPAY_CALLBACK_SECRET — проверяем body.secret."""
+    from config import get_settings
+    secret = (get_settings().webpay_callback_secret or "").strip()
+    if secret:
+        if (body.secret or "").strip() != secret:
+            raise HTTPException(403, detail="invalid_callback_secret")
     result = await db.execute(
         select(WebPayTransaction).where(
             WebPayTransaction.transaction_id == body.transaction_id
@@ -93,13 +99,12 @@ async def payment_callback(
 
     if body.success:
         b_result = await db.execute(
-            select(Booking).where(Booking.booking_id == txn.booking_id)
+            select(Booking).where(Booking.id == txn.booking_id)
         )
         b = b_result.scalar_one_or_none()
         if b:
-            b.payment_status = "paid"
+            b.paid_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
             b.status = "paid"
-            b.paid_at = datetime.now(timezone.utc)
 
     await db.commit()
     return {"success": True, "payment_status": txn.status}

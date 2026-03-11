@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#e94560">
   <title>Бронирование автобуса</title>
   <link rel="stylesheet" href="css/main.css">
   <link rel="stylesheet" href="css/telegram-theme.css">
@@ -11,6 +12,7 @@
 <body>
   <div class="container">
     <header class="header">
+      <button type="button" id="tgCloseBtn" class="tg-close-btn" aria-label="Закрыть" title="Закрыть">✕</button>
       <h1>🚌 Бронирование билетов</h1>
       <p class="subtitle">Выберите маршрут и дату</p>
     </header>
@@ -57,6 +59,10 @@
   <script src="js/i18n.js"></script>
   <script>
     (function() {
+      var closeBtn = document.getElementById('tgCloseBtn');
+      if (closeBtn && window.Telegram && Telegram.WebApp) {
+        closeBtn.addEventListener('click', function() { Telegram.WebApp.close(); });
+      } else if (closeBtn) closeBtn.style.display = 'none';
       const fromSelect = document.getElementById('fromCity');
       const toSelect = document.getElementById('toCity');
       const travelDate = document.getElementById('travelDate');
@@ -80,8 +86,9 @@
           (r.stops || []).forEach(s => { if (s.city) cities.add(s.city); });
         });
         const arr = Array.from(cities).sort();
-        fromSelect.innerHTML = '<option value="">—</option>' + arr.map(c => `<option value="${c}">${c}</option>`).join('');
-        toSelect.innerHTML = '<option value="">—</option>' + arr.map(c => `<option value="${c}">${c}</option>`).join('');
+        const esc = typeof escapeHtml === 'function' ? escapeHtml : (s) => (s == null ? '' : String(s));
+        fromSelect.innerHTML = '<option value="">—</option>' + arr.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+        toSelect.innerHTML = '<option value="">—</option>' + arr.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
       }
 
       function getTripsForDate(route, dateStr) {
@@ -101,12 +108,13 @@
         const toCity = toSelect.value;
         const trips = getTripsForDate(route, dateStr);
         resultsDateSpan.textContent = dateStr;
+        const esc = typeof escapeHtml === 'function' ? escapeHtml : (s) => (s == null ? '' : String(s));
         resultsList.innerHTML = trips.map(t => `
-          <div class="trip-card" data-time="${t.time}">
-            <div class="trip-time">${t.time}</div>
-            <div class="trip-route">${fromCity} → ${toCity}</div>
-            <div class="trip-price">от ${route.base_price} BYN</div>
-            <button type="button" class="btn btn-small" data-route-id="${route.id}" data-date="${dateStr}" data-time="${t.time}">Выбрать</button>
+          <div class="trip-card" data-time="${esc(t.time)}">
+            <div class="trip-time">${esc(t.time)}</div>
+            <div class="trip-route">${esc(fromCity)} → ${esc(toCity)}</div>
+            <div class="trip-price">от ${esc(route.base_price)} BYN</div>
+            <button type="button" class="btn btn-small" data-route-id="${esc(route.id)}" data-date="${esc(dateStr)}" data-time="${esc(t.time)}">Выбрать</button>
           </div>
         `).join('') || '<p>На эту дату рейсов нет.</p>';
         resultsList.querySelectorAll('.btn-small').forEach(btn => {
@@ -144,10 +152,12 @@
         else resultsList.innerHTML = '<p>Маршрут не найден.</p>', resultsSection.classList.remove('hidden');
       });
 
-      fetch(BASE_URL + '/api/routes').then(r => r.json()).then(data => {
+      fetch(BASE_URL + '/api/routes').then(r =>
+        r.ok ? r.json() : r.json().then(function(d) { throw new Error('routes'); })
+      ).then(data => {
         routes = data.routes || [];
         fillCities();
-      }).catch(() => { routes = []; fillCities(); });
+      }).catch(() => { routes = []; fillCities(); if (resultsList) resultsList.innerHTML = '<p class="text-secondary">Не удалось загрузить маршруты.</p>'; resultsSection.classList.remove('hidden'); });
 
       fetch(BASE_URL + '/api/news').then(r => r.json()).then(data => {
         if (data.border) document.getElementById('borderInfo').textContent = data.border.message_ru || '—';

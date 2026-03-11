@@ -1,6 +1,6 @@
 """Telegram notifications for passengers."""
 import logging
-from typing import Optional
+from typing import Optional, Any
 
 import httpx
 from config import get_settings
@@ -13,22 +13,25 @@ async def send_telegram_message(
     text: str,
     parse_mode: str = "HTML",
     disable_web_page_preview: bool = True,
+    reply_markup: Optional[dict[str, Any]] = None,
 ) -> bool:
-    """Send message to user via Bot API."""
+    """Send message to user via Bot API. reply_markup — опционально (например inline_keyboard с web_app)."""
     settings = get_settings()
     if not settings.bot_token:
         logger.warning("BOT_TOKEN not set, skip send")
         return False
-    url = f"https://api.telegram.org/bot{settings.bot_token}/sendMessage"
+    url_api = f"https://api.telegram.org/bot{settings.bot_token}/sendMessage"
     payload = {
         "chat_id": chat_id,
         "text": text[:4096],
         "parse_mode": parse_mode,
         "disable_web_page_preview": disable_web_page_preview,
     }
+    if reply_markup:
+        payload["reply_markup"] = reply_markup
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            r = await client.post(url, json=payload)
+            r = await client.post(url_api, json=payload)
             if r.is_success:
                 return True
             logger.warning("Telegram API error: %s %s", r.status_code, r.text)
@@ -66,7 +69,11 @@ async def notify_booking_created(
             f"Сумма: {total_price} {currency}\n\n"
             f"Отслеживайте статус в приложении."
         )
-    return await send_telegram_message(user_id, text)
+    reply_markup = None
+    webapp_url = (get_settings().webapp_url or "").strip()
+    if webapp_url and webapp_url.startswith("http"):
+        reply_markup = {"inline_keyboard": [[{"text": "📋 Открыть заявки", "web_app": {"url": webapp_url}}]]}
+    return await send_telegram_message(user_id, text, reply_markup=reply_markup)
 
 
 async def notify_booking_status(
@@ -94,4 +101,8 @@ async def notify_booking_status(
         text = f"📋 Booking <code>{booking_id}</code>: {st}."
     else:
         text = f"📋 Заявка <code>{booking_id}</code>: {st}."
-    return await send_telegram_message(user_id, text)
+    reply_markup = None
+    webapp_url = (get_settings().webapp_url or "").strip()
+    if webapp_url and webapp_url.startswith("http"):
+        reply_markup = {"inline_keyboard": [[{"text": "📋 Открыть заявки", "web_app": {"url": webapp_url}}]]}
+    return await send_telegram_message(user_id, text, reply_markup=reply_markup)

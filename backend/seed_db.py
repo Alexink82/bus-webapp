@@ -6,7 +6,7 @@ import os
 sys.path.insert(0, os.path.dirname(__file__))
 
 from database import engine, AsyncSessionLocal
-from models import Base, Route, FAQItem
+from models import Base, Route, FAQItem, Dispatcher
 from sqlalchemy import select
 
 
@@ -66,6 +66,14 @@ async def seed():
             if existing.scalar_one_or_none() is None:
                 db.add(FAQItem(**f))
                 print("Added FAQ:", f["question_ru"][:30])
+
+        # Диспетчеры (telegram_id из DISPATCHER_IDS; routes=[] — все маршруты)
+        dispatcher_ids = [7345144922, 6771268853]
+        for tid in dispatcher_ids:
+            existing = await db.execute(select(Dispatcher).where(Dispatcher.telegram_id == tid))
+            if existing.scalar_one_or_none() is None:
+                db.add(Dispatcher(telegram_id=tid, name="", phone="", routes=[], is_active=True))
+                print("Added dispatcher:", tid)
 
         await db.commit()
     print("Seed done.")

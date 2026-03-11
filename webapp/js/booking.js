@@ -108,10 +108,19 @@
       user_id: typeof getTelegramUserId === 'function' && getTelegramUserId() ? parseInt(getTelegramUserId(), 10) : null
     };
     var base = typeof BASE_URL !== 'undefined' ? BASE_URL : '';
-    var apiFn = typeof api === 'function' ? api : function(path, opts) { return fetch(base + path, opts).then(function(r) { return r.json(); }); };
-    apiFn('/api/bookings', { method: 'POST', body: JSON.stringify(payload) })
+    var submitBtn = document.getElementById('submitBooking');
+    submitBtn.disabled = true;
+    function onError(e) { alert(e.message || '\u041e\u0448\u0438\u0431\u043a\u0430 \u0441\u043e\u0437\u0434\u0430\u043d\u0438\u044f \u0437\u0430\u044f\u0432\u043a\u0438'); submitBtn.disabled = false; }
+    if (typeof api === 'function') {
+      api('/api/bookings', { method: 'POST', body: JSON.stringify(payload) })
+        .then(function(res) { window.location.href = 'success.html?booking_id=' + encodeURIComponent(res.booking_id); })
+        .catch(onError);
+      return;
+    }
+    fetch(base + '/api/bookings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      .then(function(r) { return r.json().then(function(data) { if (!r.ok) throw new Error(data.detail && (data.detail.code ? (typeof userFriendlyMessage === 'function' ? userFriendlyMessage(data.detail) : data.detail.code) : data.detail) || r.statusText); return data; }); })
       .then(function(res) { window.location.href = 'success.html?booking_id=' + encodeURIComponent(res.booking_id); })
-      .catch(function(e) { alert(e.message || '\u041e\u0448\u0438\u0431\u043a\u0430 \u0441\u043e\u0437\u0434\u0430\u043d\u0438\u044f \u0437\u0430\u044f\u0432\u043a\u0438'); });
+      .catch(onError);
   });
 
   updatePassengerNum();

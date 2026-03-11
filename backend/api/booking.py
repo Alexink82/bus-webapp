@@ -1,14 +1,20 @@
 """Booking API — схема как в bus-bot (одна таблица bookings)."""
+import random
+import string
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from pydantic import BaseModel
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.constants import ROUTES, DISCOUNT_RULES, generate_booking_id, get_local_time
 from database import get_db
-from models import Booking, UserProfile
+from config import get_settings
+from api.auth_deps import get_verified_telegram_user_id, get_optional_verified_telegram_user_id
+from models import Booking, UserProfile, Dispatcher, Blacklist
+from services.roles import is_admin, get_dispatcher_route_ids
 from services.price_calc import calculate_booking_totals
 from services.validators import validate_phone, validate_passenger, validate_booking_dates
 from services.notification import notify_booking_created
@@ -56,8 +62,13 @@ async def create_booking(
     body: CreateBookingIn,
     request: Request,
     db: AsyncSession = Depends(get_db),
+    x_telegram_start_param: str | None = Header(None, alias="X-Telegram-Start-Param"),
 ):
-    dep_date = date.fromisoformat(body.departure_date)
+    try:
+        dep_date = date.fromisoformat(body.departure_date)
+    except (ValueError, TypeError):
+        raise HTTPException(400, detail={"code": "invalid_date_format"})
+
     ok, err = validate_booking_dates(dep_date)
     if not ok:
         raise HTTPException(400, detail={"code": err})
@@ -77,11 +88,19 @@ async def create_booking(
     if not validate_phone(body.phone):
         raise HTTPException(400, detail={"code": "invalid_phone"})
 
+    bl_by_phone = await db.execute(select(Blacklist).where(Blacklist.phone == body.phone))
+    if bl_by_phone.scalar_one_or_none():
+        raise HTTPException(403, detail={"code": "blocked"})
+    user_id = body.user_id or 0
+    if user_id:
+        bl_by_uid = await db.execute(select(Blacklist).where(Blacklist.user_id == user_id))
+        if bl_by_uid.scalar_one_or_none():
+            raise HTTPException(403, detail={"code": "blocked"})
+
     price_one, price_return, price_total = calculate_booking_totals(
         route_dict, body.from_city, body.to_city, body.passengers, dep_date, body.is_round_trip,
     )
 
-    user_id = body.user_id or 0
     if user_id:
         user_result = await db.execute(select(UserProfile).where(UserProfile.user_id == user_id))
         profile = user_result.scalar_one_or_none()
@@ -93,10 +112,10 @@ async def create_booking(
             profile.phone = body.phone
 
     route_info = ROUTES[body.route_id]
-    booking_id = generate_booking_id()
     now = get_local_time()
     created_at_str = now.strftime("%Y-%m-%dT%H:%M:%S")
 
+    booking_id = generate_booking_id()
     booking = Booking(
         id=booking_id,
         status="new",
@@ -118,12 +137,38 @@ async def create_booking(
         paid_at=None,
     )
     db.add(booking)
-    await db.flush()
+    try:
+        await db.flush()
+    except IntegrityError:
+        await db.rollback()
+        booking_id = generate_booking_id() + "-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=2))
+        booking = Booking(
+            id=booking_id,
+            status="new",
+            created_at=created_at_str,
+            route_id=body.route_id,
+            from_city=body.from_city,
+            to_city=body.to_city,
+            date=body.departure_date,
+            departure=body.departure_time,
+            arrival=route_info.get("arrival", ""),
+            passengers=body.passengers,
+            contact_phone=body.phone,
+            contact_tg_id=user_id if user_id else None,
+            contact_username=None,
+            price_total=price_total,
+            payment_method=body.payment_method,
+            dispatcher_id=None,
+            taken_at=None,
+            paid_at=None,
+        )
+        db.add(booking)
+        await db.flush()
 
     await log_action(
         db, "INFO", "api", "create_booking",
         user_id=user_id if user_id else None,
-        details={"booking_id": booking_id, "route_id": body.route_id},
+        details={"booking_id": booking_id, "route_id": body.route_id, **({"start_param": x_telegram_start_param} if x_telegram_start_param else {})},
         ip_address=request.client.host if request.client else None,
     )
     await db.commit()
@@ -135,6 +180,15 @@ async def create_booking(
             price_total, "BYN", "ru",
         )
 
+    try:
+        from api.websocket import manager
+        await manager.broadcast_new_booking(
+            {"booking_id": booking_id, "route_id": body.route_id, "route_name": route_info.get("name", ""), "status": "new"},
+            body.route_id,
+        )
+    except Exception:
+        pass
+
     return {
         "booking_id": booking_id,
         "status": "new",
@@ -145,12 +199,38 @@ async def create_booking(
 
 
 @router.get("/bookings/{booking_id}")
-async def get_booking(booking_id: str, db: AsyncSession = Depends(get_db)):
+async def get_booking(
+    booking_id: str,
+    db: AsyncSession = Depends(get_db),
+    uid: int | None = Depends(get_optional_verified_telegram_user_id),
+):
     result = await db.execute(select(Booking).where(Booking.id == booking_id))
     b = result.scalar_one_or_none()
     if not b:
         raise HTTPException(404, detail="booking_not_found")
     route_info = ROUTES.get(b.route_id, {})
+    is_owner = uid is not None and b.contact_tg_id == uid
+    is_admin_user = uid is not None and is_admin(uid)
+    route_ids = await get_dispatcher_route_ids(db, uid) if uid else None
+    is_dispatcher_user = route_ids is not None
+    full_access = is_owner or is_admin_user or is_dispatcher_user
+    if full_access:
+        return {
+            "booking_id": b.id,
+            "status": b.status,
+            "route_name": route_info.get("name", b.route_id),
+            "from_city": b.from_city,
+            "to_city": b.to_city,
+            "departure_date": b.date,
+            "departure_time": b.departure,
+            "passengers": b.passengers or [],
+            "passengers_count": len(b.passengers) if b.passengers else 0,
+            "price_total": b.price_total,
+            "currency": "BYN",
+            "payment_status": "paid" if b.paid_at else "pending",
+            "payment_deadline": None,
+            "created_at": b.created_at,
+        }
     return {
         "booking_id": b.id,
         "status": b.status,
@@ -159,12 +239,10 @@ async def get_booking(booking_id: str, db: AsyncSession = Depends(get_db)):
         "to_city": b.to_city,
         "departure_date": b.date,
         "departure_time": b.departure,
-        "passengers": b.passengers or [],
         "passengers_count": len(b.passengers) if b.passengers else 0,
         "price_total": b.price_total,
         "currency": "BYN",
         "payment_status": "paid" if b.paid_at else "pending",
-        "payment_deadline": None,
         "created_at": b.created_at,
     }
 
@@ -177,6 +255,7 @@ class CancelBookingIn(BaseModel):
 async def cancel_booking(
     booking_id: str,
     body: CancelBookingIn,
+    uid: int = Depends(get_verified_telegram_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(Booking).where(Booking.id == booking_id))
@@ -185,6 +264,12 @@ async def cancel_booking(
         raise HTTPException(404, detail="booking_not_found")
     if b.status in ("cancelled", "done", "ticket_sent"):
         raise HTTPException(400, detail="cannot_cancel")
+    is_owner = b.contact_tg_id == uid
+    is_admin_user = is_admin(uid)
+    route_ids = await get_dispatcher_route_ids(db, uid)
+    is_dispatcher_user = route_ids is not None
+    if not (is_owner or is_admin_user or is_dispatcher_user):
+        raise HTTPException(403, detail="not_authorized_to_cancel")
     b.status = "cancelled"
     await db.commit()
     return {"success": True, "status": "cancelled"}

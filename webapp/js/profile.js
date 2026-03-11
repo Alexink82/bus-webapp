@@ -10,7 +10,8 @@
     var o = opts || {};
     var headers = { 'X-Telegram-User-Id': String(getTelegramUserId()) };
     if (o.headers) Object.assign(headers, o.headers);
-    return fetch(base + path, Object.assign({}, o, { headers: headers })).then(function(r) { return r.json(); });
+    return fetch(base + path, Object.assign({}, o, { headers: headers }))
+      .then(function(r) { return r.json().catch(function() { return {}; }).then(function(data) { if (!r.ok) throw new Error(data.detail || r.statusText); return data; }); });
   };
 
   function loadBookings() {
@@ -18,10 +19,22 @@
       var list = document.getElementById('bookingsList');
       var items = data.bookings || [];
       list.innerHTML = items.length ? items.map(function(b) {
-        return '<div class="trip-card"><strong>' + b.booking_id + '</strong> \u2014 ' + b.route_name + '<br>' +
-          b.departure_date + ' ' + b.departure_time + ' | ' + b.price_total + ' ' + b.currency + ' | ' + b.status + '<br>' +
-          '<a href="success.html?booking_id=' + encodeURIComponent(b.booking_id) + '">\u041f\u043e\u0434\u0440\u043e\u0431\u043d\u0435\u0435</a></div>';
-      }).join('') : '<p>\u041d\u0435\u0442 \u0437\u0430\u044f\u0432\u043e\u043a.</p>';
+        var esc = function(s) { if (s == null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
+        var cancelBtn = (b.status !== 'cancelled' && b.status !== 'done' && b.status !== 'ticket_sent') ? ' <button type="button" class="btn btn-small cancel-booking" data-id="' + esc(b.booking_id) + '">Отменить</button>' : '';
+        return '<div class="trip-card"><strong>' + esc(b.booking_id) + '</strong> — ' + esc(b.route_name) + '<br>' +
+          esc(b.departure_date) + ' ' + esc(b.departure_time) + ' | ' + esc(b.price_total) + ' ' + esc(b.currency) + ' | ' + esc(b.status) + '<br>' +
+          '<a href="success.html?booking_id=' + encodeURIComponent(b.booking_id) + '">Подробнее</a>' + cancelBtn + '</div>';
+      }).join('') : '<p>Нет заявок.</p>';
+      list.querySelectorAll('.cancel-booking').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          if (!confirm('Отменить заявку?')) return;
+          var bid = btn.getAttribute('data-id');
+          btn.disabled = true;
+          apiFn('/api/bookings/' + encodeURIComponent(bid) + '/cancel', { method: 'POST' })
+            .then(function() { loadBookings(); })
+            .catch(function(e) { alert(e.message || 'Ошибка'); btn.disabled = false; });
+        });
+      });
     }).catch(function() { document.getElementById('bookingsList').innerHTML = '<p>\u041e\u0448\u0438\u0431\u043a\u0430 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0438.</p>'; });
   }
 
@@ -30,8 +43,9 @@
     apiFn('/api/user/passengers').then(function(data) {
       var items = data.passengers || [];
       list.innerHTML = items.map(function(p) {
-        return '<div class="trip-card" data-id="' + p.id + '">' + p.last_name + ' ' + p.first_name + ' ' + (p.middle_name || '') + ' | ' + (p.birth_date || '') +
-          ' <button type="button" class="btn btn-small delete-passenger" data-id="' + p.id + '">\u0423\u0434\u0430\u043b\u0438\u0442\u044c</button></div>';
+        var esc = function(s) { if (s == null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
+        return '<div class="trip-card" data-id="' + esc(p.id) + '">' + esc(p.last_name) + ' ' + esc(p.first_name) + ' ' + esc(p.middle_name || '') + ' | ' + esc(p.birth_date) +
+          ' <button type="button" class="btn btn-small delete-passenger" data-id="' + esc(p.id) + '">Удалить</button></div>';
       }).join('');
       list.querySelectorAll('.delete-passenger').forEach(function(btn) {
         btn.addEventListener('click', function() {
