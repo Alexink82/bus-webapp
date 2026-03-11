@@ -9,6 +9,8 @@ var ERROR_MESSAGES = {
   route_not_found: 'Маршрут не найден.',
   booking_not_found: 'Заявка не найдена.',
   cannot_cancel: 'Эту заявку нельзя отменить.',
+  cancel_only_via_dispatcher: 'Отмена менее чем за 2 часа до отправления возможна только через диспетчера. Обратитесь в поддержку.',
+  reason_required: 'Укажите причину отмены.',
   not_authorized_to_cancel: 'Нет прав на отмену этой заявки.',
   passenger_not_found: 'Пассажир не найден.',
   invalid_birth_date: 'Неверная дата рождения.',
@@ -32,9 +34,18 @@ var ERROR_MESSAGES = {
 };
 
 function userFriendlyMessage(detail) {
+  if (detail == null) return '';
   if (typeof detail === 'string') return ERROR_MESSAGES[detail] || detail;
-  if (detail && detail.code) return ERROR_MESSAGES[detail.code] || detail.code;
-  return detail ? String(detail) : '';
+  if (typeof detail === 'object' && detail !== null) {
+    if (detail.code) return ERROR_MESSAGES[detail.code] || detail.code;
+    if (Array.isArray(detail) && detail.length > 0) {
+      var first = detail[0];
+      if (first && typeof first.msg === 'string') return first.msg;
+      return 'Ошибка валидации.';
+    }
+    return 'Ошибка.';
+  }
+  return String(detail);
 }
 
 async function api(path, options = {}) {
@@ -49,9 +60,10 @@ async function api(path, options = {}) {
   const res = await fetch(url, { ...options, headers });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    let msg = userFriendlyMessage(data.detail) || data.detail?.code || data.detail || res.statusText;
-    if (res.status >= 500) msg = 'Временная ошибка сервера. Попробуйте позже.';
-    throw new Error(typeof msg === 'string' ? msg : res.statusText);
+    let msg = userFriendlyMessage(data.detail) || (data.detail && typeof data.detail === 'object' && data.detail.code ? data.detail.code : null) || (typeof data.detail === 'string' ? data.detail : null) || res.statusText;
+    let msgStr = typeof msg === 'string' ? msg : res.statusText;
+    if (res.status >= 500) msgStr = 'Временная ошибка сервера. Попробуйте позже.';
+    throw new Error(msgStr);
   }
   return data;
 }

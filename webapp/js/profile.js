@@ -11,12 +11,14 @@
     var o = opts || {};
     var headers = { 'Content-Type': 'application/json' };
     if (typeof getTelegramUserId === 'function' && getTelegramUserId()) headers['X-Telegram-User-Id'] = String(getTelegramUserId());
+    if (typeof getTelegramInitData === 'function' && getTelegramInitData()) headers['X-Telegram-Init-Data'] = getTelegramInitData();
     if (o.headers) Object.assign(headers, o.headers);
     return fetch(base + path, Object.assign({}, o, { headers: headers }))
       .then(function(r) { return r.json().catch(function() { return {}; }).then(function(data) {
         if (!r.ok) {
           var msg = userMsg(data.detail) || (data.detail && data.detail.code) || (data.detail && typeof data.detail === 'string' ? data.detail : null) || r.statusText;
-          throw new Error(typeof msg === 'string' ? msg : r.statusText);
+          var msgStr = (typeof msg === 'string' ? msg : null) || r.statusText;
+          throw new Error(msgStr);
         }
         return data;
       }); });
@@ -96,7 +98,7 @@
               if (!ok) return;
               var bid = btn.getAttribute('data-id');
               btn.disabled = true;
-              apiFn('/api/bookings/' + encodeURIComponent(bid) + '/cancel', { method: 'POST' })
+              apiFn('/api/bookings/' + encodeURIComponent(bid) + '/cancel', { method: 'POST', body: JSON.stringify({}) })
                 .then(function() { loadBookings(); })
                 .catch(function(e) {
                   var text = typeof errorToMessage === 'function' ? errorToMessage(e) : (e && e.message ? e.message : 'Ошибка');

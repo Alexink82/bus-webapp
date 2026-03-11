@@ -360,7 +360,8 @@
         selectedRoute = route;
         const fromCity = fromSelect.value;
         const toCity = toSelect.value;
-        const trips = getTripsForDate(route, dateStr);
+        let trips = getTripsForDate(route, dateStr);
+        trips = trips.filter(t => t.stop && t.stop.city === fromCity);
         resultsDateSpan.textContent = dateStr;
         const esc = typeof escapeHtml === 'function' ? escapeHtml : (s) => (s == null ? '' : String(s));
         resultsList.innerHTML = trips.map(t => `

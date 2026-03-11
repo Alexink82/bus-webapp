@@ -132,6 +132,7 @@ class Booking(Base):
     dispatcher_id = Column(Integer)
     taken_at = Column(String(30))
     paid_at = Column(String(30))
+    cancel_reason = Column(Text, nullable=True)
     is_archived = Column(Boolean, default=False)
 
 

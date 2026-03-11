@@ -1,7 +1,7 @@
 """Booking API — схема как в bus-bot (одна таблица bookings)."""
 import random
 import string
-from datetime import date
+from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from pydantic import BaseModel
@@ -17,7 +17,7 @@ from models import Booking, UserProfile, Dispatcher, Blacklist
 from services.roles import is_admin, get_dispatcher_route_ids
 from services.price_calc import calculate_booking_totals
 from services.validators import validate_phone, validate_passenger, validate_booking_dates
-from services.notification import notify_booking_created
+from services.notification import notify_booking_created, notify_booking_status
 from logging_config import log_action
 
 router = APIRouter(prefix="/api", tags=["booking"])
@@ -270,6 +270,37 @@ async def cancel_booking(
     is_dispatcher_user = route_ids is not None
     if not (is_owner or is_admin_user or is_dispatcher_user):
         raise HTTPException(403, detail="not_authorized_to_cancel")
+
+    # Правила отмены:
+    # — Владелец: заявка в статусе "new" (не взята диспетчером) — можно отменить в любой момент.
+    #   Если заявка уже в работе (active и т.д.) — только не позднее чем за 2 ч до отправления.
+    # — Диспетчер/админ — отмена с обязательной причиной.
+    now = get_local_time()
+    if is_owner and b.status != "new":
+        try:
+            dep_date = date.fromisoformat(b.date) if b.date else None
+            dep_time_str = (b.departure or "").strip()[:8]
+            if dep_date and dep_time_str and len(dep_time_str) >= 5:
+                parts = dep_time_str.split(":")
+                h, m = int(parts[0]), int(parts[1]) if len(parts) > 1 else 0
+                departure_dt = datetime(dep_date.year, dep_date.month, dep_date.day, h, m, 0)
+                if now >= departure_dt - timedelta(hours=2):
+                    raise HTTPException(400, detail="cancel_only_via_dispatcher")
+        except HTTPException:
+            raise
+        except (ValueError, TypeError):
+            pass
+
+    if is_dispatcher_user or is_admin_user:
+        reason = (body.reason or "").strip()
+        if not reason:
+            raise HTTPException(400, detail="reason_required")
+        b.cancel_reason = reason
+    else:
+        b.cancel_reason = None
+
     b.status = "cancelled"
     await db.commit()
+    if b.contact_tg_id:
+        await notify_booking_status(b.contact_tg_id, booking_id, "cancelled", "ru")
     return {"success": True, "status": "cancelled"}
