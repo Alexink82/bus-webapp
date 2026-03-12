@@ -55,6 +55,7 @@ async def lifespan(app: FastAPI):
         await _update_cache()
     except Exception as e:
         logger.warning("Scheduler or startup cache update failed: %s", e)
+    logger.info("Bus Booking API startup complete")
     yield
     try:
         from parsers.scheduler import shutdown_scheduler

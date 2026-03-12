@@ -1,6 +1,8 @@
 # Bus Booking Webapp — Docker image for Render
 FROM python:3.11-slim
 
+ENV PYTHONUNBUFFERED=1
+
 WORKDIR /app
 
 # Copy backend and webapp (sibling dirs so main.py finds ../webapp)

@@ -97,15 +97,13 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins(self) -> List[str]:
-        """Список origin для CORS: ALLOWED_ORIGINS (env) или allowed_origins или [webapp_url]."""
+        """Список origin для CORS. Явно задайте ALLOWED_ORIGINS в env (через запятую).
+        Если не задано — разрешаем все (*), иначе из Telegram Web App запросы к API блокируются."""
         env_raw = (os.environ.get("ALLOWED_ORIGINS") or "").strip()
         if env_raw:
             return [o.strip().rstrip("/") for o in env_raw.split(",") if o.strip()]
-        raw = (getattr(self, "allowed_origins", "") or "").strip()
-        if raw and raw != "*":
-            return [o.strip().rstrip("/") for o in raw.split(",") if o.strip()]
-        url = (self.webapp_url or "").strip().rstrip("/")
-        return [url] if url else ["*"]
+        # Не задано — разрешаем все, иначе при открытии из Telegram (origin web.telegram.org) CORS блокирует /api/*
+        return ["*"]
 
     class Config:
         env_file = [".env", "../.env"]
