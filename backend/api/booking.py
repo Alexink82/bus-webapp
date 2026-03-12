@@ -39,6 +39,32 @@ class CreateBookingIn(BaseModel):
     user_id: int | None = None
 
 
+
+
+def _resolve_departure_time(route_info: dict, from_city: str, fallback_time: str) -> str:
+    """Возвращает время отправления из конкретной точки маршрута."""
+    stops = route_info.get("stops") or []
+    stop_times = route_info.get("stop_times") or []
+    if from_city in stops and stop_times:
+        i = stops.index(from_city)
+        if i < len(stop_times) and stop_times[i]:
+            return str(stop_times[i])
+    if from_city == (stops[0] if stops else None):
+        return str(route_info.get("departure") or fallback_time or "")
+    return str(fallback_time or route_info.get("departure") or "")
+
+
+def _ensure_not_departed(departure_date: date, departure_time: str) -> None:
+    """Запрещаем бронирование на уже ушедший рейс (локальное время UTC+3)."""
+    t = (departure_time or "").strip()
+    try:
+        hh, mm = int(t.split(":")[0]), int(t.split(":")[1])
+        dep_dt = datetime(departure_date.year, departure_date.month, departure_date.day, hh, mm)
+    except Exception:
+        return
+    if dep_dt <= get_local_time():
+        raise HTTPException(400, detail={"code": "past_departure_time"})
+
 def _route_dict_for_calc(route_id: str):
     r = ROUTES.get(route_id)
     if not r:
@@ -120,6 +146,8 @@ async def create_booking(
             profile.phone = body.phone
 
     route_info = ROUTES[body.route_id]
+    departure_time = _resolve_departure_time(route_info, body.from_city, body.departure_time)
+    _ensure_not_departed(dep_date, departure_time)
     now = get_local_time()
     created_at_str = now.strftime("%Y-%m-%dT%H:%M:%S")
 
@@ -132,7 +160,7 @@ async def create_booking(
         from_city=body.from_city,
         to_city=body.to_city,
         date=body.departure_date,
-        departure=body.departure_time,
+        departure=departure_time,
         arrival=route_info.get("arrival", ""),
         passengers=body.passengers,
         contact_phone=body.phone,
@@ -158,7 +186,7 @@ async def create_booking(
             from_city=body.from_city,
             to_city=body.to_city,
             date=body.departure_date,
-            departure=body.departure_time,
+            departure=departure_time,
             arrival=route_info.get("arrival", ""),
             passengers=body.passengers,
             contact_phone=body.phone,
@@ -184,7 +212,7 @@ async def create_booking(
     if user_id and user_id > 0:
         await notify_booking_created(
             user_id, booking_id, route_info["name"],
-            body.departure_date, body.departure_time,
+            body.departure_date, departure_time,
             price_total, "BYN", "ru",
         )
 
