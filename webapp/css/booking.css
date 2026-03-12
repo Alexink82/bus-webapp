@@ -59,6 +59,18 @@
   margin-bottom: 12px;
 }
 
+.booking-loading {
+  color: var(--text-muted);
+  padding: 12px 0;
+}
+
+.booking-error-block {
+  padding: 16px 0;
+}
+.booking-error-block .field-error { margin-bottom: 12px; }
+.booking-error-block p { margin: 8px 0; }
+.booking-error-block .btn { margin-right: 8px; }
+
 .fill-from-profile-wrap {
   margin: 12px 0;
 }

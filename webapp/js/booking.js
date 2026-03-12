@@ -45,7 +45,12 @@
   var routeSummaryEl = document.getElementById('routeSummary');
   if (routeSummaryEl) routeSummaryEl.textContent = fromCity + ' \u2192 ' + toCity + ', ' + dateStr + ' ' + timeStr;
 
-  fetch((typeof BASE_URL !== 'undefined' ? BASE_URL : '') + '/api/routes').then(function(r) { return r.json(); }).then(function(data) {
+  fetch((typeof BASE_URL !== 'undefined' ? BASE_URL : '') + '/api/routes').then(function(r) {
+    return r.json().then(function(data) {
+      if (!r.ok) throw new Error(data.detail || data.message || 'Ошибка ' + r.status);
+      return data;
+    });
+  }).then(function(data) {
     route = (data.routes || []).find(function(r) { return r.id === routeId; });
     if (!route) { window.location.href = 'index.html'; return; }
     var borderEl = document.getElementById('borderDocs');
@@ -57,9 +62,13 @@
     if (typeof updateBookingUIForStep === 'function') updateBookingUIForStep(1);
   }).catch(function(err) {
     var list = document.getElementById('passengersList');
-    var msg = 'Не удалось загрузить маршруты. Проверьте подключение или попробуйте позже.';
+    var loadingEl = document.getElementById('passengersListLoading');
+    if (loadingEl) loadingEl.remove();
+    var msg = 'Не удалось загрузить маршруты. Проверьте интернет или откройте позже.';
+    var html = '<div class="booking-error-block"><p class="field-error">' + msg + '</p><p><button type="button" class="btn btn-primary" id="retryRoutesBtn">Повторить</button> <a href="index.html" class="btn btn-outline">Выбрать маршрут</a></p></div>';
+    if (list) list.innerHTML = html;
+    document.getElementById('retryRoutesBtn').addEventListener('click', function() { window.location.reload(); });
     if (typeof showAppAlert === 'function') showAppAlert(msg, 'Ошибка');
-    else if (list) list.innerHTML = '<p class="field-error">' + (typeof escapeHtml === 'function' ? escapeHtml(msg) : msg) + '</p>';
     if (typeof updateBookingUIForStep === 'function') updateBookingUIForStep(1);
   });
 
