@@ -137,6 +137,13 @@ async def add_passenger(
             raise ValueError("invalid_birth_date")
     except (ValueError, TypeError):
         raise HTTPException(400, detail="invalid_birth_date")
+    # SavedPassenger имеет FK на user_profiles — обеспечиваем наличие профиля
+    profile_result = await db.execute(select(UserProfile).where(UserProfile.user_id == user_id))
+    profile = profile_result.scalar_one_or_none()
+    if not profile:
+        profile = UserProfile(user_id=user_id)
+        db.add(profile)
+        await db.flush()
     p = SavedPassenger(
         user_id=user_id,
         last_name=body.last_name,

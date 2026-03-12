@@ -46,7 +46,15 @@ def _route_dict_for_calc(route_id: str):
     route_type = r.get("type", "local")
     stops = r.get("stops", [])
     base = float(r.get("price", 0))
-    stops_api = [{"city": c, "price_offset": base * i // max(len(stops), 1)} for i, c in enumerate(stops)]
+    n = len(stops)
+    if n <= 1:
+        stops_api = [{"city": c, "price_offset": 0.0} for c in stops]
+    else:
+        # Кумулятивные offset: полный маршрут (0 → n-1) = base_price
+        stops_api = [
+            {"city": c, "price_offset": round(base * i / (n - 1), 2)}
+            for i, c in enumerate(stops)
+        ]
     return {
         "id": route_id,
         "name": r["name"],

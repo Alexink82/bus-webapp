@@ -45,7 +45,13 @@
   var routeSummaryEl = document.getElementById('routeSummary');
   if (routeSummaryEl) routeSummaryEl.textContent = fromCity + ' \u2192 ' + toCity + ', ' + dateStr + ' ' + timeStr;
 
-  fetch((typeof BASE_URL !== 'undefined' ? BASE_URL : '') + '/api/routes').then(function(r) {
+  var ROUTES_FETCH_TIMEOUT_MS = 15000;
+  var base = (typeof BASE_URL !== 'undefined' ? BASE_URL : '') + '/api/routes';
+  var controller = new AbortController();
+  var timeoutId = setTimeout(function() { controller.abort(); }, ROUTES_FETCH_TIMEOUT_MS);
+  function clearRoutesTimeout() { if (timeoutId) { clearTimeout(timeoutId); timeoutId = null; } }
+  fetch(base, { signal: controller.signal }).then(function(r) {
+    clearRoutesTimeout();
     return r.json().then(function(data) {
       if (!r.ok) throw new Error(data.detail || data.message || 'Ошибка ' + r.status);
       return data;
@@ -61,6 +67,7 @@
     loadSavedPassengersForFill();
     if (typeof updateBookingUIForStep === 'function') updateBookingUIForStep(1);
   }).catch(function(err) {
+    clearRoutesTimeout();
     var list = document.getElementById('passengersList');
     var loadingEl = document.getElementById('passengersListLoading');
     if (loadingEl) loadingEl.remove();
@@ -374,7 +381,9 @@
         });
       });
     }
-    list.querySelectorAll('.passport-country').forEach(function(sel) {
+  }
+
+  function collectPassengers() {
     document.querySelectorAll('#passengersList input').forEach(function(inp) {
       var i = parseInt(inp.getAttribute('data-i'), 10);
       var f = inp.getAttribute('data-f');

@@ -49,7 +49,6 @@ async def create_payment(
     )
     db.add(txn)
     await db.flush()
-    await db.commit()
 
     return {
         "success": True,
@@ -106,5 +105,4 @@ async def payment_callback(
             b.paid_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
             b.status = "paid"
 
-    await db.commit()
     return {"success": True, "payment_status": txn.status}
