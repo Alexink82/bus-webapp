@@ -6,14 +6,17 @@
 }
 
 .count-control button {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
   border-radius: 50%;
   border: 1px solid var(--primary);
   background: var(--surface);
   color: var(--text);
   font-size: 1.2rem;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .field-group {
@@ -96,6 +99,8 @@
   padding: 16px;
   border-radius: var(--radius);
   margin-bottom: 12px;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
 }
 
 .passenger-block label {
@@ -113,20 +118,34 @@
 
 .passenger-block input {
   width: 100%;
-  padding: 8px;
+  min-height: 44px;
+  padding: 12px;
   margin-bottom: 8px;
   border-radius: 8px;
   border: 1px solid var(--primary);
   background: var(--bg);
   color: var(--text);
+  font-size: 1rem;
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
 }
 
 .checkbox-label, .radio-label {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   margin: 12px 0;
   cursor: pointer;
+  min-height: 44px;
+  padding: 4px 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.checkbox-label input, .radio-label input {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  flex-shrink: 0;
 }
 
 .border-docs {
@@ -157,24 +176,51 @@
 
 #anotherPhoneBlock input {
   width: 100%;
+  min-height: 44px;
   padding: 12px;
   border-radius: var(--radius);
   border: 1px solid var(--primary);
   background: var(--surface);
   color: var(--text);
+  font-size: 1rem;
   margin-top: 8px;
+  box-sizing: border-box;
 }
 
 .phone-field-group {
-  text-align: center;
+  text-align: left;
 }
 
-.phone-input {
-  font-size: 1.25rem;
-  padding: 14px 16px;
-  text-align: center;
-  max-width: 320px;
-  margin-left: auto;
-  margin-right: auto;
-  display: block;
+.phone-field-row {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+  margin-top: 8px;
+  flex-wrap: nowrap;
+}
+
+.phone-country-select {
+  width: 120px;
+  min-width: 100px;
+  min-height: 44px;
+  padding: 12px 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1rem;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.phone-field-row .phone-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  margin-left: 0;
+  margin-right: 0;
+  padding: 12px;
+  font-size: 1rem;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
 }

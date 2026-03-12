@@ -52,8 +52,21 @@
         </label>
         <p class="field-hint">Если бронируете не для себя, укажите телефон получателя напоминания.</p>
         <div id="anotherPhoneBlock" class="hidden field-group">
-          <label for="anotherPersonPhone">Телефон получателя</label>
-          <input type="tel" id="anotherPersonPhone" placeholder="+375 29 123 45 67">
+          <label>Телефон получателя</label>
+          <div class="phone-field-row">
+            <select id="anotherPhoneCountry" class="phone-country-select" aria-label="Страна">
+              <option value="BY" selected>+375</option>
+              <option value="RU">+7</option>
+              <option value="UA">+380</option>
+              <option value="PL">+48</option>
+              <option value="LT">+370</option>
+              <option value="LV">+371</option>
+              <option value="GE">+995</option>
+              <option value="AM">+374</option>
+              <option value="OTHER">Другая</option>
+            </select>
+            <input type="tel" id="anotherPersonPhone" class="phone-input" placeholder="+375 (29) 123-45-67" maxlength="20">
+          </div>
           <span id="anotherPersonPhoneError" class="field-error"></span>
         </div>
         <div id="passengersList"></div>
@@ -69,8 +82,21 @@
         <h2>Шаг 2. Контакт и оплата</h2>
         <div class="field-group phone-field-group">
           <label for="phone">Контактный телефон <span class="required">*</span></label>
-          <p class="field-hint">Номер для связи и подтверждения брони. Формат: +375 29 123 45 67.</p>
-          <input type="tel" id="phone" class="phone-input" placeholder="+375 29 123 45 67" required>
+          <p class="field-hint">Номер для связи и подтверждения брони. Укажите номер, доступный во время поездки.</p>
+          <div class="phone-field-row">
+            <select id="phoneCountry" class="phone-country-select" aria-label="Страна">
+              <option value="BY" selected>+375</option>
+              <option value="RU">+7</option>
+              <option value="UA">+380</option>
+              <option value="PL">+48</option>
+              <option value="LT">+370</option>
+              <option value="LV">+371</option>
+              <option value="GE">+995</option>
+              <option value="AM">+374</option>
+              <option value="OTHER">Другая</option>
+            </select>
+            <input type="tel" id="phone" class="phone-input" placeholder="+375 (29) 123-45-67" required maxlength="20">
+          </div>
           <span id="phoneError" class="field-error" aria-live="polite"></span>
         </div>
         <label class="checkbox-label">
@@ -100,6 +126,8 @@
   <script src="js/api.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/input-masks.js"></script>
+  <script src="js/passport-config.js"></script>
+  <script src="js/phone-config.js"></script>
   <script src="js/date-picker.js"></script>
   <script src="js/app-modal.js"></script>
   <script src="js/theme.js"></script>

@@ -30,6 +30,9 @@
     overlay.className = 'app-modal-overlay';
     overlay.setAttribute('role', 'dialog');
     overlay.setAttribute('aria-modal', 'true');
+    var topCountries = typeof PASSPORT_TOP_COUNTRIES !== 'undefined' ? PASSPORT_TOP_COUNTRIES : [{ code: 'BY', name: 'Беларусь', example: 'MP 1234567' }, { code: 'RU', name: 'Россия', example: '4511 123456' }];
+    var otherCode = typeof PASSPORT_OTHER_CODE !== 'undefined' ? PASSPORT_OTHER_CODE : 'OTHER';
+    var countryOpts = topCountries.map(function(c) { return '<option value="' + c.code + '">' + c.name + '</option>'; }).join('');
     var formHtml = '<div class="app-modal-header"><h2 class="app-modal-title">Добавить пассажира</h2><button type="button" class="app-modal-close" aria-label="Закрыть">&times;</button></div>' +
       '<div class="app-modal-body">' +
       '<form id="addPassengerForm" class="add-passenger-form">' +
@@ -37,7 +40,8 @@
       '<div class="field-group"><label>Имя <span class="required">*</span></label><input type="text" id="apFirst" required placeholder="Иван"></div>' +
       '<div class="field-group"><label>Отчество</label><input type="text" id="apMiddle" placeholder="Иванович"></div>' +
       '<div class="field-group"><label>Дата рождения <span class="required">*</span></label><p class="field-hint">Нажмите на поле — выберите дату колёсами</p><input type="hidden" id="apBirthIso" value=""><button type="button" class="date-picker-trigger date-picker-trigger--empty" id="apBirthTrigger">Выберите дату</button></div>' +
-      '<div class="field-group"><label>Паспорт (серия и номер)</label><input type="text" id="apPassport" maxlength="10" placeholder="МР 1234567"></div>' +
+      '<div class="field-group passport-group"><label>Страна выдачи паспорта <span class="required">*</span></label><select id="apCountry" aria-label="Страна выдачи">' + countryOpts + '<option value="' + otherCode + '">Другая страна</option></select></div>' +
+      '<div class="field-group"><label>Номер паспорта / ID <span class="required">*</span></label><p class="field-hint" id="apPassportHint">Пример: MP 1234567</p><input type="text" id="apPassport" maxlength="20" placeholder="MP 1234567"><p class="passport-warning">Паспортные данные передаются пограничным службам. Ошибка в номере → отказ в посадке.</p><button type="button" class="mrz-toggle" id="apMrzToggle">Ввести из MRZ</button><div class="mrz-block hidden" id="apMrzBlock"><input type="text" class="mrz-line1" placeholder="Строка 1" maxlength="44"><input type="text" class="mrz-line2" placeholder="Строка 2" maxlength="44"><div class="mrz-actions"><button type="button" class="mrz-parse">Распознать</button><button type="button" class="mrz-cancel">Отмена</button></div></div></div>' +
       '<p id="addPassengerError" class="field-error"></p>' +
       '</form></div>' +
       '<div class="app-modal-footer"><button type="button" class="btn btn-outline app-modal-btn" id="addPassengerCancel">Отмена</button><button type="button" class="btn btn-primary app-modal-btn" id="addPassengerSave">Сохранить</button></div>';
@@ -67,18 +71,54 @@
         });
       });
     }
-    if (typeof formatPassportInput === 'function') passportInp.addEventListener('input', function() { this.value = formatPassportInput(this.value); });
+    var citizenshipSel = content.querySelector('#apCountry');
+    var passportHint = content.querySelector('#apPassportHint');
+    if (citizenshipSel && passportInp) {
+      citizenshipSel.addEventListener('change', function() {
+        var c = citizenshipSel.value;
+        var country = typeof getPassportCountry === 'function' ? getPassportCountry(c) : null;
+        if (passportHint) passportHint.textContent = country ? 'Пример: ' + country.example : 'Введите номер паспорта';
+        passportInp.placeholder = country ? country.example : 'Введите номер паспорта';
+        passportInp.maxLength = c === otherCode ? 20 : 12;
+        if (typeof passportFormatInput === 'function') passportInp.value = passportFormatInput(passportInp.value, c);
+      });
+      passportInp.addEventListener('input', function() {
+        var c = citizenshipSel.value;
+        if (typeof passportFormatInput === 'function') { var v = passportFormatInput(this.value, c); if (v !== this.value) this.value = v; }
+      });
+    }
+    var mrzToggle = content.querySelector('#apMrzToggle');
+    var mrzBlock = content.querySelector('#apMrzBlock');
+    if (mrzToggle && mrzBlock) {
+      mrzToggle.addEventListener('click', function() { mrzBlock.classList.remove('hidden'); });
+      mrzBlock.querySelector('.mrz-cancel').addEventListener('click', function() { mrzBlock.classList.add('hidden'); mrzBlock.querySelector('.mrz-line1').value = ''; mrzBlock.querySelector('.mrz-line2').value = ''; });
+      mrzBlock.querySelector('.mrz-parse').addEventListener('click', function() {
+        var line1 = mrzBlock.querySelector('.mrz-line1').value.trim().toUpperCase();
+        var line2 = mrzBlock.querySelector('.mrz-line2').value.trim().toUpperCase();
+        var num = typeof parseMrzDocumentNumber === 'function' ? parseMrzDocumentNumber(line1, line2) : null;
+        if (num) {
+          var c = citizenshipSel ? citizenshipSel.value : 'BY';
+          passportInp.value = typeof passportFormatInput === 'function' ? passportFormatInput(num, c) : num;
+          mrzBlock.classList.add('hidden');
+          mrzBlock.querySelector('.mrz-line1').value = '';
+          mrzBlock.querySelector('.mrz-line2').value = '';
+        }
+      });
+    }
     content.querySelector('#addPassengerSave').addEventListener('click', function() {
       var last = (content.querySelector('#apLast').value || '').trim();
       var first = (content.querySelector('#apFirst').value || '').trim();
       var middle = (content.querySelector('#apMiddle').value || '').trim();
       var birthIso = (content.querySelector('#apBirthIso').value || '').trim();
+      var countryCode = (content.querySelector('#apCountry') && content.querySelector('#apCountry').value) || 'BY';
       var passportRaw = (content.querySelector('#apPassport').value || '').trim();
       var errEl = content.querySelector('#addPassengerError');
       errEl.textContent = '';
       if (!last || !first) { errEl.textContent = 'Укажите фамилию и имя.'; return; }
       if (!birthIso || birthIso.length !== 10 || birthIso.indexOf('-') === -1) { errEl.textContent = 'Выберите дату рождения.'; return; }
-      var passport = typeof passportToApi === 'function' ? passportToApi(passportRaw) : passportRaw.replace(/\s/g, '');
+      var passportRes = typeof passportValidate === 'function' ? passportValidate(countryCode, passportRaw) : { valid: true };
+      if (!passportRes.valid) { errEl.textContent = passportRes.message || 'Неверный формат паспорта.'; return; }
+      var passport = typeof passportCleanForApi === 'function' ? passportCleanForApi(passportRaw, countryCode) : passportRaw.replace(/\s/g, '');
       var payload = { last_name: last, first_name: first, middle_name: middle, birth_date: birthIso, passport: passport || '' };
       apiFn('/api/user/passengers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
         .then(function() { close(); if (onSuccess) onSuccess(); })
