@@ -1,7 +1,11 @@
 """API tests. Запуск: из папки backend выполнить pytest tests/ -v.
-Для тестов, требующих БД (booking, user, admin, dispatcher), нужна PostgreSQL (DATABASE_URL).
+Для тестов, требующих БД (booking get, faq, news), нужна PostgreSQL (DATABASE_URL).
+Без DATABASE_URL эти тесты пропускаются.
 """
+import os
 import pytest
+
+_has_db_url = bool(os.environ.get("DATABASE_URL"))
 
 
 def test_health(client):
@@ -57,12 +61,14 @@ def test_create_booking_validation_empty_passengers(client):
 
 
 def test_create_booking_validation_invalid_route(client):
-    """Несуществующий маршрут -> 404."""
+    """Несуществующий маршрут -> 404. Дата в пределах 90 дней, иначе сработает валидация too_far."""
+    from datetime import date, timedelta
+    soon = (date.today() + timedelta(days=30)).isoformat()
     payload = {
         "route_id": "nonexistent_route",
         "from_city": "A",
         "to_city": "B",
-        "departure_date": "2030-06-01",
+        "departure_date": soon,
         "departure_time": "12:00",
         "passengers": [{"last_name": "Иванов", "first_name": "Иван", "birth_date": "1990-01-01"}],
         "phone": "+375291234567",
@@ -70,8 +76,10 @@ def test_create_booking_validation_invalid_route(client):
     }
     r = client.post("/api/bookings", json=payload)
     assert r.status_code == 404
+    assert r.json().get("detail") == "route_not_found"
 
 
+@pytest.mark.skipif(not _has_db_url, reason="DATABASE_URL not set")
 def test_get_booking_not_found(client):
     """Получение несуществующей брони -> 404."""
     r = client.get("/api/bookings/NONEXISTENT-ID-123")
@@ -108,6 +116,7 @@ def test_admin_logs_unauthorized(client):
     assert r.status_code == 401
 
 
+@pytest.mark.skipif(not _has_db_url, reason="DATABASE_URL not set")
 def test_faq_no_db_required(client):
     """FAQ возвращает 200 (может быть пустой список без БД)."""
     r = client.get("/api/faq?lang=ru")
@@ -134,6 +143,7 @@ def test_rate_limit_returns_429(client):
     assert True
 
 
+@pytest.mark.skipif(not _has_db_url, reason="DATABASE_URL not set")
 def test_news_no_db_required(client):
     """Новости/кэш возвращают 200."""
     r = client.get("/api/news")

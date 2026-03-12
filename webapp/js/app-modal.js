@@ -109,4 +109,5 @@
   };
 
   window.errorToMessage = errorToMessage;
+  window.showAppModal = showAppModal;
 })();

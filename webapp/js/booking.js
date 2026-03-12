@@ -11,6 +11,33 @@
     return;
   }
 
+  function getCurrentStep() {
+    var s2 = document.getElementById('step2');
+    return s2 && !s2.classList.contains('hidden') ? 2 : 1;
+  }
+
+  function updateBookingUIForStep(step) {
+    var stepperSteps = document.querySelectorAll('.stepper .step');
+    stepperSteps.forEach(function(s) {
+      s.classList.toggle('active', parseInt(s.getAttribute('data-step'), 10) === step);
+    });
+    var toStep2Btn = document.getElementById('toStep2');
+    var backBtn = document.getElementById('backToStep1');
+    var submitBtn = document.getElementById('submitBooking');
+    if (step === 1) {
+      if (toStep2Btn) toStep2Btn.style.display = '';
+      if (backBtn) backBtn.style.display = 'none';
+      if (submitBtn) submitBtn.style.display = 'none';
+    } else {
+      if (toStep2Btn) toStep2Btn.style.display = 'none';
+      if (backBtn) backBtn.style.display = '';
+      if (submitBtn) submitBtn.style.display = '';
+    }
+    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.MainButton) {
+      window.Telegram.WebApp.MainButton.hide();
+    }
+  }
+
   let route = null;
   let passengerCount = 1;
   const passengers = [];
@@ -26,6 +53,7 @@
     updateDiscountsBlock();
     renderPassengers();
     loadSavedPassengersForFill();
+    if (typeof updateBookingUIForStep === 'function') updateBookingUIForStep(1);
   });
 
   function getDiscountRulesText() {
@@ -150,7 +178,7 @@
     setError('passengerCountError');
     document.querySelectorAll('.passenger-block .field-error, .passenger-block-error').forEach(function(e) { e.textContent = ''; });
   }
-  function clearStep2Errors() { setError('phoneError'); }
+  function clearStep2Errors() { setError('phoneError'); var g = document.querySelector('.phone-field-group'); if (g) g.classList.remove('phone-field-group--error'); }
 
   function renderPassengers() {
     var list = getEl('passengersList');
@@ -190,33 +218,44 @@
           '<div class="mrz-block hidden" data-i="' + i + '"><input type="text" class="mrz-line1" placeholder="Строка 1 (P&lt;UTO...)" maxlength="44"><input type="text" class="mrz-line2" placeholder="Строка 2 (123456...)" maxlength="44">' +
           '<div class="mrz-actions"><button type="button" class="mrz-parse">Распознать</button><button type="button" class="mrz-cancel">Отмена</button></div></div>' +
           '<span class="field-error" data-passenger-error="' + i + '"></span></div>';
+        var birthDisplayDob = (birthIso && typeof isoToDob === 'function') ? isoToDob(birthIso) : (birthVal.indexOf('.') !== -1 ? birthVal : (birthIso ? (birthIso.slice(8, 10) + '.' + birthIso.slice(5, 7) + '.' + birthIso.slice(0, 4)) : ''));
         div.innerHTML =
           '<label class="passenger-block__title">Пассажир ' + (i + 1) + '</label>' +
           '<div class="field-group"><label>Фамилия <span class="required">*</span></label><input type="text" placeholder="Иванов" data-i="' + i + '" data-f="last_name" value="' + (p.last_name || '') + '"></div>' +
           '<div class="field-group"><label>Имя <span class="required">*</span></label><input type="text" placeholder="Иван" data-i="' + i + '" data-f="first_name" value="' + (p.first_name || '') + '"></div>' +
           '<div class="field-group"><label>Отчество</label><input type="text" placeholder="Иванович" data-i="' + i + '" data-f="middle_name" value="' + (p.middle_name || '') + '"></div>' +
-          '<div class="field-group"><label>Дата рождения пассажира <span class="required">*</span></label><p class="field-hint">Нажмите на поле — выберите дату колёсами</p><input type="hidden" data-i="' + i + '" data-f="birth_date" value="' + (birthIso || '') + '"><button type="button" class="date-picker-trigger' + (birthDisplay ? '' : ' date-picker-trigger--empty') + '" data-i="' + i + '" data-f="birth_date">' + (birthDisplay || 'Выберите дату') + '</button><span class="passenger-discount-label" data-i="' + i + '">' + (getPassengerDiscountLabel(birthIso, dateStr) ? ' • ' + getPassengerDiscountLabel(birthIso, dateStr) : '') + '</span><span class="field-error" data-dob-error="' + i + '"></span></div>' +
+          '<div class="field-group"><label>Дата рождения пассажира <span class="required">*</span></label><p class="field-hint">Введите дату в формате ДД.ММ.ГГГГ</p><input type="hidden" data-i="' + i + '" data-f="birth_date" value="' + (birthIso || '') + '"><input type="text" class="birth-date-input" data-i="' + i + '" placeholder="ДД.ММ.ГГГГ" value="' + (birthDisplayDob || '') + '" autocomplete="off"><span class="passenger-discount-label" data-i="' + i + '">' + (getPassengerDiscountLabel(birthIso, dateStr) ? ' • ' + getPassengerDiscountLabel(birthIso, dateStr) : '') + '</span><span class="field-error" data-dob-error="' + i + '"></span></div>' +
           passportRow +
           '<span class="field-error passenger-block-error" data-passenger-index="' + i + '"></span>';
       } else {
         var birthVal = (p.birth_date || '');
         var birthIso = birthVal.length === 10 && birthVal.indexOf('-') !== -1 ? birthVal : (typeof dobToIso === 'function' ? dobToIso(birthVal) || '' : '');
         var birthDisplay = typeof datePickerIsoToDisplay === 'function' ? datePickerIsoToDisplay(birthIso) : (birthVal.indexOf('.') !== -1 ? birthVal : birthIso);
+        var birthDisplayDob = (birthIso && typeof isoToDob === 'function') ? isoToDob(birthIso) : (birthVal.indexOf('.') !== -1 ? birthVal : (birthIso ? (birthIso.slice(8, 10) + '.' + birthIso.slice(5, 7) + '.' + birthIso.slice(0, 4)) : ''));
         var discountLabel = getPassengerDiscountLabel(birthIso, dateStr);
         div.innerHTML =
           '<label class="passenger-block__title">Пассажир ' + (i + 1) + '</label>' +
           '<p class="field-hint field-hint--block">Для внутреннего рейса — имя и по желанию дата рождения для расчёта льготы (до 9 лет 50%).</p>' +
           '<div class="field-group"><label>Имя пассажира <span class="required">*</span></label><input type="text" placeholder="Иван Иванов" data-i="' + i + '" data-f="first_name" value="' + (p.first_name || '') + '"></div>' +
-          '<div class="field-group"><label>Дата рождения (для льготы)</label><p class="field-hint">Нажмите на поле — выберите дату колёсами</p><input type="hidden" data-i="' + i + '" data-f="birth_date" value="' + (birthIso || '') + '"><button type="button" class="date-picker-trigger' + (birthDisplay ? '' : ' date-picker-trigger--empty') + '" data-i="' + i + '" data-f="birth_date">' + (birthDisplay || 'Указать дату рождения') + '</button><span class="passenger-discount-label" data-i="' + i + '">' + (discountLabel ? ' • ' + discountLabel : '') + '</span></div>' +
+          '<div class="field-group"><label>Дата рождения (для льготы)</label><p class="field-hint">Введите дату в формате ДД.ММ.ГГГГ</p><input type="hidden" data-i="' + i + '" data-f="birth_date" value="' + (birthIso || '') + '"><input type="text" class="birth-date-input" data-i="' + i + '" placeholder="ДД.ММ.ГГГГ" value="' + (birthDisplayDob || '') + '" autocomplete="off"><span class="passenger-discount-label" data-i="' + i + '">' + (discountLabel ? ' • ' + discountLabel : '') + '</span></div>' +
           '<span class="field-error passenger-block-error" data-passenger-index="' + i + '"></span>';
       }
       list.appendChild(div);
     }
     list.querySelectorAll('input').forEach(function(inp) {
       inp.addEventListener('input', function() { clearStep1Errors(); });
+      var f = inp.getAttribute('data-f');
+      if (f === 'last_name' || f === 'first_name' || f === 'middle_name') {
+        inp.addEventListener('input', function() {
+          var start = this.selectionStart, end = this.selectionEnd;
+          this.value = this.value.toUpperCase();
+          this.setSelectionRange(start, end);
+        });
+      }
       inp.addEventListener('change', function() {
         var i = parseInt(this.getAttribute('data-i'), 10);
         var f = this.getAttribute('data-f');
+        if (!f) return;
         if (!passengers[i]) passengers[i] = {};
         passengers[i][f] = this.value;
       });
@@ -291,34 +330,35 @@
         }
       });
     });
-    list.querySelectorAll('.date-picker-trigger').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        var i = parseInt(btn.getAttribute('data-i'), 10);
-        var hiddenInp = list.querySelector('input[data-i="' + i + '"][data-f="birth_date"]');
-        var initialIso = (hiddenInp && hiddenInp.value) || (passengers[i] && passengers[i].birth_date) || '';
-        if (initialIso && initialIso.indexOf('-') === -1 && typeof dobToIso === 'function') initialIso = dobToIso(initialIso) || initialIso;
-        if (typeof showDatePicker === 'function') {
-          showDatePicker({
-            title: 'Дата рождения',
-            initialIso: initialIso || null,
-            onSelect: function(iso) {
-              if (!passengers[i]) passengers[i] = {};
-              passengers[i].birth_date = iso;
-              if (hiddenInp) hiddenInp.value = iso;
-              btn.textContent = typeof datePickerIsoToDisplay === 'function' ? datePickerIsoToDisplay(iso) : iso;
-              btn.classList.remove('date-picker-trigger--empty');
-              var labelEl = list.querySelector('.passenger-discount-label[data-i="' + i + '"]');
-              if (labelEl) { var lbl = getPassengerDiscountLabel(iso, dateStr); labelEl.textContent = lbl ? ' • ' + lbl : ''; }
-              clearStep1Errors();
-              recalcPriceSummary();
-            }
-          });
-        }
+    if (typeof IMask !== 'undefined') {
+      list.querySelectorAll('.birth-date-input').forEach(function(inp) {
+        var i = parseInt(inp.getAttribute('data-i'), 10);
+        var block = inp.closest('.passenger-block');
+        var hiddenInp = block ? block.querySelector('input[data-f="birth_date"]') : list.querySelector('input[data-i="' + i + '"][data-f="birth_date"]');
+        IMask(inp, {
+          mask: 'd.m.Y',
+          blocks: {
+            d: { mask: IMask.MaskedRange, from: 1, to: 31, maxLength: 2 },
+            m: { mask: IMask.MaskedRange, from: 1, to: 12, maxLength: 2 },
+            Y: { mask: IMask.MaskedRange, from: 1900, to: 2026, maxLength: 4 }
+          },
+          lazy: false,
+          autofix: true,
+          placeholderChar: '_',
+          onAccept: function(value) {
+            var iso = typeof dobToIso === 'function' ? dobToIso(value) : '';
+            if (!passengers[i]) passengers[i] = {};
+            passengers[i].birth_date = iso;
+            if (hiddenInp) hiddenInp.value = iso;
+            var labelEl = block ? block.querySelector('.passenger-discount-label') : list.querySelector('.passenger-discount-label[data-i="' + i + '"]');
+            if (labelEl) { var lbl = getPassengerDiscountLabel(iso, dateStr); labelEl.textContent = lbl ? ' • ' + lbl : ''; }
+            clearStep1Errors();
+            recalcPriceSummary();
+          }
+        });
       });
-    });
-  }
-
-  function collectPassengers() {
+    }
+    list.querySelectorAll('.passport-country').forEach(function(sel) {
     document.querySelectorAll('#passengersList input').forEach(function(inp) {
       var i = parseInt(inp.getAttribute('data-i'), 10);
       var f = inp.getAttribute('data-f');
@@ -420,6 +460,8 @@
     }
     getEl('step1').classList.add('hidden');
     getEl('step2').classList.remove('hidden');
+    if (typeof updateBookingUIForStep === 'function') updateBookingUIForStep(2);
+    if (typeof getTheme === 'function') document.documentElement.setAttribute('data-theme', getTheme());
     clearStep2Errors();
     var phoneVal = (typeof getTelegramUserId === 'function' && getTelegramUserId() ? '' : '');
     if (getEl('phone').value.trim() === '' && phoneVal) getEl('phone').value = phoneVal;
@@ -471,10 +513,23 @@
   getEl('backToStep1').addEventListener('click', function() {
     getEl('step2').classList.add('hidden');
     getEl('step1').classList.remove('hidden');
+    if (typeof updateBookingUIForStep === 'function') updateBookingUIForStep(1);
+    if (typeof getTheme === 'function') document.documentElement.setAttribute('data-theme', getTheme());
     clearStep2Errors();
   });
 
-  getEl('phone').addEventListener('input', function() { clearStep2Errors(); });
+  getEl('phone').addEventListener('input', function() {
+    clearStep2Errors();
+    if (typeof formatPhoneInput === 'function') {
+      var v = formatPhoneInput(this.value);
+      if (v !== this.value) { this.value = v; }
+    }
+    var res = typeof validatePhoneStep === 'function' ? validatePhoneStep(this.value) : null;
+    var errEl = getEl('phoneError');
+    var wrap = this.closest('.phone-field-group');
+    if (wrap) wrap.classList.toggle('phone-field-group--error', res && !res.valid && this.value.trim().length > 0);
+    if (errEl && res && !res.valid && this.value.trim().length > 0) errEl.textContent = res.message; else if (errEl) errEl.textContent = '';
+  });
 
   document.getElementById('submitBooking').addEventListener('click', function() {
     var phoneInp = getEl('phone');

@@ -71,7 +71,7 @@ async def notify_booking_created(
         )
     reply_markup = None
     webapp_url = (get_settings().webapp_url or "").strip()
-    if webapp_url and webapp_url.startswith("http"):
+    if webapp_url.startswith("https:"):
         reply_markup = {"inline_keyboard": [[{"text": "📋 Открыть заявки", "web_app": {"url": webapp_url}}]]}
     return await send_telegram_message(user_id, text, reply_markup=reply_markup)
 
@@ -103,6 +103,6 @@ async def notify_booking_status(
         text = f"📋 Заявка <code>{booking_id}</code>: {st}."
     reply_markup = None
     webapp_url = (get_settings().webapp_url or "").strip()
-    if webapp_url and webapp_url.startswith("http"):
+    if webapp_url.startswith("https:"):
         reply_markup = {"inline_keyboard": [[{"text": "📋 Открыть заявки", "web_app": {"url": webapp_url}}]]}
     return await send_telegram_message(user_id, text, reply_markup=reply_markup)

@@ -30,6 +30,18 @@ settings = get_settings()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
+
+    # Автоматические миграции Alembic (синхронный command.upgrade в потоке)
+    try:
+        import asyncio
+        from alembic.config import Config
+        from alembic import command
+        alembic_cfg = Config(os.path.join(os.path.dirname(os.path.abspath(__file__)), "alembic.ini"))
+        await asyncio.to_thread(command.upgrade, alembic_cfg, "head")
+        logger.info("Alembic migrations applied successfully")
+    except Exception as e:
+        logger.warning("Alembic upgrade skipped: %s", e)
+
     try:
         from database import AsyncSessionLocal
         from services.roles import load_roles
@@ -60,8 +72,8 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=get_settings().allowed_origins_list,
-    allow_credentials=get_settings().allow_credentials,
+    allow_origins=settings.cors_origins,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -80,7 +92,7 @@ async def rate_limit_middleware(request: Request, call_next):
     path = request.url.path
     if not path.startswith("/api/") or get_settings().rate_limit <= 0:
         return await call_next(request)
-    if request.method == "GET" and path in _RATE_LIMIT_SKIP_PATHS:
+    if request.method in ("GET", "HEAD") and path in _RATE_LIMIT_SKIP_PATHS:
         return await call_next(request)
     client = request.client.host if request.client else "0.0.0.0"
     now = time.monotonic()
@@ -118,8 +130,7 @@ app.include_router(ws_router)
 app.include_router(faq_router)
 
 
-@app.get("/api/health")
-@app.head("/api/health")
+@app.api_route("/api/health", methods=["GET", "HEAD"])
 async def health():
     """Статус сервиса. При MAINTENANCE_UNTIL (ISO дата-время) в будущем возвращает режим технических работ."""
     import os

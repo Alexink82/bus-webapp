@@ -26,14 +26,14 @@
           var disp = document.createElement('a');
           disp.href = 'dispatcher.html';
           disp.className = 'tab';
-          disp.textContent = '🔄 Диспетчер';
+          disp.textContent = '🔄 ' + (typeof t === 'function' ? t('tabDispatcher') : 'Диспетчер');
           tabBar.insertBefore(disp, faqTab);
         }
         if (isAdmin) {
           var adm = document.createElement('a');
           adm.href = 'admin.html';
           adm.className = 'tab';
-          adm.textContent = '⚙️ Админ';
+          adm.textContent = '⚙️ ' + (typeof t === 'function' ? t('tabAdmin') : 'Админ');
           tabBar.insertBefore(adm, faqTab);
         }
       })

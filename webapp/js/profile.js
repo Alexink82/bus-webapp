@@ -1,7 +1,7 @@
 (function() {
   if (typeof getTelegramUserId === 'function' && !getTelegramUserId()) {
-    document.getElementById('bookingsList').innerHTML = '<p>\u0412\u043e\u0439\u0434\u0438\u0442\u0435 \u0447\u0435\u0440\u0435\u0437 Telegram, \u0447\u0442\u043e\u0431\u044b \u0432\u0438\u0434\u0435\u0442\u044c \u0437\u0430\u044f\u0432\u043a\u0438.</p>';
-    document.getElementById('passengersSection').innerHTML = '<p>\u0412\u043e\u0439\u0434\u0438\u0442\u0435 \u0447\u0435\u0440\u0435\u0437 Telegram.</p>';
+    document.getElementById('bookingsList').innerHTML = '<p>' + (typeof t === 'function' ? t('loginViaTelegram') : 'Войдите через Telegram, чтобы видеть заявки.') + '</p>';
+    document.getElementById('passengersSection').innerHTML = '<p>' + (typeof t === 'function' ? t('loginViaTelegramShort') : 'Войдите через Telegram.') + '</p>';
     return;
   }
 
@@ -39,7 +39,7 @@
       '<div class="field-group"><label>Фамилия <span class="required">*</span></label><input type="text" id="apLast" required placeholder="Иванов"></div>' +
       '<div class="field-group"><label>Имя <span class="required">*</span></label><input type="text" id="apFirst" required placeholder="Иван"></div>' +
       '<div class="field-group"><label>Отчество</label><input type="text" id="apMiddle" placeholder="Иванович"></div>' +
-      '<div class="field-group"><label>Дата рождения <span class="required">*</span></label><p class="field-hint">Нажмите на поле — выберите дату колёсами</p><input type="hidden" id="apBirthIso" value=""><button type="button" class="date-picker-trigger date-picker-trigger--empty" id="apBirthTrigger">Выберите дату</button></div>' +
+      '<div class="field-group"><label>Дата рождения <span class="required">*</span></label><p class="field-hint">Введите дату в формате ДД.ММ.ГГГГ</p><input type="hidden" id="apBirthIso" value=""><input type="text" id="apBirthInput" class="birth-date-input" placeholder="ДД.ММ.ГГГГ" value="" autocomplete="off"></div>' +
       '<div class="field-group passport-group"><label>Страна выдачи паспорта <span class="required">*</span></label><select id="apCountry" aria-label="Страна выдачи">' + countryOpts + '<option value="' + otherCode + '">Другая страна</option></select></div>' +
       '<div class="field-group"><label>Номер паспорта / ID <span class="required">*</span></label><p class="field-hint" id="apPassportHint">Пример: MP 1234567</p><input type="text" id="apPassport" maxlength="20" placeholder="MP 1234567"><p class="passport-warning">Паспортные данные передаются пограничным службам. Ошибка в номере → отказ в посадке.</p><button type="button" class="mrz-toggle" id="apMrzToggle">Ввести из MRZ</button><div class="mrz-block hidden" id="apMrzBlock"><input type="text" class="mrz-line1" placeholder="Строка 1" maxlength="44"><input type="text" class="mrz-line2" placeholder="Строка 2" maxlength="44"><div class="mrz-actions"><button type="button" class="mrz-parse">Распознать</button><button type="button" class="mrz-cancel">Отмена</button></div></div></div>' +
       '<p id="addPassengerError" class="field-error"></p>' +
@@ -54,23 +54,26 @@
     overlay.addEventListener('click', function(e) { if (e.target === overlay) close(); });
     content.querySelector('.app-modal-close').addEventListener('click', close);
     content.querySelector('#addPassengerCancel').addEventListener('click', close);
-    var birthTrigger = content.querySelector('#apBirthTrigger');
     var birthIsoInp = content.querySelector('#apBirthIso');
-    var passportInp = content.querySelector('#apPassport');
-    if (birthTrigger && typeof showDatePicker === 'function') {
-      birthTrigger.addEventListener('click', function() {
-        var initialIso = (birthIsoInp && birthIsoInp.value) || null;
-        showDatePicker({
-          title: 'Дата рождения',
-          initialIso: initialIso,
-          onSelect: function(iso) {
-            if (birthIsoInp) birthIsoInp.value = iso;
-            birthTrigger.textContent = typeof datePickerIsoToDisplay === 'function' ? datePickerIsoToDisplay(iso) : iso;
-            birthTrigger.classList.remove('date-picker-trigger--empty');
-          }
-        });
+    var birthInput = content.querySelector('#apBirthInput');
+    if (typeof IMask !== 'undefined' && birthInput && birthIsoInp) {
+      IMask(birthInput, {
+        mask: 'd.m.Y',
+        blocks: {
+          d: { mask: IMask.MaskedRange, from: 1, to: 31, maxLength: 2 },
+          m: { mask: IMask.MaskedRange, from: 1, to: 12, maxLength: 2 },
+          Y: { mask: IMask.MaskedRange, from: 1900, to: 2026, maxLength: 4 }
+        },
+        lazy: false,
+        autofix: true,
+        placeholderChar: '_',
+        onAccept: function(value) {
+          var iso = typeof dobToIso === 'function' ? dobToIso(value) : '';
+          if (birthIsoInp) birthIsoInp.value = iso;
+        }
       });
     }
+    var passportInp = content.querySelector('#apPassport');
     var citizenshipSel = content.querySelector('#apCountry');
     var passportHint = content.querySelector('#apPassportHint');
     if (citizenshipSel && passportInp) {
@@ -129,7 +132,7 @@
     });
     root.appendChild(overlay);
     requestAnimationFrame(function() { overlay.classList.add('app-modal-visible'); });
-    if (birthTrigger) birthTrigger.focus();
+    if (birthInput) birthInput.focus();
   };
 
   function loadBookings() {
@@ -147,8 +150,9 @@
       }).join('') : '<p>Нет заявок.</p>';
       list.querySelectorAll('.cancel-booking').forEach(function(btn) {
         btn.addEventListener('click', function() {
-          var msg = 'Отменить заявку?';
-          (typeof showAppConfirm === 'function' ? showAppConfirm(msg, 'Отмена заявки') : Promise.resolve(confirm(msg)))
+          var msg = typeof t === 'function' ? t('cancelConfirm') : 'Отменить заявку?';
+          var title = typeof t === 'function' ? t('cancelConfirmTitle') : 'Отмена заявки';
+          (typeof showAppConfirm === 'function' ? showAppConfirm(msg, title) : Promise.resolve(confirm(msg)))
             .then(function(ok) {
               if (!ok) return;
               var bid = btn.getAttribute('data-id');
@@ -157,7 +161,7 @@
                 .then(function() { loadBookings(); })
                 .catch(function(e) {
                   var text = typeof errorToMessage === 'function' ? errorToMessage(e) : (e && e.message ? e.message : 'Ошибка');
-                  (typeof showAppAlert === 'function' ? showAppAlert(text, 'Ошибка') : alert(text));
+                  (typeof showAppAlert === 'function' ? showAppAlert(text, typeof t === 'function' ? t('error') : 'Ошибка') : alert(text));
                   btn.disabled = false;
                 });
             });
@@ -166,10 +170,48 @@
       list.querySelectorAll('.booking-details').forEach(function(btn) {
         btn.addEventListener('click', function() {
           var bid = btn.getAttribute('data-id');
-          window.location.href = 'success.html?booking_id=' + encodeURIComponent(bid);
+          apiFn('/api/bookings/' + encodeURIComponent(bid))
+            .then(function(booking) {
+              showBookingDetailsModal(booking);
+            })
+            .catch(function(e) {
+              var text = typeof errorToMessage === 'function' ? errorToMessage(e) : (e && e.message ? e.message : 'Ошибка');
+              (typeof showAppAlert === 'function' ? showAppAlert(text, 'Ошибка') : alert(text));
+            });
         });
       });
     }).catch(function() { document.getElementById('bookingsList').innerHTML = '<p>\u041e\u0448\u0438\u0431\u043a\u0430 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0438.</p>'; });
+  }
+
+  function showBookingDetailsModal(booking, fromCity, toCity) {
+    var esc = function(s) { if (s == null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
+    var from = fromCity || (booking.from_city || '');
+    var to = toCity || (booking.to_city || '');
+    var passengersStr = '';
+    if (booking.passengers && booking.passengers.length) {
+      passengersStr = booking.passengers.map(function(p) {
+        return esc(p.last_name) + ' ' + esc(p.first_name) + (p.middle_name ? ' ' + esc(p.middle_name) : '') + (p.birth_date ? ' (' + esc(p.birth_date) + ')' : '');
+      }).join('<br>');
+    } else {
+      passengersStr = '—';
+    }
+    var rescheduleUrl = 'index.html?from=' + encodeURIComponent(from) + '&to=' + encodeURIComponent(to);
+    var rescheduleText = (typeof t === 'function' ? t('rescheduleDate') : 'Перенести дату');
+    var html = '<div class="booking-details-modal">' +
+      '<p><strong>Маршрут:</strong> ' + esc(booking.route_name) + ' (' + esc(from) + ' → ' + esc(to) + ')</p>' +
+      '<p><strong>Дата и время:</strong> ' + esc(booking.departure_date) + ' ' + esc(booking.departure_time) + '</p>' +
+      '<p><strong>Пассажиры:</strong><br>' + passengersStr + '</p>' +
+      (booking.contact_phone ? '<p><strong>Контактный телефон:</strong> ' + esc(booking.contact_phone) + '</p>' : '') +
+      '<p><strong>Стоимость:</strong> ' + esc(booking.price_total) + ' ' + esc(booking.currency || 'BYN') + '</p>' +
+      '<p><strong>Статус:</strong> ' + esc(booking.status) + '</p>' +
+      '<div class="booking-details-modal__actions">' +
+      '<a href="' + rescheduleUrl + '" class="btn btn-primary">' + rescheduleText + '</a> ' +
+      '<a href="success.html?booking_id=' + encodeURIComponent(booking.booking_id) + '" class="btn btn-outline">Страница заявки</a></div></div>';
+    if (typeof showAppModal === 'function') {
+      showAppModal({ title: (typeof t === 'function' ? t('details') : 'Подробнее'), html: html, buttons: [{ text: typeof t === 'function' ? t('close') : 'Закрыть', primary: true }] });
+    } else {
+      (typeof showAppAlert === 'function' ? showAppAlert : alert)(html.replace(/<[^>]+>/g, ' '), 'Подробнее');
+    }
   }
 
   function loadPassengers() {

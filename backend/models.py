@@ -134,7 +134,7 @@ class Booking(Base):
     taken_at = Column(String(30))
     paid_at = Column(String(30))
     is_archived = Column(Boolean, default=False)
-    cancel_reason = Column(Text, default=None)
+    cancel_reason = Column(Text, nullable=True)
 
 
 class BotRole(Base):

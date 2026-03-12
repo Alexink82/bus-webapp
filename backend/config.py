@@ -47,16 +47,15 @@ class Settings(BaseSettings):
     debug: bool = False
     webapp_url: str = "http://localhost:8000"
     backend_url: str = "http://localhost:8000"
-
-    # WebPay callback (проверка подписи/секрета в проде)
-    webpay_callback_secret: str = ""
+    # CORS: список разрешённых origin; ALLOWED_ORIGINS в env или allowed_origins (строка "*" = все / webapp_url)
+    allowed_origins: str = "*"
+    allow_credentials: bool = False
 
     # Rate limiting (requests per minute per IP; 0 = off)
     rate_limit: int = 120
 
-    # CORS: TG WebApp — cross-origin (t.me → Render). allow_origins=["*"] + allow_credentials=True браузеры блокируют.
-    allowed_origins: str = "*"  # в проде: https://ваш-сервис.onrender.com (несколько через запятую)
-    allow_credentials: bool = False  # True только при использовании cookies (у нас авторизация через заголовки)
+    # WebPay callback (проверка подписи/секрета в проде)
+    webpay_callback_secret: str = ""
 
     @property
     def admin_ids_list(self) -> List[int]:
@@ -97,12 +96,16 @@ class Settings(BaseSettings):
         return out
 
     @property
-    def allowed_origins_list(self) -> List[str]:
-        """Список разрешённых CORS origins из ALLOWED_ORIGINS (через запятую). Пусто или '*' → ['*']."""
+    def cors_origins(self) -> List[str]:
+        """Список origin для CORS: ALLOWED_ORIGINS (env) или allowed_origins или [webapp_url]."""
+        env_raw = (os.environ.get("ALLOWED_ORIGINS") or "").strip()
+        if env_raw:
+            return [o.strip().rstrip("/") for o in env_raw.split(",") if o.strip()]
         raw = (getattr(self, "allowed_origins", "") or "").strip()
-        if not raw or raw == "*":
-            return ["*"]
-        return [x.strip() for x in raw.split(",") if x.strip()]
+        if raw and raw != "*":
+            return [o.strip().rstrip("/") for o in raw.split(",") if o.strip()]
+        url = (self.webapp_url or "").strip().rstrip("/")
+        return [url] if url else ["*"]
 
     class Config:
         env_file = [".env", "../.env"]

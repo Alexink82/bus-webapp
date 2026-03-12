@@ -623,6 +623,37 @@ body {
   word-wrap: break-word;
 }
 
+.booking-card {
+  max-width: 100%;
+}
+.booking-card__head {
+  font-size: 1rem;
+  margin-bottom: 6px;
+}
+.booking-card__meta {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+.booking-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.booking-card__actions .btn,
+.booking-card__actions .booking-details {
+  text-decoration: none;
+  cursor: pointer;
+  appearance: button;
+}
+.booking-card__actions .btn-small {
+  margin-top: 0;
+}
+.booking-details-modal p { margin-bottom: 10px; font-size: 0.95rem; }
+.booking-details-modal__actions { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 10px; }
+.booking-details-modal__actions a { text-decoration: none; }
+
 .trip-time {
   font-size: 1.2rem;
   font-weight: 600;
@@ -952,3 +983,11 @@ body {
 .mrz-actions button { min-height: 44px; padding: 10px 14px; border-radius: var(--radius); font-size: 0.9rem; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .mrz-parse { background: var(--accent); color: #fff; border: none; }
 .mrz-cancel { background: var(--primary); color: var(--text); border: 1px solid var(--border); }
+.settings-section { margin-bottom: 24px; }
+.settings-section h2 { font-size: 1.1rem; margin-bottom: 12px; }
+.settings-group { margin-bottom: 12px; }
+.settings-group label { display: block; margin-bottom: 4px; color: var(--text-muted); }
+.settings-select { width: 100%; max-width: 200px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); color: var(--text); font-size: 1rem; }
+.settings-checkbox { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; cursor: pointer; }
+.settings-checkbox input { width: auto; }
+.settings-hint { font-size: 0.85rem; color: var(--text-muted); margin-top: 0; margin-bottom: 12px; }

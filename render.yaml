@@ -25,7 +25,7 @@ services:
         description: PostgreSQL URL (create Postgres in Render Dashboard or use external)
         sync: false
       - key: WEBAPP_URL
-        description: Public HTTPS URL of this service (for Telegram Web App button)
+        description: Public HTTPS URL of this service (e.g. https://bus-bot-q9p0.onrender.com). Required for Telegram Web App button.
         value: ""
       - key: BACKEND_URL
         description: Same as WEBAPP_URL or your custom domain

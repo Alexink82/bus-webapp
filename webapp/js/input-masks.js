@@ -117,3 +117,55 @@ window.passportToApi = passportToApi;
 window.passportRuToApi = passportRuToApi;
 window.passportByToApi = passportByToApi;
 window.validatePassport = validatePassport;
+
+/** Телефон РБ (+375) / РФ (+7). */
+function formatPhoneInput(value) {
+  var s = (value || '').replace(/[^\d+]/g, '');
+  if (s.charAt(0) === '+') s = s.slice(1);
+  if (s.charAt(0) === '8' && s.length <= 11) s = '7' + s.slice(1);
+  if (s.slice(0, 3) === '375') {
+    s = s.slice(0, 12);
+    var a = s.slice(3, 5), b = s.slice(5, 8), c = s.slice(8, 10), d = s.slice(10, 12);
+    return '+375 ' + (a ? a + (b ? ' ' + b + (c ? ' ' + c + (d ? ' ' + d : '') : '') : '') : '');
+  }
+  if (s.charAt(0) === '7') {
+    s = s.slice(0, 11);
+    var a = s.slice(1, 4), b = s.slice(4, 7), c = s.slice(7, 9), d = s.slice(9, 11);
+    return '+7 ' + (a ? a + (b ? ' ' + b + (c ? ' ' + c + (d ? ' ' + d : '') : '') : '') : '');
+  }
+  if (s.length && s.charAt(0) !== '3' && s.charAt(0) !== '7') return '';
+  if (s.slice(0, 3) === '375') return '+375 ' + s.slice(3, 5) + (s.length > 5 ? ' ' + s.slice(5, 8) : '') + (s.length > 8 ? ' ' + s.slice(8, 10) : '') + (s.length > 10 ? ' ' + s.slice(10, 12) : '');
+  return s.slice(0, 4);
+}
+function normalizePhoneForApi(displayValue) {
+  var d = (displayValue || '').replace(/\D/g, '');
+  if (d.slice(0, 2) === '80') d = '375' + d.slice(2);
+  else if (d.charAt(0) === '8' && d.length <= 11) d = '7' + d.slice(1);
+  else if (d.charAt(0) === '7') d = d.slice(0, 11);
+  else if (d.slice(0, 3) === '375') d = d.slice(0, 12);
+  return d;
+}
+function validatePhoneStep(displayValue) {
+  var digits = normalizePhoneForApi(displayValue);
+  if (!digits.length) return { valid: false, step: 1, message: 'Введите префикс: +375 (Беларусь) или +7 (Россия)' };
+  if (digits.slice(0, 3) === '375') {
+    if (digits.length < 12) return { valid: false, step: 2, message: 'Введите номер: 9 цифр после +375 (например +375 29 123 45 67)' };
+    return { valid: true, step: 3, message: '' };
+  }
+  if (digits.charAt(0) === '7') {
+    if (digits.length < 11) return { valid: false, step: 2, message: 'Введите номер: 10 цифр после +7 (например +7 903 123 45 67)' };
+    return { valid: true, step: 3, message: '' };
+  }
+  if (digits.length < 3) return { valid: false, step: 1, message: 'Введите +375 или +7' };
+  return { valid: false, step: 1, message: 'Поддерживаются номера РБ (+375) и РФ (+7)' };
+}
+function phoneToApi(displayValue) {
+  var d = normalizePhoneForApi(displayValue);
+  if (d.slice(0, 3) === '375' && d.length === 12) return '+' + d;
+  if (d.charAt(0) === '7' && d.length === 11) return '+' + d;
+  return '';
+}
+window.formatPhoneInput = formatPhoneInput;
+window.normalizePhoneForApi = normalizePhoneForApi;
+window.validatePhoneStep = validatePhoneStep;
+window.phoneToApi = phoneToApi;

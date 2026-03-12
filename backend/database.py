@@ -1,4 +1,5 @@
 """Database connection and session management."""
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.pool import NullPool
 
@@ -42,11 +43,49 @@ async def get_db():
             await session.close()
 
 
+_BOOKINGS_CREATE = """
+CREATE TABLE IF NOT EXISTS bookings (
+    id TEXT PRIMARY KEY,
+    status TEXT,
+    created_at TEXT,
+    route_id TEXT,
+    from_city TEXT,
+    to_city TEXT,
+    date TEXT,
+    departure TEXT,
+    arrival TEXT,
+    passengers JSONB,
+    contact_phone TEXT,
+    contact_tg_id BIGINT,
+    contact_username TEXT,
+    price_total REAL,
+    payment_method TEXT,
+    dispatcher_id BIGINT,
+    taken_at TEXT,
+    paid_at TEXT,
+    is_archived BOOLEAN NOT NULL DEFAULT FALSE,
+    cancel_reason TEXT
+)
+"""
+_BOT_ROLES_CREATE = """
+CREATE TABLE IF NOT EXISTS bot_roles (
+    user_id BIGINT PRIMARY KEY,
+    is_admin BOOLEAN NOT NULL DEFAULT FALSE,
+    is_dispatcher BOOLEAN NOT NULL DEFAULT FALSE
+)
+"""
+
+
 async def init_db():
     """
-    Create all tables from models if they do not exist (fallback for first run / dev).
-    In production prefer: run `alembic upgrade head` before starting the app.
-    Schema changes: add new migrations via `alembic revision --autogenerate -m "description"`.
+    Create tables: bookings/bot_roles from raw SQL (совместимость с bus-bot), остальное из models.
+    В проде перед стартом выполняется alembic upgrade head.
     """
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        await conn.execute(text(_BOOKINGS_CREATE))
+        await conn.execute(text(_BOT_ROLES_CREATE))
+        webapp_tables = [
+            t for t in Base.metadata.sorted_tables
+            if t.name not in ("bookings", "bot_roles")
+        ]
+        await conn.run_sync(lambda c: Base.metadata.create_all(c, tables=webapp_tables))
