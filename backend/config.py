@@ -54,6 +54,10 @@ class Settings(BaseSettings):
     # Rate limiting (requests per minute per IP; 0 = off)
     rate_limit: int = 120
 
+    # CORS: TG WebApp — cross-origin (t.me → Render). allow_origins=["*"] + allow_credentials=True браузеры блокируют.
+    allowed_origins: str = "*"  # в проде: https://ваш-сервис.onrender.com (несколько через запятую)
+    allow_credentials: bool = False  # True только при использовании cookies (у нас авторизация через заголовки)
+
     @property
     def admin_ids_list(self) -> List[int]:
         # Поддержка ADMIN_IDS и опечатки ADMIN_ID в Render
@@ -91,6 +95,14 @@ class Settings(BaseSettings):
             except ValueError:
                 continue
         return out
+
+    @property
+    def allowed_origins_list(self) -> List[str]:
+        """Список разрешённых CORS origins из ALLOWED_ORIGINS (через запятую). Пусто или '*' → ['*']."""
+        raw = (getattr(self, "allowed_origins", "") or "").strip()
+        if not raw or raw == "*":
+            return ["*"]
+        return [x.strip() for x in raw.split(",") if x.strip()]
 
     class Config:
         env_file = [".env", "../.env"]

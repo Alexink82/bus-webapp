@@ -88,11 +88,11 @@ async def take_booking(
         raise HTTPException(404, detail="booking_not_found")
     if b.dispatcher_id and b.dispatcher_id != dispatcher_id:
         raise HTTPException(409, detail="already_taken")
-    b.dispatcher_id = dispatcher_id
+    b.dispatcher_id = int(dispatcher_id)
     b.status = "active"
     b.taken_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
     await log_action(db, "INFO", "dispatcher", "take_booking", user_id=dispatcher_id, details={"booking_id": booking_id})
-    await db.commit()
+    # commit выполняется в get_db после return
     if b.contact_tg_id:
         try:
             await notify_booking_status(b.contact_tg_id, booking_id, "active", "ru")
@@ -135,7 +135,7 @@ async def set_booking_status(
     if body.status == "paid":
         b.paid_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
     await log_action(db, "INFO", "dispatcher", "set_status", user_id=dispatcher_id, details={"booking_id": booking_id, "status": body.status})
-    await db.commit()
+    # commit выполняется в get_db после return
     if b.contact_tg_id:
         try:
             await notify_booking_status(b.contact_tg_id, booking_id, body.status, "ru")
