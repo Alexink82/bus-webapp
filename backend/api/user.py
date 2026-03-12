@@ -86,7 +86,6 @@ async def update_profile(
         p.first_name = body.first_name
     if body.last_name is not None:
         p.last_name = body.last_name
-    await db.commit()
     return {"success": True}
 
 
@@ -154,7 +153,6 @@ async def add_passenger(
     )
     db.add(p)
     await db.flush()
-    await db.commit()
     return {"id": p.id, "success": True}
 
 
@@ -185,7 +183,6 @@ async def update_passenger(
     p.middle_name = body.middle_name
     p.birth_date = bd
     p.passport = body.passport or None
-    await db.commit()
     return {"success": True}
 
 
@@ -205,7 +202,6 @@ async def delete_passenger(
     if not p:
         raise HTTPException(404, detail="passenger_not_found")
     await db.delete(p)
-    await db.commit()
     return {"success": True}
 
 

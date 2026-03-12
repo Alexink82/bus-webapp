@@ -179,7 +179,6 @@ async def create_booking(
         details={"booking_id": booking_id, "route_id": body.route_id, **({"start_param": x_telegram_start_param} if x_telegram_start_param else {})},
         ip_address=request.client.host if request.client else None,
     )
-    await db.commit()
 
     if user_id and user_id > 0:
         await notify_booking_created(
@@ -221,7 +220,9 @@ async def get_booking(
     is_admin_user = uid is not None and is_admin(uid)
     route_ids = await get_dispatcher_route_ids(db, uid) if uid else None
     is_dispatcher_user = route_ids is not None
-    full_access = is_owner or is_admin_user or is_dispatcher_user
+    # Диспетчер видит детали только по своим маршрутам (пустой список = все маршруты)
+    dispatcher_can_view = is_dispatcher_user and (not route_ids or b.route_id in route_ids)
+    full_access = is_owner or is_admin_user or dispatcher_can_view
     if full_access:
         return {
             "booking_id": b.id,
@@ -309,7 +310,6 @@ async def cancel_booking(
         b.cancel_reason = None
 
     b.status = "cancelled"
-    await db.commit()
     if b.contact_tg_id:
         await notify_booking_status(b.contact_tg_id, booking_id, "cancelled", "ru")
     return {"success": True, "status": "cancelled"}

@@ -18,15 +18,25 @@ router = APIRouter(tags=["websocket"])
 class ConnectionManager:
     def __init__(self):
         self.active_connections: dict = {}
+        # Маршруты по диспетчеру: пустой список = все маршруты
+        self.dispatcher_routes: dict[int, list] = {}
 
-    async def connect(self, websocket: WebSocket, dispatcher_id: int, already_accepted: bool = False):
+    async def connect(
+        self,
+        websocket: WebSocket,
+        dispatcher_id: int,
+        already_accepted: bool = False,
+        route_ids: list | None = None,
+    ):
         if not already_accepted:
             await websocket.accept()
         self.active_connections[dispatcher_id] = websocket
+        self.dispatcher_routes[dispatcher_id] = list(route_ids) if route_ids is not None else []
         logger.info("Dispatcher %s connected", dispatcher_id)
 
     def disconnect(self, dispatcher_id: int):
         self.active_connections.pop(dispatcher_id, None)
+        self.dispatcher_routes.pop(dispatcher_id, None)
         logger.info("Dispatcher %s disconnected", dispatcher_id)
 
     async def send_to_dispatcher(self, dispatcher_id: int, message: dict):
@@ -38,9 +48,11 @@ class ConnectionManager:
                 logger.warning("Send to %s failed: %s", dispatcher_id, e)
 
     async def broadcast_new_booking(self, booking: dict, route_id: str):
-        """Уведомить всех подключённых диспетчеров (проверка маршрута при подключении)."""
+        """Уведомить только диспетчеров, у которых в зоне маршрут route_id (пустой список = все)."""
         for did in list(self.active_connections.keys()):
-            await self.send_to_dispatcher(did, {"type": "new_booking", "data": booking})
+            allowed = self.dispatcher_routes.get(did, [])
+            if not allowed or route_id in allowed:
+                await self.send_to_dispatcher(did, {"type": "new_booking", "data": booking})
 
 
 manager = ConnectionManager()
@@ -71,7 +83,12 @@ async def websocket_dispatcher(websocket: WebSocket, dispatcher_id: int):
             if await get_dispatcher_route_ids(db, did) is None:
                 await websocket.close(code=4003)
                 return
-    await manager.connect(websocket, did, already_accepted=True)
+    async with AsyncSessionLocal() as db:
+        route_ids = await get_dispatcher_route_ids(db, did)
+    if route_ids is None:
+        await websocket.close(code=4003)
+        return
+    await manager.connect(websocket, did, already_accepted=True, route_ids=route_ids)
     try:
         while True:
             data = await websocket.receive_text()
