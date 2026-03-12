@@ -107,6 +107,10 @@ TG WebApp открывается с домена `t.me` (cross-origin). Запр
 
 **Вариант 2:** перейти на платный план Render (например, paid Web Service), где инстанс не останавливается при простое.
 
+## Диагностика логов на Render
+
+Если в Render не видны логи приложения (request/error/startup), используйте пошаговый чек-лист: `docs/RENDER_LOGS_TROUBLESHOOTING.md`.
+
 ## Структура
 
 - `backend/` — API и бизнес-логика (FastAPI)

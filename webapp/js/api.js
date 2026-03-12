@@ -5,6 +5,7 @@ var ERROR_MESSAGES = {
   blocked: 'Номер телефона или аккаунт заблокированы.',
   invalid_phone: 'Укажите корректный номер телефона.',
   invalid_date_format: 'Неверный формат даты.',
+  past_departure_time: 'Время отправления уже прошло. Выберите другой рейс или дату.',
   passengers_required: 'Укажите данных хотя бы одного пассажира.',
   route_not_found: 'Маршрут не найден.',
   booking_not_found: 'Заявка не найдена.',
