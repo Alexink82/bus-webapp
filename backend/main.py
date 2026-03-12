@@ -2,6 +2,7 @@
 import os
 import time
 import traceback
+import uuid
 from contextlib import asynccontextmanager
 from collections import defaultdict
 
@@ -29,11 +30,14 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    import asyncio
+
+    logger.info("Startup step: init_db begin")
     await init_db()
+    logger.info("Startup step: init_db done")
 
     # Автоматические миграции Alembic (синхронный command.upgrade в потоке)
     try:
-        import asyncio
         from alembic.config import Config
         from alembic import command
         alembic_cfg = Config(os.path.join(os.path.dirname(os.path.abspath(__file__)), "alembic.ini"))
@@ -43,16 +47,22 @@ async def lifespan(app: FastAPI):
         logger.warning("Alembic upgrade skipped: %s", e)
 
     try:
+        logger.info("Startup step: load_roles begin")
         from database import AsyncSessionLocal
         from services.roles import load_roles
         async with AsyncSessionLocal() as db:
             await load_roles(db)
+        logger.info("Startup step: load_roles done")
     except Exception as e:
         logger.warning("Load roles at startup: %s", e)
     try:
+        logger.info("Startup step: scheduler begin")
         from parsers.scheduler import start_scheduler, _update_cache
         start_scheduler()
-        await _update_cache()
+        await asyncio.wait_for(_update_cache(), timeout=20)
+        logger.info("Startup step: scheduler done")
+    except asyncio.TimeoutError:
+        logger.warning("Scheduler startup cache update timed out after 20s")
     except Exception as e:
         logger.warning("Scheduler or startup cache update failed: %s", e)
     logger.info("Bus Booking API startup complete")
@@ -107,18 +117,53 @@ async def rate_limit_middleware(request: Request, call_next):
 
 @app.middleware("http")
 async def log_requests_and_errors(request: Request, call_next):
-    """Логируем каждый запрос к API и все исключения с traceback (файл:строка)."""
+    """Логируем каждый API-запрос с request_id, статусом и длительностью.
+
+    Это помогает на Render сразу видеть полный цикл запроса и быстро искать
+    конкретный проблемный вызов по `request_id`.
+    """
     path = request.url.path
+    request_id = request.headers.get("X-Request-Id") or uuid.uuid4().hex[:12]
+    fwd_for = (request.headers.get("X-Forwarded-For") or "").split(",")[0].strip()
+    client_ip = fwd_for or (request.client.host if request.client else "")
+    started = time.perf_counter()
     if path.startswith("/api/"):
-        logger.info("API request %s %s | client=%s", request.method, path, request.client.host if request.client else "")
+        logger.info(
+            "API start id=%s %s %s | client=%s | query=%s",
+            request_id,
+            request.method,
+            path,
+            client_ip,
+            request.url.query or "-",
+        )
     try:
         response = await call_next(request)
-        if path.startswith("/api/") and response.status_code >= 400:
-            logger.warning("API response %s %s -> %s", request.method, path, response.status_code)
+        if path.startswith("/api/"):
+            elapsed_ms = (time.perf_counter() - started) * 1000
+            response.headers["X-Request-Id"] = request_id
+            log_fn = logger.warning if response.status_code >= 400 else logger.info
+            log_fn(
+                "API done id=%s %s %s -> %s | %.1fms",
+                request_id,
+                request.method,
+                path,
+                response.status_code,
+                elapsed_ms,
+            )
         return response
     except Exception as e:
         tb = traceback.format_exc()
-        logger.error("API error %s %s | %s | traceback:\n%s", request.method, path, e, tb)
+        elapsed_ms = (time.perf_counter() - started) * 1000
+        logger.error(
+            "API error id=%s %s %s | client=%s | %.1fms | %s | traceback:\n%s",
+            request_id,
+            request.method,
+            path,
+            client_ip,
+            elapsed_ms,
+            e,
+            tb,
+        )
         raise
 
 app.include_router(routes_router)
@@ -162,5 +207,4 @@ async def health():
 webapp_path = os.path.join(os.path.dirname(__file__), "..", "webapp")
 if os.path.isdir(webapp_path):
     app.mount("/", StaticFiles(directory=webapp_path, html=True), name="webapp")
-
 

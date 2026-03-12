@@ -12,6 +12,7 @@ def test_health(client):
     """Проверка живучести сервера."""
     r = client.get("/api/health")
     assert r.status_code == 200
+    assert r.headers.get("X-Request-Id")
     data = r.json()
     assert data.get("status") == "ok"
 
