@@ -63,8 +63,17 @@
       var bookingIdEl = document.getElementById('bookingId');
       if (id) bookingIdEl.textContent = (typeof t === 'function' ? t('bookingId') : 'Номер заявки') + ': ' + id;
       else bookingIdEl.textContent = (typeof t === 'function' ? t('success') : 'Заявка создана') + '.';
-      var cancelBtn = document.getElementById('cancelBookingBtn');
+      var statusEl = document.getElementById('statusText');
       if (id && typeof api === 'function') {
+        api('/api/bookings/' + encodeURIComponent(id)).then(function(b) {
+          if (statusEl && b && b.status) {
+            var statusMap = { new: 'Ожидает подтверждения диспетчером', active: 'В работе', paid: 'Оплачено', ticket_sent: 'Билет отправлен', done: 'Завершено', cancelled: 'Заявка отменена' };
+            statusEl.textContent = statusMap[b.status] || b.status;
+          }
+        }).catch(function() {});
+      }
+      var cancelBtn = document.getElementById('cancelBookingBtn');
+      if (id && typeof api === 'function' && cancelBtn) {
         cancelBtn.classList.remove('hidden');
         cancelBtn.onclick = function() {
           var msg = typeof t === 'function' ? t('cancelConfirm') : 'Вы уверены, что хотите отменить заявку?';

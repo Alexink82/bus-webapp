@@ -225,6 +225,7 @@ async def get_booking(
             "departure_time": b.departure,
             "passengers": b.passengers or [],
             "passengers_count": len(b.passengers) if b.passengers else 0,
+            "contact_phone": b.contact_phone or "",
             "price_total": b.price_total,
             "currency": "BYN",
             "payment_status": "paid" if b.paid_at else "pending",

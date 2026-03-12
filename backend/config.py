@@ -45,8 +45,8 @@ class Settings(BaseSettings):
 
     # App
     debug: bool = False
-    webapp_url: str = "http://localhost:8000"
-    backend_url: str = "http://localhost:8000"
+    webapp_url: str = ""
+    backend_url: str = ""
     # CORS: список разрешённых origin; ALLOWED_ORIGINS в env или allowed_origins (строка "*" = все / webapp_url)
     allowed_origins: str = "*"
     allow_credentials: bool = False

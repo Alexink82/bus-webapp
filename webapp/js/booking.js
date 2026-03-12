@@ -42,7 +42,8 @@
   let passengerCount = 1;
   const passengers = [];
 
-  document.getElementById('routeSummary').textContent = fromCity + ' \u2192 ' + toCity + ', ' + dateStr + ' ' + timeStr;
+  var routeSummaryEl = document.getElementById('routeSummary');
+  if (routeSummaryEl) routeSummaryEl.textContent = fromCity + ' \u2192 ' + toCity + ', ' + dateStr + ' ' + timeStr;
 
   fetch((typeof BASE_URL !== 'undefined' ? BASE_URL : '') + '/api/routes').then(function(r) { return r.json(); }).then(function(data) {
     route = (data.routes || []).find(function(r) { return r.id === routeId; });
@@ -53,6 +54,12 @@
     updateDiscountsBlock();
     renderPassengers();
     loadSavedPassengersForFill();
+    if (typeof updateBookingUIForStep === 'function') updateBookingUIForStep(1);
+  }).catch(function(err) {
+    var list = document.getElementById('passengersList');
+    var msg = 'Не удалось загрузить маршруты. Проверьте подключение или попробуйте позже.';
+    if (typeof showAppAlert === 'function') showAppAlert(msg, 'Ошибка');
+    else if (list) list.innerHTML = '<p class="field-error">' + (typeof escapeHtml === 'function' ? escapeHtml(msg) : msg) + '</p>';
     if (typeof updateBookingUIForStep === 'function') updateBookingUIForStep(1);
   });
 
