@@ -421,13 +421,34 @@
         }).join('');
       }
 
+      function parseTripDateTime(dateStr, timeStr) {
+        if (!dateStr || !timeStr) return null;
+        var t = String(timeStr).trim();
+        var parts = t.split(':');
+        if (parts.length < 2) return null;
+        var hh = parseInt(parts[0], 10);
+        var mm = parseInt(parts[1], 10);
+        if (Number.isNaN(hh) || Number.isNaN(mm)) return null;
+        var dparts = String(dateStr).split('-');
+        if (dparts.length !== 3) return null;
+        var y = parseInt(dparts[0], 10);
+        var m = parseInt(dparts[1], 10);
+        var d = parseInt(dparts[2], 10);
+        if (Number.isNaN(y) || Number.isNaN(m) || Number.isNaN(d)) return null;
+        return new Date(y, m - 1, d, hh, mm, 0, 0);
+      }
+
       function getTripsForDate(route, dateStr) {
-        const day = new Date(dateStr).getDay();
+        var dt = parseTripDateTime(dateStr, '12:00');
+        var day = dt ? dt.getDay() : new Date(dateStr).getDay();
         const schedule = route.schedule_days || [0,1,2,3,4,5,6];
         if (!schedule.includes(day)) return [];
+        const now = new Date();
         const stops = route.stops || [];
         const boarding = stops.filter(s => s.is_boarding);
-        return boarding.map(s => ({ stop: s, time: s.time }));
+        return boarding
+          .map(s => ({ stop: s, time: s.time, departureDt: parseTripDateTime(dateStr, s.time) }))
+          .filter(t => !t.departureDt || t.departureDt > now);
       }
 
       function showResults(routeId, dateStr) {
@@ -447,7 +468,7 @@
             <div class="trip-price">от ${esc(route.base_price)} BYN</div>
             <button type="button" class="btn btn-small" data-route-id="${esc(route.id)}" data-date="${esc(dateStr)}" data-time="${esc(t.time)}">Выбрать</button>
           </div>
-        `).join('') || '<p>На эту дату рейсов нет.</p>';
+        `).join('') || '<p>На эту дату рейсов нет или время отправления уже прошло.</p>';
         resultsList.querySelectorAll('.btn-small').forEach(btn => {
           btn.addEventListener('click', () => {
             const url = `booking.html?route_id=${btn.dataset.routeId}&from=${encodeURIComponent(fromCity)}&to=${encodeURIComponent(toCity)}&date=${btn.dataset.date}&time=${btn.dataset.time}`;
