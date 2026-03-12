@@ -11,6 +11,7 @@ from api.auth_deps import get_verified_telegram_user_id, get_optional_verified_t
 from models import UserProfile, SavedPassenger, Booking
 from services.roles import is_admin
 from services.roles import get_dispatcher_route_ids
+from services.validators import parse_birth_date
 
 router = APIRouter(prefix="/api/user", tags=["user"])
 log = logging.getLogger(__name__)
@@ -131,7 +132,9 @@ async def add_passenger(
     user_id: int = Depends(get_verified_telegram_user_id),
 ):
     try:
-        bd = date.fromisoformat(body.birth_date) if body.birth_date else None
+        bd = parse_birth_date(body.birth_date) if body.birth_date else None
+        if body.birth_date and bd is None:
+            raise ValueError("invalid_birth_date")
     except (ValueError, TypeError):
         raise HTTPException(400, detail="invalid_birth_date")
     p = SavedPassenger(
@@ -165,7 +168,9 @@ async def update_passenger(
     if not p:
         raise HTTPException(404, detail="passenger_not_found")
     try:
-        bd = date.fromisoformat(body.birth_date) if body.birth_date else None
+        bd = parse_birth_date(body.birth_date) if body.birth_date else None
+        if body.birth_date and bd is None:
+            raise ValueError("invalid_birth_date")
     except (ValueError, TypeError):
         raise HTTPException(400, detail="invalid_birth_date")
     p.last_name = body.last_name

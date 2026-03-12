@@ -87,9 +87,11 @@
       div.setAttribute('data-passenger-index', i);
       if (isInternational) {
         var birthVal = (p.birth_date || '');
-        if (birthVal.length === 10 && birthVal.indexOf('-') !== -1 && typeof isoToDob === 'function') birthVal = isoToDob(birthVal);
-        else if (birthVal.length === 10 && birthVal.indexOf('.') !== -1) { }
-        else if (birthVal && birthVal.length !== 10) birthVal = typeof isoToDob === 'function' ? isoToDob(birthVal) : '';
+        var birthIso = birthVal;
+        if (birthVal.length === 10 && birthVal.indexOf('-') !== -1) birthIso = birthVal;
+        else if (birthVal.length === 10 && birthVal.indexOf('.') !== -1 && typeof dobToIso === 'function') birthIso = dobToIso(birthVal) || birthVal;
+        else if (birthVal && birthVal.length !== 10) birthIso = typeof dobToIso === 'function' ? dobToIso(birthVal) : '';
+        var birthDisplay = typeof datePickerIsoToDisplay === 'function' ? datePickerIsoToDisplay(birthIso) : (birthVal.indexOf('.') !== -1 ? birthVal : birthIso);
         var passportDisplay = (p.passport || '');
         if (passportDisplay.length === 9 && passportDisplay.indexOf(' ') === -1) passportDisplay = passportDisplay.slice(0, 2) + ' ' + passportDisplay.slice(2);
         var passportRow = '<div class="field-group"><label>Паспорт (международный) <span class="required">*</span></label><p class="field-hint">Серия и номер: МР или MR и 7 цифр. Можно вводить кириллицей или латиницей.</p><input type="text" inputmode="text" maxlength="10" placeholder="МР 1234567" data-i="' + i + '" data-f="passport" value="' + passportDisplay + '"><span class="field-error" data-passenger-error="' + i + '"></span></div>';
@@ -98,7 +100,7 @@
           '<div class="field-group"><label>Фамилия <span class="required">*</span></label><input type="text" placeholder="Иванов" data-i="' + i + '" data-f="last_name" value="' + (p.last_name || '') + '"></div>' +
           '<div class="field-group"><label>Имя <span class="required">*</span></label><input type="text" placeholder="Иван" data-i="' + i + '" data-f="first_name" value="' + (p.first_name || '') + '"></div>' +
           '<div class="field-group"><label>Отчество</label><input type="text" placeholder="Иванович" data-i="' + i + '" data-f="middle_name" value="' + (p.middle_name || '') + '"></div>' +
-          '<div class="field-group"><label>Дата рождения пассажира <span class="required">*</span></label><p class="field-hint">День.Месяц.Год, например 31.12.1990</p><input type="text" inputmode="numeric" maxlength="10" placeholder="31.12.1990" data-i="' + i + '" data-f="birth_date" value="' + (birthVal || '') + '"><span class="field-error" data-dob-error="' + i + '"></span></div>' +
+          '<div class="field-group"><label>Дата рождения пассажира <span class="required">*</span></label><p class="field-hint">Нажмите на поле — выберите дату колёсами</p><input type="hidden" data-i="' + i + '" data-f="birth_date" value="' + (birthIso || '') + '"><button type="button" class="date-picker-trigger' + (birthDisplay ? '' : ' date-picker-trigger--empty') + '" data-i="' + i + '" data-f="birth_date">' + (birthDisplay || 'Выберите дату') + '</button><span class="field-error" data-dob-error="' + i + '"></span></div>' +
           passportRow +
           '<span class="field-error passenger-block-error" data-passenger-index="' + i + '"></span>';
       } else {
@@ -118,18 +120,34 @@
         if (!passengers[i]) passengers[i] = {};
         passengers[i][f] = this.value;
       });
-      if (inp.getAttribute('data-f') === 'birth_date' && typeof formatDobInput === 'function') {
-        inp.addEventListener('input', function() {
-          var v = formatDobInput(this.value);
-          if (v !== this.value) { this.value = v; var i = parseInt(this.getAttribute('data-i'), 10); if (!passengers[i]) passengers[i] = {}; passengers[i].birth_date = v; }
-        });
-      }
       if (inp.getAttribute('data-f') === 'passport' && typeof formatPassportInput === 'function') {
         inp.addEventListener('input', function() {
           var v = formatPassportInput(this.value);
           if (v !== this.value) { this.value = v; var i = parseInt(this.getAttribute('data-i'), 10); if (!passengers[i]) passengers[i] = {}; passengers[i].passport = v; }
         });
       }
+    });
+    list.querySelectorAll('.date-picker-trigger').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var i = parseInt(btn.getAttribute('data-i'), 10);
+        var hiddenInp = list.querySelector('input[data-i="' + i + '"][data-f="birth_date"]');
+        var initialIso = (hiddenInp && hiddenInp.value) || (passengers[i] && passengers[i].birth_date) || '';
+        if (initialIso && initialIso.indexOf('-') === -1 && typeof dobToIso === 'function') initialIso = dobToIso(initialIso) || initialIso;
+        if (typeof showDatePicker === 'function') {
+          showDatePicker({
+            title: 'Дата рождения',
+            initialIso: initialIso || null,
+            onSelect: function(iso) {
+              if (!passengers[i]) passengers[i] = {};
+              passengers[i].birth_date = iso;
+              if (hiddenInp) hiddenInp.value = iso;
+              btn.textContent = typeof datePickerIsoToDisplay === 'function' ? datePickerIsoToDisplay(iso) : iso;
+              btn.classList.remove('date-picker-trigger--empty');
+              clearStep1Errors();
+            }
+          });
+        }
+      });
     });
   }
 
@@ -139,7 +157,10 @@
       var f = inp.getAttribute('data-f');
       if (!passengers[i]) passengers[i] = {};
       var val = inp.value;
-      if (f === 'birth_date' && typeof dobToIso === 'function') val = dobToIso(val) || val;
+      if (f === 'birth_date') {
+        if (val.indexOf('-') !== -1) { /* уже ISO */ }
+        else if (typeof dobToIso === 'function') val = dobToIso(val) || val;
+      }
       if (f === 'passport' && typeof passportToApi === 'function') val = passportToApi(val) || val;
       passengers[i][f] = val;
     });
@@ -173,6 +194,7 @@
       var invalidDob = list.findIndex(function(p) {
         var raw = (p.birth_date || '').trim();
         if (!raw) return true;
+        if (raw.length === 10 && raw.indexOf('-') !== -1) return false;
         var iso = typeof dobToIso === 'function' ? dobToIso(raw) : '';
         return !iso || iso.length !== 10;
       });

@@ -3,6 +3,31 @@ import re
 from datetime import date, datetime, timedelta
 
 
+def parse_birth_date(value: str | None) -> date | None:
+    """Принимает ISO (YYYY-MM-DD) или DD.MM.YYYY. Возвращает date или None при ошибке."""
+    if not value or not isinstance(value, str):
+        return None
+    s = value.strip()
+    if not s:
+        return None
+    # ISO: YYYY-MM-DD
+    if re.match(r"^\d{4}-\d{2}-\d{2}$", s):
+        try:
+            return date.fromisoformat(s)
+        except ValueError:
+            return None
+    # DD.MM.YYYY или DD-MM-YYYY
+    m = re.match(r"^(\d{1,2})[.\-](\d{1,2})[.\-](\d{4})$", s)
+    if m:
+        try:
+            day, month, year = int(m.group(1)), int(m.group(2)), int(m.group(3))
+            if 1 <= day <= 31 and 1 <= month <= 12 and 1900 <= year <= 2100:
+                return date(year, month, day)
+        except (ValueError, TypeError):
+            pass
+    return None
+
+
 def validate_phone(phone: str) -> bool:
     if not phone or not isinstance(phone, str):
         return False
@@ -16,7 +41,8 @@ def validate_passport(passport: str, route_type: str) -> bool:
     if not passport or not isinstance(passport, str):
         return False
     s = passport.strip().upper().replace(" ", "")
-    for cyr, lat in (("М", "M"), ("Р", "R")):
+    cyr_to_lat = {"М": "M", "Р": "R", "Н": "N", "В": "V", "А": "A", "Б": "B", "Е": "E", "К": "K", "О": "O", "Т": "T", "С": "S", "У": "U", "Х": "H", "Г": "G", "Д": "D", "Л": "L", "П": "P", "И": "I", "Й": "J"}
+    for cyr, lat in cyr_to_lat.items():
         s = s.replace(cyr, lat)
     return bool(re.match(r"^[A-Z]{2}\d{7}$", s))
 
@@ -36,9 +62,8 @@ def validate_passenger(passenger: dict, route_type: str, travel_date: date) -> t
     if not bd:
         return False, "birth_date_required"
     if isinstance(bd, str):
-        try:
-            bd = date.fromisoformat(bd)
-        except ValueError:
+        bd = parse_birth_date(bd)
+        if bd is None:
             return False, "birth_date_invalid"
     if bd > travel_date:
         return False, "birth_date_future"

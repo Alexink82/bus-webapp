@@ -81,6 +81,20 @@ _BOOKINGS_ADD_CANCEL_REASON = """
 ALTER TABLE bookings ADD COLUMN IF NOT EXISTS cancel_reason TEXT
 """
 
+# Telegram user_id может превышать int32 (например 7345144922). Приводим колонки к BIGINT.
+_ALTER_USER_PROFILES_USER_ID = """
+ALTER TABLE user_profiles ALTER COLUMN user_id TYPE BIGINT USING user_id::bigint
+"""
+_ALTER_SAVED_PASSENGERS_USER_ID = """
+ALTER TABLE saved_passengers ALTER COLUMN user_id TYPE BIGINT USING user_id::bigint
+"""
+_ALTER_DISPATCHERS_TELEGRAM_ID = """
+ALTER TABLE dispatchers ALTER COLUMN telegram_id TYPE BIGINT USING telegram_id::bigint
+"""
+_ALTER_BOT_ROLES_USER_ID = """
+ALTER TABLE bot_roles ALTER COLUMN user_id TYPE BIGINT USING user_id::bigint
+"""
+
 
 async def init_db():
     """Create tables: shared (bookings, bot_roles) IF NOT EXISTS, then webapp-only."""
@@ -100,3 +114,13 @@ async def init_db():
             if t.name not in ("bookings", "bot_roles")
         ]
         await conn.run_sync(lambda c: Base.metadata.create_all(c, tables=webapp_tables))
+        for stmt in [
+            _ALTER_USER_PROFILES_USER_ID,
+            _ALTER_SAVED_PASSENGERS_USER_ID,
+            _ALTER_DISPATCHERS_TELEGRAM_ID,
+            _ALTER_BOT_ROLES_USER_ID,
+        ]:
+            try:
+                await conn.execute(text(stmt))
+            except Exception:
+                pass

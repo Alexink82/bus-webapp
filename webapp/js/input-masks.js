@@ -31,11 +31,13 @@ var passportCyrillicToLatin = {
   'А':'A','Б':'B','В':'V','Г':'G','Д':'D','Е':'E','Ё':'E','Ж':'Z','З':'Z','И':'I','Й':'J','К':'K','Л':'L','М':'M','Н':'N','О':'O','П':'P','Р':'R','С':'S','Т':'T','У':'U','Ф':'F','Х':'H','Ц':'C','Ч':'CH','Ш':'SH','Щ':'SCH','Ъ':'','Ы':'Y','Ь':'','Э':'E','Ю':'U','Я':'YA'
 };
 function _passportCharToLatin(ch) {
+  if (!ch) return '';
   var u = ch.toUpperCase();
   var l = ch.toLowerCase();
+  if (/[A-Za-z]/.test(ch)) return u;
   if (passportCyrillicToLatin[u]) return passportCyrillicToLatin[u].charAt(0).toUpperCase();
   if (passportCyrillicToLatin[ch]) return passportCyrillicToLatin[ch].charAt(0).toUpperCase();
-  return /[A-Z]/.test(ch) ? ch : '';
+  return '';
 }
 
 function formatPassportInput(value) {
@@ -55,14 +57,14 @@ function formatPassportInput(value) {
 }
 
 function passportToApi(value) {
-  var s = (value || '').replace(/\s/g, '');
+  var s = (value || '').replace(/\s/g, '').toUpperCase();
   var out = '';
   for (var i = 0; i < s.length; i++) {
     var c = _passportCharToLatin(s[i]);
     if (c) out += c;
     else if (/\d/.test(s[i])) out += s[i];
   }
-  return out.toUpperCase();
+  return out;
 }
 
 window.formatDobInput = formatDobInput;

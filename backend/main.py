@@ -119,6 +119,7 @@ app.include_router(faq_router)
 
 
 @app.get("/api/health")
+@app.head("/api/health")
 async def health():
     """Статус сервиса. При MAINTENANCE_UNTIL (ISO дата-время) в будущем возвращает режим технических работ."""
     import os

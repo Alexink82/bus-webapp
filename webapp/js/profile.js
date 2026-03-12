@@ -36,7 +36,7 @@
       '<div class="field-group"><label>Фамилия <span class="required">*</span></label><input type="text" id="apLast" required placeholder="Иванов"></div>' +
       '<div class="field-group"><label>Имя <span class="required">*</span></label><input type="text" id="apFirst" required placeholder="Иван"></div>' +
       '<div class="field-group"><label>Отчество</label><input type="text" id="apMiddle" placeholder="Иванович"></div>' +
-      '<div class="field-group"><label>Дата рождения <span class="required">*</span></label><input type="text" id="apBirth" maxlength="10" placeholder="31.12.1990"></div>' +
+      '<div class="field-group"><label>Дата рождения <span class="required">*</span></label><p class="field-hint">Нажмите на поле — выберите дату колёсами</p><input type="hidden" id="apBirthIso" value=""><button type="button" class="date-picker-trigger date-picker-trigger--empty" id="apBirthTrigger">Выберите дату</button></div>' +
       '<div class="field-group"><label>Паспорт (серия и номер)</label><input type="text" id="apPassport" maxlength="10" placeholder="МР 1234567"></div>' +
       '<p id="addPassengerError" class="field-error"></p>' +
       '</form></div>' +
@@ -50,21 +50,34 @@
     overlay.addEventListener('click', function(e) { if (e.target === overlay) close(); });
     content.querySelector('.app-modal-close').addEventListener('click', close);
     content.querySelector('#addPassengerCancel').addEventListener('click', close);
-    var birthInp = content.querySelector('#apBirth');
+    var birthTrigger = content.querySelector('#apBirthTrigger');
+    var birthIsoInp = content.querySelector('#apBirthIso');
     var passportInp = content.querySelector('#apPassport');
-    if (typeof formatDobInput === 'function') birthInp.addEventListener('input', function() { this.value = formatDobInput(this.value); });
+    if (birthTrigger && typeof showDatePicker === 'function') {
+      birthTrigger.addEventListener('click', function() {
+        var initialIso = (birthIsoInp && birthIsoInp.value) || null;
+        showDatePicker({
+          title: 'Дата рождения',
+          initialIso: initialIso,
+          onSelect: function(iso) {
+            if (birthIsoInp) birthIsoInp.value = iso;
+            birthTrigger.textContent = typeof datePickerIsoToDisplay === 'function' ? datePickerIsoToDisplay(iso) : iso;
+            birthTrigger.classList.remove('date-picker-trigger--empty');
+          }
+        });
+      });
+    }
     if (typeof formatPassportInput === 'function') passportInp.addEventListener('input', function() { this.value = formatPassportInput(this.value); });
     content.querySelector('#addPassengerSave').addEventListener('click', function() {
       var last = (content.querySelector('#apLast').value || '').trim();
       var first = (content.querySelector('#apFirst').value || '').trim();
       var middle = (content.querySelector('#apMiddle').value || '').trim();
-      var birthRaw = (content.querySelector('#apBirth').value || '').trim();
+      var birthIso = (content.querySelector('#apBirthIso').value || '').trim();
       var passportRaw = (content.querySelector('#apPassport').value || '').trim();
       var errEl = content.querySelector('#addPassengerError');
       errEl.textContent = '';
       if (!last || !first) { errEl.textContent = 'Укажите фамилию и имя.'; return; }
-      var birthIso = typeof dobToIso === 'function' ? dobToIso(birthRaw) : birthRaw;
-      if (!birthIso || birthIso.length !== 10) { errEl.textContent = 'Введите дату рождения (день.месяц.год, например 31.12.1990).'; return; }
+      if (!birthIso || birthIso.length !== 10 || birthIso.indexOf('-') === -1) { errEl.textContent = 'Выберите дату рождения.'; return; }
       var passport = typeof passportToApi === 'function' ? passportToApi(passportRaw) : passportRaw.replace(/\s/g, '');
       var payload = { last_name: last, first_name: first, middle_name: middle, birth_date: birthIso, passport: passport || '' };
       apiFn('/api/user/passengers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
@@ -76,7 +89,7 @@
     });
     root.appendChild(overlay);
     requestAnimationFrame(function() { overlay.classList.add('app-modal-visible'); });
-    if (birthInp) birthInp.focus();
+    if (birthTrigger) birthTrigger.focus();
   };
 
   function loadBookings() {
@@ -125,7 +138,7 @@
       var items = data.passengers || [];
       list.innerHTML = items.map(function(p) {
         var esc = function(s) { if (s == null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
-        return '<div class="trip-card" data-id="' + esc(p.id) + '">' + esc(p.last_name) + ' ' + esc(p.first_name) + ' ' + esc(p.middle_name || '') + ' | ' + esc(p.birth_date) +
+        return '<div class="trip-card" data-id="' + esc(p.id) + '">' + esc(p.last_name) + ' ' + esc(p.first_name) + ' ' + esc(p.middle_name || '') + ' | ' + esc(typeof datePickerIsoToDisplay === 'function' ? (datePickerIsoToDisplay(p.birth_date) || p.birth_date) : p.birth_date) +
           ' <button type="button" class="btn btn-small delete-passenger" data-id="' + esc(p.id) + '">Удалить</button></div>';
       }).join('');
       list.querySelectorAll('.delete-passenger').forEach(function(btn) {
