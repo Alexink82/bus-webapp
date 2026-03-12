@@ -386,10 +386,12 @@
   function collectPassengers() {
     document.querySelectorAll('#passengersList input').forEach(function(inp) {
       var i = parseInt(inp.getAttribute('data-i'), 10);
+      if (isNaN(i) || i < 0) return;
       var f = inp.getAttribute('data-f');
       if (!f) return;
       if (!passengers[i]) passengers[i] = {};
       var val = inp.value;
+      if (typeof val === 'string' && f !== 'birth_date' && f !== 'passport') val = val.trim();
       if (f === 'birth_date') {
         if (val.indexOf('-') !== -1) { /* уже ISO */ }
         else if (typeof dobToIso === 'function') val = dobToIso(val) || val;
@@ -403,6 +405,21 @@
       }
       passengers[i][f] = val;
     });
+    // Если скрытое поле даты пустое — брать из видимого (IMask мог не вызвать onAccept)
+    for (var idx = 0; idx < passengerCount; idx++) {
+      if (passengers[idx] && (!passengers[idx].birth_date || !passengers[idx].birth_date.trim())) {
+        var block = document.querySelector('#passengersList .passenger-block[data-passenger-index="' + idx + '"]');
+        var visibleDateInp = block ? block.querySelector('.birth-date-input') : null;
+        if (visibleDateInp && visibleDateInp.value && typeof dobToIso === 'function') {
+          var iso = dobToIso(visibleDateInp.value.trim());
+          if (iso) {
+            passengers[idx].birth_date = iso;
+            var hiddenInp = block ? block.querySelector('input[data-f="birth_date"]') : null;
+            if (hiddenInp) hiddenInp.value = iso;
+          }
+        }
+      }
+    }
     var isInternational = route && route.type === 'international';
     return passengers.slice(0, passengerCount).map(function(p) {
       if (isInternational) {
@@ -423,10 +440,14 @@
     var isInternational = route && route.type === 'international';
     var list = passengers.slice(0, passengerCount);
     if (isInternational) {
-      var valid = list.every(function(p) { return p.last_name && p.first_name && p.birth_date; });
+      var valid = list.every(function(p) {
+        return (p.last_name || '').trim() && (p.first_name || '').trim() && (p.birth_date || '').trim();
+      });
       if (!valid) {
         setError('step1Errors', 'Заполните фамилию, имя и дату рождения у всех пассажиров.');
-        var firstInvalid = list.findIndex(function(p) { return !p.last_name || !p.first_name || !p.birth_date; });
+        var firstInvalid = list.findIndex(function(p) {
+          return !(p.last_name || '').trim() || !(p.first_name || '').trim() || !(p.birth_date || '').trim();
+        });
         var errEl = document.querySelector('.passenger-block-error[data-passenger-index="' + firstInvalid + '"]');
         if (errEl) errEl.textContent = 'Укажите фамилию, имя и дату рождения.';
         var step1Errors = getEl('step1Errors');
