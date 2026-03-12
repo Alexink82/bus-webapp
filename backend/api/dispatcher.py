@@ -1,4 +1,5 @@
 """Dispatcher API - bookings, take, status, stats."""
+import logging
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -13,6 +14,7 @@ from services.roles import get_dispatcher_route_ids
 from services.notification import notify_booking_status
 from logging_config import log_action
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/dispatcher", tags=["dispatcher"])
 
 
@@ -92,7 +94,10 @@ async def take_booking(
     await log_action(db, "INFO", "dispatcher", "take_booking", user_id=dispatcher_id, details={"booking_id": booking_id})
     await db.commit()
     if b.contact_tg_id:
-        await notify_booking_status(b.contact_tg_id, booking_id, "active", "ru")
+        try:
+            await notify_booking_status(b.contact_tg_id, booking_id, "active", "ru")
+        except Exception as e:
+            logger.exception("take_booking: notify_booking_status failed: %s", e)
     return {"success": True, "status": "active"}
 
 
@@ -132,7 +137,10 @@ async def set_booking_status(
     await log_action(db, "INFO", "dispatcher", "set_status", user_id=dispatcher_id, details={"booking_id": booking_id, "status": body.status})
     await db.commit()
     if b.contact_tg_id:
-        await notify_booking_status(b.contact_tg_id, booking_id, body.status, "ru")
+        try:
+            await notify_booking_status(b.contact_tg_id, booking_id, body.status, "ru")
+        except Exception as e:
+            logger.exception("set_booking_status: notify_booking_status failed: %s", e)
     return {"success": True, "status": body.status}
 
 

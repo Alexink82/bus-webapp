@@ -23,9 +23,82 @@
     var borderEl = document.getElementById('borderDocs');
     if (route.border_docs_text) borderEl.textContent = 'Документы для границы: ' + route.border_docs_text;
     else borderEl.textContent = '';
+    updateDiscountsBlock();
     renderPassengers();
     loadSavedPassengersForFill();
   });
+
+  function getDiscountRulesText() {
+    if (!route) return '';
+    var name = (route.name || '').replace(/\s*→\s*/, ' — ');
+    if (route.type === 'international') {
+      return 'Льготы по маршруту ' + name + ': до 2 лет включительно — скидка 100%, с предоставлением места; до 11 лет включительно — скидка 50%, с предоставлением места.';
+    }
+    if (route.type === 'local') {
+      return 'Льготы по маршруту Гомель — Мозырь — Гомель: до 9 лет включительно — скидка 50%, с предоставлением места. При указании даты рождения скидка рассчитывается автоматически.';
+    }
+    return '';
+  }
+
+  function updateDiscountsBlock() {
+    var block = document.getElementById('discountsBlock');
+    if (!block) return;
+    var text = getDiscountRulesText();
+    if (!text) { block.classList.add('hidden'); block.innerHTML = ''; return; }
+    block.classList.remove('hidden');
+    block.innerHTML = '<p class="discounts-block__text">' + (typeof escapeHtml === 'function' ? escapeHtml(text) : text.replace(/</g, '&lt;')) + '</p>';
+  }
+
+  function getAgeAtTravel(birthIso, travelDateStr) {
+    if (!birthIso || birthIso.length !== 10 || !travelDateStr || travelDateStr.length !== 10) return null;
+    var b = birthIso.split('-').map(Number);
+    var t = travelDateStr.split('-').map(Number);
+    if (b.length !== 3 || t.length !== 3) return null;
+    var age = t[0] - b[0];
+    if (t[1] < b[1] || (t[1] === b[1] && t[2] < b[2])) age--;
+    return age >= 0 ? age : null;
+  }
+
+  function getPassengerDiscountLabel(birthIso, travelDateStr) {
+    if (!route || !route.discount_rules || !birthIso || !travelDateStr) return '';
+    var age = getAgeAtTravel(birthIso, travelDateStr);
+    if (age === null) return '';
+    var rules = route.discount_rules;
+    var keys = Object.keys(rules);
+    for (var k = 0; k < keys.length; k++) {
+      var r = rules[keys[k]];
+      var ageTo = r.age_to;
+      if (age <= ageTo) return (r.label || keys[k]) + ': скидка ' + (r.discount_percent || 0) + '%, с местом';
+    }
+    return 'Взрослый';
+  }
+
+  function getPassengerDiscountPercent(birthIso, travelDateStr) {
+    if (!route || !route.discount_rules || !birthIso || !travelDateStr) return 0;
+    var age = getAgeAtTravel(birthIso, travelDateStr);
+    if (age === null) return 0;
+    var rules = route.discount_rules;
+    for (var key in rules) {
+      var r = rules[key];
+      if (age <= (r.age_to || 0)) return r.discount_percent || 0;
+    }
+    return 0;
+  }
+
+  function recalcPriceSummary() {
+    var summaryEl = getEl('priceSummary');
+    if (!summaryEl || !route || !dateStr) return;
+    var base = route.base_price || 0;
+    var total = 0;
+    for (var i = 0; i < passengerCount; i++) {
+      var p = passengers[i] || {};
+      var bd = (p.birth_date || '').trim();
+      if (bd.length === 10 && bd.indexOf('-') === -1 && typeof dobToIso === 'function') bd = dobToIso(bd) || bd;
+      var pct = getPassengerDiscountPercent(bd, dateStr);
+      total += base * (1 - pct / 100);
+    }
+    summaryEl.textContent = 'Итого: ' + total.toFixed(2) + ' BYN';
+  }
 
   var savedPassengersForFill = [];
 
@@ -122,14 +195,19 @@
           '<div class="field-group"><label>Фамилия <span class="required">*</span></label><input type="text" placeholder="Иванов" data-i="' + i + '" data-f="last_name" value="' + (p.last_name || '') + '"></div>' +
           '<div class="field-group"><label>Имя <span class="required">*</span></label><input type="text" placeholder="Иван" data-i="' + i + '" data-f="first_name" value="' + (p.first_name || '') + '"></div>' +
           '<div class="field-group"><label>Отчество</label><input type="text" placeholder="Иванович" data-i="' + i + '" data-f="middle_name" value="' + (p.middle_name || '') + '"></div>' +
-          '<div class="field-group"><label>Дата рождения пассажира <span class="required">*</span></label><p class="field-hint">Нажмите на поле — выберите дату колёсами</p><input type="hidden" data-i="' + i + '" data-f="birth_date" value="' + (birthIso || '') + '"><button type="button" class="date-picker-trigger' + (birthDisplay ? '' : ' date-picker-trigger--empty') + '" data-i="' + i + '" data-f="birth_date">' + (birthDisplay || 'Выберите дату') + '</button><span class="field-error" data-dob-error="' + i + '"></span></div>' +
+          '<div class="field-group"><label>Дата рождения пассажира <span class="required">*</span></label><p class="field-hint">Нажмите на поле — выберите дату колёсами</p><input type="hidden" data-i="' + i + '" data-f="birth_date" value="' + (birthIso || '') + '"><button type="button" class="date-picker-trigger' + (birthDisplay ? '' : ' date-picker-trigger--empty') + '" data-i="' + i + '" data-f="birth_date">' + (birthDisplay || 'Выберите дату') + '</button><span class="passenger-discount-label" data-i="' + i + '">' + (getPassengerDiscountLabel(birthIso, dateStr) ? ' • ' + getPassengerDiscountLabel(birthIso, dateStr) : '') + '</span><span class="field-error" data-dob-error="' + i + '"></span></div>' +
           passportRow +
           '<span class="field-error passenger-block-error" data-passenger-index="' + i + '"></span>';
       } else {
+        var birthVal = (p.birth_date || '');
+        var birthIso = birthVal.length === 10 && birthVal.indexOf('-') !== -1 ? birthVal : (typeof dobToIso === 'function' ? dobToIso(birthVal) || '' : '');
+        var birthDisplay = typeof datePickerIsoToDisplay === 'function' ? datePickerIsoToDisplay(birthIso) : (birthVal.indexOf('.') !== -1 ? birthVal : birthIso);
+        var discountLabel = getPassengerDiscountLabel(birthIso, dateStr);
         div.innerHTML =
           '<label class="passenger-block__title">Пассажир ' + (i + 1) + '</label>' +
-          '<p class="field-hint field-hint--block">Для внутреннего рейса достаточно имени и контактного телефона (телефон — на следующем шаге).</p>' +
+          '<p class="field-hint field-hint--block">Для внутреннего рейса — имя и по желанию дата рождения для расчёта льготы (до 9 лет 50%).</p>' +
           '<div class="field-group"><label>Имя пассажира <span class="required">*</span></label><input type="text" placeholder="Иван Иванов" data-i="' + i + '" data-f="first_name" value="' + (p.first_name || '') + '"></div>' +
+          '<div class="field-group"><label>Дата рождения (для льготы)</label><p class="field-hint">Нажмите на поле — выберите дату колёсами</p><input type="hidden" data-i="' + i + '" data-f="birth_date" value="' + (birthIso || '') + '"><button type="button" class="date-picker-trigger' + (birthDisplay ? '' : ' date-picker-trigger--empty') + '" data-i="' + i + '" data-f="birth_date">' + (birthDisplay || 'Указать дату рождения') + '</button><span class="passenger-discount-label" data-i="' + i + '">' + (discountLabel ? ' • ' + discountLabel : '') + '</span></div>' +
           '<span class="field-error passenger-block-error" data-passenger-index="' + i + '"></span>';
       }
       list.appendChild(div);
@@ -229,7 +307,10 @@
               if (hiddenInp) hiddenInp.value = iso;
               btn.textContent = typeof datePickerIsoToDisplay === 'function' ? datePickerIsoToDisplay(iso) : iso;
               btn.classList.remove('date-picker-trigger--empty');
+              var labelEl = list.querySelector('.passenger-discount-label[data-i="' + i + '"]');
+              if (labelEl) { var lbl = getPassengerDiscountLabel(iso, dateStr); labelEl.textContent = lbl ? ' • ' + lbl : ''; }
               clearStep1Errors();
+              recalcPriceSummary();
             }
           });
         }
@@ -266,7 +347,7 @@
         if (typeof passportCleanForApi === 'function') pass = passportCleanForApi(pass, countryCode);
         return { last_name: p.last_name || '', first_name: p.first_name || '', middle_name: p.middle_name || '', birth_date: bd, passport: pass, passport_country: countryCode, citizenship: countryCode };
       }
-      return { last_name: '', first_name: (p.first_name || '').trim(), middle_name: '', birth_date: '', passport: '' };
+      return { last_name: '', first_name: (p.first_name || '').trim(), middle_name: '', birth_date: (p.birth_date || '').trim(), passport: '' };
     });
   }
 
@@ -342,8 +423,7 @@
     clearStep2Errors();
     var phoneVal = (typeof getTelegramUserId === 'function' && getTelegramUserId() ? '' : '');
     if (getEl('phone').value.trim() === '' && phoneVal) getEl('phone').value = phoneVal;
-    var oneWay = route ? (route.base_price || 0) * passengerCount : 0;
-    getEl('priceSummary').textContent = 'Итого: ' + oneWay.toFixed(2) + ' BYN';
+    recalcPriceSummary();
   });
 
   function initPhoneFields() {
@@ -351,10 +431,10 @@
     var phoneCountry = getEl('phoneCountry');
     var anotherInp = getEl('anotherPersonPhone');
     var anotherCountry = getEl('anotherPhoneCountry');
-    function updatePlaceholder(inp, code) {
+  function updatePlaceholder(inp, code) {
       if (!inp) return;
-      var c = typeof getPhoneCountry === 'function' ? getPhoneCountry(code) : null;
-      inp.placeholder = c ? c.placeholder : '+375 (29) 123-45-67';
+      var fn = typeof getPhonePlaceholderLocal === 'function' ? getPhonePlaceholderLocal : (typeof getPhoneCountry === 'function' ? function(c) { var x = getPhoneCountry(c); return x ? x.placeholder : ''; } : function() { return '+375 (29) 123-45-67'; });
+      inp.placeholder = fn(code);
     }
     if (phoneCountry && phoneInp && !phoneInp.dataset.phoneInited) {
       phoneInp.dataset.phoneInited = '1';
@@ -364,8 +444,8 @@
         clearStep2Errors();
       });
       phoneInp.addEventListener('input', function() {
-        if (typeof formatPhoneInput === 'function') {
-          var v = formatPhoneInput(this.value, phoneCountry.value);
+        if (typeof formatPhoneInputLocal === 'function') {
+          var v = formatPhoneInputLocal(this.value, phoneCountry.value);
           if (v !== this.value) this.value = v;
         }
         clearStep2Errors();
@@ -379,8 +459,8 @@
         anotherInp.value = '';
       });
       anotherInp.addEventListener('input', function() {
-        if (typeof formatPhoneInput === 'function') {
-          var v = formatPhoneInput(this.value, anotherCountry.value);
+        if (typeof formatPhoneInputLocal === 'function') {
+          var v = formatPhoneInputLocal(this.value, anotherCountry.value);
           if (v !== this.value) this.value = v;
         }
       });

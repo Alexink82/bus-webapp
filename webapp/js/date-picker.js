@@ -90,6 +90,13 @@
       if (onScroll) onScroll(getSelectedValue());
     });
 
+    col.addEventListener('touchstart', function(e) { e.stopPropagation(); }, { passive: true });
+    col.addEventListener('touchmove', function(e) { e.stopPropagation(); }, { passive: true });
+    col.addEventListener('touchend', function(e) { e.stopPropagation(); }, { passive: true });
+    col.addEventListener('wheel', function(e) {
+      e.stopPropagation();
+    }, { passive: false });
+
     scrollToValue(currentValue);
     return { el: wrap, getValue: getSelectedValue, scrollToValue: scrollToValue };
   }
@@ -105,7 +112,7 @@
     var yearMin = 1940;
     var yearMax = currentYear;
     if (!parsed) {
-      parsed = { day: 15, month: 6, year: 1990 };
+      parsed = { day: 15, month: 6, year: 1989 };
     }
     parsed.day = Math.min(parsed.day, getDaysInMonth(parsed.year, parsed.month));
 
@@ -207,6 +214,7 @@
 
     function close() {
       overlay.classList.remove('date-picker-visible');
+      document.body.classList.remove('date-picker-open');
       setTimeout(function() {
         if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
       }, 220);
@@ -221,6 +229,7 @@
     });
 
     root.appendChild(overlay);
+    document.body.classList.add('date-picker-open');
     requestAnimationFrame(function() { overlay.classList.add('date-picker-visible'); });
   };
 

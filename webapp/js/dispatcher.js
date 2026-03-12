@@ -20,8 +20,15 @@
     return fetch(url, { ...opts, headers: mergedHeaders }).then(r =>
       r.json().catch(() => ({})).then(data => {
         if (!r.ok) {
-          const msg = data.detail?.code || data.detail || r.statusText;
-          const e = new Error(typeof msg === 'string' ? msg : (data.detail && data.detail.code) || 'error');
+          const detail = data.detail;
+          let msg = '';
+          if (typeof window.userFriendlyMessage === 'function' && detail != null)
+            msg = window.userFriendlyMessage(detail);
+          if (!msg && typeof detail === 'string') msg = (window.ERROR_MESSAGES && window.ERROR_MESSAGES[detail]) || detail;
+          if (!msg && detail && typeof detail === 'object' && detail.code) msg = (window.ERROR_MESSAGES && window.ERROR_MESSAGES[detail.code]) || detail.code;
+          if (!msg && Array.isArray(detail) && detail.length > 0) msg = detail[0].msg || 'Ошибка валидации.';
+          if (!msg) msg = r.statusText || 'Произошла ошибка. Попробуйте позже.';
+          const e = new Error(msg);
           e.status = r.status;
           e.body = data;
           throw e;
@@ -63,7 +70,7 @@
         btn.addEventListener('click', () => {
           api('/api/dispatcher/bookings/' + btn.dataset.id + '/take', { method: 'POST' })
             .then(() => { loadNew(); loadActive(); })
-            .catch(e => alert(e.message || 'Ошибка'));
+            .catch(e => alert(e && e.message ? e.message : 'Произошла ошибка. Попробуйте позже.'));
         });
       });
     }).catch(() => { document.getElementById('newList').innerHTML = '<p>Нет доступа (вы не диспетчер).</p>'; });
@@ -92,7 +99,7 @@
             method: 'POST',
             body: JSON.stringify({ status: btn.dataset.status }),
             headers: { 'Content-Type': 'application/json' },
-          }).then(() => loadActive()).catch(e => alert(e.message));
+          }).then(() => loadActive()).catch(e => alert(e && e.message ? e.message : 'Произошла ошибка. Попробуйте позже.'));
         });
       });
     }).catch(() => { document.getElementById('activeList').innerHTML = '<p>Нет доступа (вы не диспетчер).</p>'; });

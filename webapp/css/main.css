@@ -942,6 +942,9 @@ body {
 
 .passport-group select { width: 100%; min-height: 44px; padding: 10px 12px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 1rem; -webkit-tap-highlight-color: transparent; }
 .passport-warning { color: var(--accent); font-size: 0.85rem; margin-top: 8px; font-weight: 500; }
+.discounts-block { margin-bottom: 16px; }
+.discounts-block__text { font-size: 0.9rem; color: var(--text-muted); line-height: 1.4; }
+.passenger-discount-label { font-size: 0.85rem; color: var(--text-muted); margin-left: 4px; }
 .mrz-toggle { margin-top: 10px; padding: 12px 0; min-height: 44px; display: inline-flex; align-items: center; background: none; border: none; color: var(--accent); font-size: 0.9rem; cursor: pointer; text-decoration: underline; -webkit-tap-highlight-color: transparent; }
 .mrz-block { margin-top: 12px; padding: 12px; background: var(--surface-elevated, var(--surface)); border-radius: var(--radius); border: 1px solid var(--border); }
 .mrz-block input { width: 100%; min-height: 44px; margin-bottom: 8px; padding: 10px 12px; font-family: monospace; font-size: 1rem; letter-spacing: 0.05em; -webkit-tap-highlight-color: transparent; }

@@ -111,3 +111,4 @@ window.getTelegramStartParam = getTelegramStartParam;
 window.setTelegramUserId = setTelegramUserId;
 window.userFriendlyMessage = userFriendlyMessage;
 window.escapeHtml = escapeHtml;
+window.ERROR_MESSAGES = ERROR_MESSAGES;

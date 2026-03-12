@@ -95,6 +95,10 @@ _ALTER_BOT_ROLES_USER_ID = """
 ALTER TABLE bot_roles ALTER COLUMN user_id TYPE BIGINT USING user_id::bigint
 """
 
+_ALTER_LOG_ENTRIES_USER_ID = """
+ALTER TABLE log_entries ALTER COLUMN user_id TYPE BIGINT USING user_id::bigint
+"""
+
 
 async def init_db():
     """Create tables: shared (bookings, bot_roles) IF NOT EXISTS, then webapp-only."""
@@ -119,6 +123,7 @@ async def init_db():
             _ALTER_SAVED_PASSENGERS_USER_ID,
             _ALTER_DISPATCHERS_TELEGRAM_ID,
             _ALTER_BOT_ROLES_USER_ID,
+            _ALTER_LOG_ENTRIES_USER_ID,
         ]:
             try:
                 await conn.execute(text(stmt))

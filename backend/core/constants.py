@@ -85,13 +85,15 @@ ROUTES = {
 }
 
 # Discount rules per route type (for price calculation)
+# Мозырь—Москва / Москва—Мозырь: до 2 лет 100% с местом, до 11 лет 50% с местом.
+# Гомель—Мозырь—Гомель: до 9 лет 50% с местом.
 DISCOUNT_RULES = {
     "international": {
-        "infant": {"age_to": 2, "discount_percent": 100, "seat": False, "label": "До 2 лет"},
-        "child": {"age_to": 11, "discount_percent": 50, "seat": True, "label": "3-11 лет"},
+        "infant": {"age_to": 2, "discount_percent": 100, "seat": True, "label": "До 2 лет"},
+        "child": {"age_to": 11, "discount_percent": 50, "seat": True, "label": "3–11 лет"},
     },
     "local": {
-        "child": {"age_to": 11, "discount_percent": 50, "seat": True, "label": "Дети 3-11 лет"},
+        "child": {"age_to": 9, "discount_percent": 50, "seat": True, "label": "Дети до 9 лет"},
     },
 }
 

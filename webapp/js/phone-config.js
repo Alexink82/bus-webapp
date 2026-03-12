@@ -85,6 +85,49 @@
     return '+' + digits;
   }
 
+  /**
+   * Только локальная часть для отображения в поле рядом с селектом страны (без дублирования +375).
+   * Возвращает, например, "(29) 973-44-67" для BY.
+   */
+  function formatPhoneInputLocal(value, countryCode) {
+    var digits = (value || '').replace(/\D/g, '');
+    var c = getPhoneCountry(countryCode);
+    if (c.code === 'OTHER') {
+      if (digits.length === 0) return '';
+      return digits.slice(0, 15).replace(/(\d{1,3})(\d{0,3})?(\d{0,3})?(\d{0,4})?/, function(_, a, b, d, e) {
+        var s = a;
+        if (b) s += ' ' + b;
+        if (d) s += ' ' + d;
+        if (e) s += ' ' + e;
+        return s.trim();
+      });
+    }
+    var prefix = c.prefix;
+    if (digits.length <= prefix.length) return digits ? digits : '';
+    if (digits.indexOf(prefix) === 0) digits = digits.slice(prefix.length);
+    else if (digits.length > c.maskLen) digits = digits.slice(-c.maskLen);
+    digits = digits.slice(0, c.maskLen);
+    if (c.code === 'RU') return '(' + digits.slice(0, 3) + ') ' + digits.slice(3, 6) + '-' + digits.slice(6, 8) + '-' + digits.slice(8);
+    if (c.code === 'BY') return '(' + digits.slice(0, 2) + ') ' + digits.slice(2, 5) + '-' + digits.slice(5, 7) + '-' + digits.slice(7);
+    if (c.code === 'UA') return '(' + digits.slice(0, 2) + ') ' + digits.slice(2, 5) + '-' + digits.slice(5, 7) + '-' + digits.slice(7);
+    if (c.code === 'PL') return digits.slice(0, 3) + ' ' + digits.slice(3, 6) + ' ' + digits.slice(6);
+    if (c.code === 'LT') return '(' + digits.slice(0, 3) + ') ' + digits.slice(3);
+    if (c.code === 'LV') return digits.slice(0, 2) + ' ' + digits.slice(2, 5) + ' ' + digits.slice(5);
+    if (c.code === 'GE') return '(' + digits.slice(0, 3) + ') ' + digits.slice(3, 5) + ' ' + digits.slice(5, 7) + ' ' + digits.slice(7);
+    if (c.code === 'AM') return digits.slice(0, 2) + ' ' + digits.slice(2, 5) + ' ' + digits.slice(5);
+    return digits;
+  }
+
+  /** Для getCleanPhone: если в value только локальные цифры (без кода страны), подставляем prefix. */
+  function normalizePhoneValueForClean(value, countryCode) {
+    var digits = (value || '').replace(/\D/g, '');
+    var c = getPhoneCountry(countryCode);
+    if (c.code === 'OTHER') return value;
+    if (digits.length <= c.maskLen && digits.length > 0 && c.prefix && digits.indexOf(c.prefix) !== 0)
+      digits = c.prefix + digits;
+    return digits ? '+' + digits : '';
+  }
+
   function validatePhone(value, countryCode) {
     var clean = getCleanPhone(value, countryCode);
     if (!clean) return { valid: false, message: 'Введите номер телефона' };
@@ -98,5 +141,20 @@
   window.getPhoneCountry = getPhoneCountry;
   window.getCleanPhone = getCleanPhone;
   window.formatPhoneInput = formatPhoneInput;
+  window.formatPhoneInputLocal = formatPhoneInputLocal;
   window.validatePhone = validatePhone;
+  /** Плейсхолдер только локальная часть (для поля рядом с селектом страны). */
+  window.getPhonePlaceholderLocal = function(code) {
+    var c = getPhoneCountry(code);
+    if (c.code === 'OTHER') return c.placeholder;
+    if (c.code === 'BY') return '(29) 123-45-67';
+    if (c.code === 'RU') return '(999) 123-45-67';
+    if (c.code === 'UA') return '(67) 123-45-67';
+    if (c.code === 'PL') return '123 456 789';
+    if (c.code === 'LT') return '(612) 34567';
+    if (c.code === 'LV') return '12 345 678';
+    if (c.code === 'GE') return '(555) 12 34 56';
+    if (c.code === 'AM') return '12 345 678';
+    return c.placeholder ? c.placeholder.replace(/^\+\d+\s*/, '') : '';
+  };
 })();

@@ -169,15 +169,70 @@
       function setMinDate() {
         const today = new Date().toISOString().slice(0, 10);
         travelDate.setAttribute('min', today);
+        const maxDate = new Date();
+        maxDate.setDate(maxDate.getDate() + 60);
+        travelDate.setAttribute('max', maxDate.toISOString().slice(0, 10));
+      }
+
+      /** Доступные даты по выбранному направлению: расписание по дням недели + cutoff (после 17:00 сегодня недоступен). */
+      function getAvailableDates(fromCity, toCity) {
+        var today = new Date();
+        today.setHours(0, 0, 0, 0);
+        var result = [];
+        if (!fromCity || !toCity) {
+          for (var i = 0; i < 60; i++) {
+            var d = new Date(today);
+            d.setDate(d.getDate() + i);
+            result.push(d.toISOString().slice(0, 10));
+          }
+          return result;
+        }
+        var matching = routes.filter(function(r) {
+          var stops = r.stops || [];
+          var iFrom = stops.findIndex(function(s) { return s.city === fromCity; });
+          var iTo = stops.findIndex(function(s) { return s.city === toCity; });
+          return iFrom !== -1 && iTo !== -1 && iFrom < iTo;
+        });
+        if (!matching.length) return [];
+        var CUTOFF_HOUR = 17;
+        var CUTOFF_MIN = 0;
+        var now = new Date();
+        var minskHour = (now.getUTCHours() + 3) % 24;
+        var minskMin = now.getUTCMinutes();
+        var nowMinutes = minskHour * 60 + minskMin;
+        var cutoffMinutes = CUTOFF_HOUR * 60 + CUTOFF_MIN;
+        for (var i = 0; i < 60; i++) {
+          var d = new Date(today);
+          d.setDate(d.getDate() + i);
+          var dayOfWeek = d.getDay();
+          var isToday = i === 0;
+          var runsOnDay = matching.some(function(r) {
+            var sched = r.schedule_days || [0, 1, 2, 3, 4, 5, 6];
+            return sched.indexOf(dayOfWeek) !== -1;
+          });
+          if (!runsOnDay) continue;
+          if (isToday && nowMinutes >= cutoffMinutes) continue;
+          result.push(d.toISOString().slice(0, 10));
+        }
+        return result;
+      }
+
+      function getAvailableDatesSet(fromCity, toCity) {
+        var arr = getAvailableDates(fromCity, toCity);
+        var set = {};
+        arr.forEach(function(d) { set[d] = true; });
+        return set;
       }
 
       function renderDateCalendar(year, month) {
         dateCalendarMonth = { year: year, month: month };
+        var fromCity = fromSelect ? fromSelect.value : '';
+        var toCity = toSelect ? toSelect.value : '';
+        var availableSet = getAvailableDatesSet(fromCity, toCity);
         var first = new Date(year, month, 1);
         var today = new Date();
         today.setHours(0, 0, 0, 0);
         var current = travelDate.value ? new Date(travelDate.value + 'T12:00:00') : null;
-        var minDate = travelDate.min ? new Date(travelDate.min + 'T12:00:00') : today;
         var weekdays = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
         var html = '<div class="search-field-block__calendar-header">' +
           '<button type="button" class="search-field-block__calendar-prev" aria-label="Предыдущий месяц">←</button>' +
@@ -189,8 +244,9 @@
         var d = 1 - startDay;
         for (var i = 0; i < 42; i++) {
           var dayDate = new Date(year, month, d);
+          var dayStr = dayDate.getFullYear() + '-' + String(dayDate.getMonth() + 1).padStart(2, '0') + '-' + String(dayDate.getDate()).padStart(2, '0');
           var inMonth = dayDate.getMonth() === month;
-          var disabled = dayDate < minDate;
+          var disabled = dayDate < today || !availableSet[dayStr];
           var selected = current && dayDate.getTime() === current.getTime();
           var cls = 'search-field-block__calendar-day';
           if (!inMonth) cls += ' other-month';
@@ -198,7 +254,7 @@
           if (selected) cls += ' selected';
           var dayNum = dayDate.getDate();
           if (inMonth && !disabled) {
-            html += '<button type="button" class="' + cls + '" data-date="' + dayDate.getFullYear() + '-' + String(dayDate.getMonth() + 1).padStart(2, '0') + '-' + String(dayNum).padStart(2, '0') + '">' + dayNum + '</button>';
+            html += '<button type="button" class="' + cls + '" data-date="' + dayStr + '">' + dayNum + '</button>';
           } else {
             html += '<span class="' + cls + '">' + dayNum + '</span>';
           }
@@ -225,9 +281,20 @@
       function openDateCalendar() {
         dateBlock.classList.add('search-field-block--date-open');
         dateCalendar.classList.remove('hidden');
+        var openYear, openMonth;
+        if (travelDate.value) {
+          var parsed = travelDate.value.split('-');
+          if (parsed.length === 3) {
+            openYear = parseInt(parsed[0], 10);
+            openMonth = parseInt(parsed[1], 10) - 1;
+            if (!isNaN(openYear) && !isNaN(openMonth)) {
+              renderDateCalendar(openYear, openMonth);
+              return;
+            }
+          }
+        }
         var now = new Date();
-        if (!dateCalendarMonth) renderDateCalendar(now.getFullYear(), now.getMonth());
-        else renderDateCalendar(dateCalendarMonth.year, dateCalendarMonth.month);
+        renderDateCalendar(now.getFullYear(), now.getMonth());
       }
 
       function closeDateCalendar() {
