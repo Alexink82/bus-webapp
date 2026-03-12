@@ -1,8 +1,7 @@
 """Structured logging configuration.
-Все ошибки и ключевые действия пишут в лог с указанием модуля и контекста.
-На Render логи должны идти в stdout; uvicorn настраивает logging до загрузки приложения,
-поэтому basicConfig() по умолчанию не срабатывает. force=True (Python 3.8+) применяет
-нашу конфигурацию и выводит логи приложения в stdout.
+Логи приложения пишут в stdout с указанием модуля и контекста.
+На Render логи должны идти в stdout: у root logger явно очищаем handlers
+(добавленные uvicorn при старте) и вешаем один StreamHandler(sys.stdout) с flush после каждой записи.
 """
 import logging
 import sys
@@ -13,18 +12,29 @@ from config import get_settings
 
 
 def setup_logging() -> None:
-    """Configure logging for the application. force=True переопределяет конфиг uvicorn."""
+    """Configure logging: явно выводим в stdout (иначе на Render логи приложения не видны)."""
     settings = get_settings()
     level = logging.DEBUG if settings.debug else logging.INFO
 
-    # force=True: применить настройки даже если uvicorn уже добавил handlers (иначе на Render логи приложения не видны)
-    logging.basicConfig(
-        level=level,
-        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-        stream=sys.stdout,
-        force=True,
+    root = logging.getLogger()
+    root.setLevel(level)
+    root.handlers.clear()
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(level)
+    handler.setFormatter(
+        logging.Formatter(
+            "%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
     )
+    # Flush после каждой записи (Render/Docker)
+    _emit = handler.emit
+    def _emit_and_flush(record):
+        _emit(record)
+        if handler.stream:
+            handler.stream.flush()
+    handler.emit = _emit_and_flush
+    root.addHandler(handler)
 
 
 def get_logger(name: str) -> logging.Logger:

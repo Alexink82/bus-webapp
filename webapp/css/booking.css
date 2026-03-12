@@ -242,34 +242,33 @@
   box-shadow: 0 0 0 1px var(--accent, #e74c3c);
 }
 
-/* Stepper (шаги бронирования) */
+/* Stepper (шаги бронирования): подписи и линия-соединитель не наезжают друг на друга */
 .stepper {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   margin: 16px 0;
   padding: 0 16px;
+  gap: 0;
 }
 .stepper .step {
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
   text-align: center;
   font-size: 14px;
   color: var(--text-muted, var(--tg-theme-hint-color, #999));
-  position: relative;
 }
 .stepper .step.active {
   color: var(--accent, var(--tg-theme-button-color, #2481cc));
   font-weight: 600;
 }
-.stepper .step::after {
-  content: '';
-  position: absolute;
-  top: 10px;
-  left: 50%;
-  width: 100%;
+.stepper__connector {
+  flex: 0 0 24px;
   height: 2px;
   background: var(--border, var(--tg-theme-secondary-bg-color, #eee));
+  margin: 0 4px;
 }
-.stepper .step:last-child::after {
+.stepper .step::after {
   display: none;
 }
 
