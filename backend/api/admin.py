@@ -17,6 +17,7 @@ from services.roles import is_admin
 from services.roles import get_all_admin_ids, get_all_dispatcher_ids
 from models import Booking, Dispatcher, LogEntry, BotRole
 from core.constants import ROUTES
+from logging_config import log_action
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -142,6 +143,7 @@ async def add_admin(
     await db.flush()
     from services.roles import load_roles
     await load_roles(db)
+    await log_action(db, "INFO", "admin", "add_admin", user_id=admin_id, details={"target_user_id": body.telegram_id})
     return {"success": True}
 
 
@@ -203,6 +205,7 @@ async def add_dispatcher(
         is_active=True,
     )
     db.add(d)
+    await log_action(db, "INFO", "admin", "add_dispatcher", user_id=admin_id, details={"target_user_id": body.telegram_id, "routes": body.routes or []})
     return {"success": True}
 
 
@@ -220,6 +223,7 @@ async def remove_dispatcher(
     if not d:
         raise HTTPException(404, detail="dispatcher_not_found")
     d.is_active = False
+    await log_action(db, "INFO", "admin", "remove_dispatcher", user_id=admin_id, details={"target_user_id": telegram_id})
     return {"success": True}
 
 
@@ -261,3 +265,29 @@ async def export_bookings(
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=bookings.csv"},
     )
+
+
+@router.get("/roles/audit")
+async def role_audit(
+    limit: int = Query(100, le=500),
+    db: AsyncSession = Depends(get_db),
+    admin_id: int = Depends(get_admin_id),
+):
+    """Аудит изменений ролей (админы/диспетчеры)."""
+    q = select(LogEntry).where(
+        LogEntry.source == "admin",
+        LogEntry.action.in_(["add_admin", "add_dispatcher", "remove_dispatcher"]),
+    ).order_by(LogEntry.timestamp.desc()).limit(limit)
+    result = await db.execute(q)
+    rows = result.scalars().all()
+    return {
+        "items": [
+            {
+                "timestamp": r.timestamp.isoformat() if r.timestamp else None,
+                "action": r.action,
+                "user_id": r.user_id,
+                "details": r.details or {},
+            }
+            for r in rows
+        ]
+    }

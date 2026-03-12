@@ -165,14 +165,23 @@ app.include_router(faq_router)
 
 @app.api_route("/api/health", methods=["GET", "HEAD"])
 async def health():
-    """Статус сервиса. При MAINTENANCE_UNTIL (ISO дата-время) в будущем возвращает режим технических работ."""
+    """Статус сервиса + простая проверка БД и режима техработ."""
     import os
     from datetime import datetime, timezone
+    from sqlalchemy import text
+    from database import AsyncSessionLocal
+
+    db_ok = True
+    try:
+      async with AsyncSessionLocal() as db:
+          await db.execute(text("SELECT 1"))
+    except Exception:
+      db_ok = False
+
     until_raw = (os.environ.get("MAINTENANCE_UNTIL") or "").strip()
     if not until_raw:
-        return {"status": "ok", "maintenance": False}
+        return {"status": "ok", "maintenance": False, "db": db_ok}
     try:
-        # Поддержка формата с Z и без (считаем UTC если нет таймзоны)
         if until_raw.endswith("Z"):
             until = datetime.fromisoformat(until_raw.replace("Z", "+00:00"))
         else:
@@ -180,15 +189,16 @@ async def health():
             if until.tzinfo is None:
                 until = until.replace(tzinfo=timezone.utc)
     except ValueError:
-        return {"status": "ok", "maintenance": False}
+        return {"status": "ok", "maintenance": False, "db": db_ok}
     now = datetime.now(timezone.utc)
     if now < until:
         return {
             "status": "maintenance",
             "maintenance": True,
             "maintenance_until": until.isoformat(),
+            "db": db_ok,
         }
-    return {"status": "ok", "maintenance": False}
+    return {"status": "ok", "maintenance": False, "db": db_ok}
 
 # Mount static webapp (HTML/CSS/JS) — после всех API-маршрутов, иначе /api/health отдаёт статика
 webapp_path = os.path.join(os.path.dirname(__file__), "..", "webapp")

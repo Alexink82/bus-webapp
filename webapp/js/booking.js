@@ -7,7 +7,7 @@
   const timeStr = params.get('time') || '';
 
   if (!routeId || !fromCity || !toCity || !dateStr || !timeStr) {
-    window.location.href = 'index.html';
+    window.location.href = 'index.html?error=invalid_booking_link';
     return;
   }
 
@@ -58,7 +58,7 @@
     });
   }).then(function(data) {
     route = (data.routes || []).find(function(r) { return r.id === routeId; });
-    if (!route) { window.location.href = 'index.html'; return; }
+    if (!route) { window.location.href = 'index.html?error=invalid_booking_link'; return; }
     var borderEl = document.getElementById('borderDocs');
     if (route.border_docs_text) borderEl.textContent = 'Документы для границы: ' + route.border_docs_text;
     else borderEl.textContent = '';

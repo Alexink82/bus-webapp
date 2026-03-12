@@ -4,7 +4,7 @@ import string
 from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Header
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,6 +24,7 @@ router = APIRouter(prefix="/api", tags=["booking"])
 
 
 class CreateBookingIn(BaseModel):
+    model_config = ConfigDict(extra='ignore')
     route_id: str
     from_city: str
     to_city: str

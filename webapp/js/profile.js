@@ -138,7 +138,13 @@
   function loadBookings() {
     apiFn('/api/user/bookings').then(function(data) {
       var list = document.getElementById('bookingsList');
+      var activeBlock = document.getElementById('activeBookingBlock');
       var items = data.bookings || [];
+      var active = items.find(function(b) { return b.status === 'active' || b.status === 'payment_link_sent' || b.status === 'paid'; });
+      if (activeBlock) {
+        if (active) activeBlock.innerHTML = '<div class="trip-card booking-card"><strong>' + active.booking_id + '</strong> — ' + (active.route_name || '') + '<br>' + (active.departure_date || '') + ' ' + (active.departure_time || '') + ' | ' + (active.status || '') + '</div>';
+        else activeBlock.innerHTML = '<p class="text-secondary">Нет активной заявки.</p>';
+      }
       list.innerHTML = items.length ? items.map(function(b) {
         var esc = function(s) { if (s == null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
         var cancelBtn = (b.status !== 'cancelled' && b.status !== 'done' && b.status !== 'ticket_sent') ? ' <button type="button" class="btn btn-outline btn-small cancel-booking" data-id="' + esc(b.booking_id) + '">Отменить</button>' : '';

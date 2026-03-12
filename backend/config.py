@@ -53,6 +53,7 @@ class Settings(BaseSettings):
 
     # Rate limiting (requests per minute per IP; 0 = off)
     rate_limit: int = 120
+    log_entries_keep: int = 10000
 
     # WebPay callback (проверка подписи/секрета в проде)
     webpay_callback_secret: str = ""
