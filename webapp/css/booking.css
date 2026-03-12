@@ -288,6 +288,16 @@
   justify-content: center;
   z-index: 100;
   padding-bottom: max(12px, env(safe-area-inset-bottom));
+  pointer-events: auto;
+}
+.fixed-bottom-bar .btn {
+  cursor: pointer;
+  min-height: 48px;
+  min-width: 120px;
+  flex: 1;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 body.booking-page .main {
   padding-bottom: 80px;

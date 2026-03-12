@@ -387,6 +387,7 @@
     document.querySelectorAll('#passengersList input').forEach(function(inp) {
       var i = parseInt(inp.getAttribute('data-i'), 10);
       var f = inp.getAttribute('data-f');
+      if (!f) return;
       if (!passengers[i]) passengers[i] = {};
       var val = inp.value;
       if (f === 'birth_date') {
@@ -428,6 +429,8 @@
         var firstInvalid = list.findIndex(function(p) { return !p.last_name || !p.first_name || !p.birth_date; });
         var errEl = document.querySelector('.passenger-block-error[data-passenger-index="' + firstInvalid + '"]');
         if (errEl) errEl.textContent = 'Укажите фамилию, имя и дату рождения.';
+        var step1Errors = getEl('step1Errors');
+        if (step1Errors) step1Errors.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         return;
       }
       var invalidDob = list.findIndex(function(p) {
@@ -443,6 +446,7 @@
         if (errEl) errEl.textContent = 'Неверная дата (например 31.12.1990).';
         var dobErr = document.querySelector('[data-dob-error="' + invalidDob + '"]');
         if (dobErr) dobErr.textContent = 'Неверная дата.';
+        if (getEl('step1Errors')) getEl('step1Errors').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         return;
       }
       var hasPassport = list.every(function(p) {
@@ -471,6 +475,7 @@
           var errEl = document.querySelector('.passenger-block-error[data-passenger-index="' + invalidPass + '"]');
           if (errEl) errEl.textContent = msg;
         }
+        if (getEl('step1Errors')) getEl('step1Errors').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         return;
       }
     } else {
@@ -480,6 +485,7 @@
         var firstInvalid = list.findIndex(function(p) { return !(p.first_name || '').trim(); });
         var errEl = document.querySelector('.passenger-block-error[data-passenger-index="' + firstInvalid + '"]');
         if (errEl) errEl.textContent = 'Введите имя пассажира.';
+        if (getEl('step1Errors')) getEl('step1Errors').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         return;
       }
     }

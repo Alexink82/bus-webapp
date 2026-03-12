@@ -1,5 +1,8 @@
 """Structured logging configuration.
 Все ошибки и ключевые действия пишут в лог с указанием модуля и контекста.
+На Render логи должны идти в stdout; uvicorn настраивает logging до загрузки приложения,
+поэтому basicConfig() по умолчанию не срабатывает. force=True (Python 3.8+) применяет
+нашу конфигурацию и выводит логи приложения в stdout.
 """
 import logging
 import sys
@@ -10,15 +13,17 @@ from config import get_settings
 
 
 def setup_logging() -> None:
-    """Configure logging for the application."""
+    """Configure logging for the application. force=True переопределяет конфиг uvicorn."""
     settings = get_settings()
     level = logging.DEBUG if settings.debug else logging.INFO
 
+    # force=True: применить настройки даже если uvicorn уже добавил handlers (иначе на Render логи приложения не видны)
     logging.basicConfig(
         level=level,
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
         stream=sys.stdout,
+        force=True,
     )
 
 
