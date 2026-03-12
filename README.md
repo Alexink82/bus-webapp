@@ -107,11 +107,15 @@ TG WebApp открывается с домена `t.me` (cross-origin). Запр
 
 **Вариант 2:** перейти на платный план Render (например, paid Web Service), где инстанс не останавливается при простое.
 
+## Диагностика логов на Render
+
+Если в Render не видны логи приложения (request/error/startup), используйте пошаговый чек-лист: `docs/RENDER_LOGS_TROUBLESHOOTING.md`.
+
 ## Структура
 
 - `backend/` — API и бизнес-логика (FastAPI)
 - `webapp/` — статичный фронтенд (HTML/CSS/JS), раздаётся корнем сервера
-- `docs/` — ANALYSIS.md (связи, сценарии, краш-тесты), PRODUCTION_READINESS.md (готовность к продакшену), ROADMAP.md (дальнейшее развитие), DESIGN_GUIDELINES.md (принципы стилей)
+- `docs/` — ANALYSIS.md (связи, сценарии, краш-тесты), PRODUCTION_READINESS.md (готовность к продакшену), ROADMAP.md (дальнейшее развитие), DESIGN_GUIDELINES.md (принципы стилей), UI_STYLE_SYSTEM_AUDIT.md (унификация визуального стиля по NN/Material/Apple/Fluent)
 
 ## Переменные окружения (.env)
 
