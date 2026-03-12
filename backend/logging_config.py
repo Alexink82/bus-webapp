@@ -1,7 +1,8 @@
 """Structured logging configuration.
-Логи приложения пишут в stdout с указанием модуля и контекста.
-На Render логи должны идти в stdout: у root logger явно очищаем handlers
-(добавленные uvicorn при старте) и вешаем один StreamHandler(sys.stdout) с flush после каждой записи.
+
+На Render/PaaS uvicorn часто настраивает root logger раньше приложения.
+Если затем вызывать ``logging.basicConfig(...)`` без ``force=True``, конфиг
+приложения может не примениться (handlers уже существуют).
 """
 import logging
 import sys
@@ -12,29 +13,27 @@ from config import get_settings
 
 
 def setup_logging() -> None:
-    """Configure logging: явно выводим в stdout (иначе на Render логи приложения не видны)."""
+    """Configure logging to stdout and override preconfigured handlers.
+
+    Используем ``force=True`` (Python 3.8+), чтобы перезаписать handlers,
+    которые uvicorn мог повесить до импорта приложения.
+    """
     settings = get_settings()
     level = logging.DEBUG if settings.debug else logging.INFO
 
-    root = logging.getLogger()
-    root.setLevel(level)
-    root.handlers.clear()
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(level)
-    handler.setFormatter(
-        logging.Formatter(
-            "%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
-        )
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        stream=sys.stdout,
+        force=True,
     )
-    # Flush после каждой записи (Render/Docker)
-    _emit = handler.emit
-    def _emit_and_flush(record):
-        _emit(record)
-        if handler.stream:
-            handler.stream.flush()
-    handler.emit = _emit_and_flush
-    root.addHandler(handler)
+
+    # Отключаем отдельные handlers uvicorn, чтобы он шёл в общий root-поток.
+    for logger_name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+        uv_logger = logging.getLogger(logger_name)
+        uv_logger.handlers.clear()
+        uv_logger.propagate = True
 
 
 def get_logger(name: str) -> logging.Logger:
