@@ -12,6 +12,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import inspect
 
 revision: str = "001_initial"
 down_revision: Union[str, None] = None
@@ -20,6 +21,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    conn = op.get_bind()
+    if "bookings" in inspect(conn).get_table_names():
+        return  # таблицы уже есть, Alembic сам проставит ревизию после успешного upgrade()
     op.create_table(
         "bookings",
         sa.Column("id", sa.String(20), primary_key=True),
