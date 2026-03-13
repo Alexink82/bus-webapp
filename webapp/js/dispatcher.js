@@ -51,8 +51,21 @@
     });
   });
 
+  function readFilters() {
+    return {
+      route: (document.getElementById('filterRoute') || {}).value || '',
+      date: (document.getElementById('filterDate') || {}).value || '',
+      payment: (document.getElementById('filterPayment') || {}).value || ''
+    };
+  }
+
   function loadNew() {
-    api('/api/dispatcher/bookings?status=new').then(data => {
+    const f = readFilters();
+    const qs = new URLSearchParams({ status: 'new' });
+    if (f.route) qs.set('route_id', f.route);
+    if (f.date) qs.set('departure_date', f.date);
+    if (f.payment) qs.set('payment_status', f.payment);
+    api('/api/dispatcher/bookings?' + qs.toString()).then(data => {
       const list = document.getElementById('newList');
       const items = data.bookings || [];
       const esc = (s) => (s == null ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'));
@@ -69,7 +82,7 @@
       list.querySelectorAll('[data-action="take"]').forEach(btn => {
         btn.addEventListener('click', () => {
           api('/api/dispatcher/bookings/' + btn.dataset.id + '/take', { method: 'POST' })
-            .then(() => { loadNew(); loadActive(); })
+            .then(() => { loadNew(); loadActive(); loadStats(); })
             .catch(e => alert(e && e.message ? e.message : 'Произошла ошибка. Попробуйте позже.'));
         });
       });
@@ -77,7 +90,12 @@
   }
 
   function loadActive() {
-    api('/api/dispatcher/bookings?status=active').then(data => {
+    const f = readFilters();
+    const qs = new URLSearchParams({ status: 'active' });
+    if (f.route) qs.set('route_id', f.route);
+    if (f.date) qs.set('departure_date', f.date);
+    if (f.payment) qs.set('payment_status', f.payment);
+    api('/api/dispatcher/bookings?' + qs.toString()).then(data => {
       const list = document.getElementById('activeList');
       const items = data.bookings || [];
       const esc = (s) => (s == null ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'));
@@ -90,16 +108,23 @@
             <button data-id="${b.booking_id}" data-status="paid">Оплачено</button>
             <button data-id="${b.booking_id}" data-status="ticket_sent">Билет отправлен</button>
             <button data-id="${b.booking_id}" data-status="done">Завершено</button>
+            <button data-id="${b.booking_id}" data-status="cancelled">Отменить</button>
           </div>
         </div>
       `).join('') || '<p>Нет заявок в работе.</p>';
       list.querySelectorAll('.actions button').forEach(btn => {
         btn.addEventListener('click', () => {
+          const payload = { status: btn.dataset.status };
+          if (btn.dataset.status === 'cancelled') {
+            const reason = prompt('Укажите причину отмены заявки:');
+            if (!reason || !reason.trim()) return;
+            payload.reason = reason.trim();
+          }
           api('/api/dispatcher/bookings/' + btn.dataset.id + '/status', {
             method: 'POST',
-            body: JSON.stringify({ status: btn.dataset.status }),
+            body: JSON.stringify(payload),
             headers: { 'Content-Type': 'application/json' },
-          }).then(() => loadActive()).catch(e => alert(e && e.message ? e.message : 'Произошла ошибка. Попробуйте позже.'));
+          }).then(() => { loadActive(); loadStats(); }).catch(e => alert(e && e.message ? e.message : 'Произошла ошибка. Попробуйте позже.'));
         });
       });
     }).catch(() => { document.getElementById('activeList').innerHTML = '<p>Нет доступа (вы не диспетчер).</p>'; });
@@ -109,11 +134,20 @@
     api('/api/dispatcher/stats').then(data => {
       document.getElementById('statsContent').innerHTML = `
         <div class="dispatcher-card">
-          За сегодня: <strong>${data.total || 0}</strong> заявок, сумма <strong>${data.sum || 0} BYN</strong>
+          За сегодня: <strong>${data.total || 0}</strong> заявок, сумма <strong>${data.sum || 0} BYN</strong><br>
+          Просроченные в работе (&gt;15 мин): <strong>${data.overdue_15m || 0}</strong>
         </div>
       `;
     }).catch(() => {
       document.getElementById('statsContent').innerHTML = '<p>Ошибка загрузки статистики.</p>';
+    });
+  }
+
+  const applyFiltersBtn = document.getElementById('applyFiltersBtn');
+  if (applyFiltersBtn) {
+    applyFiltersBtn.addEventListener('click', function() {
+      loadNew();
+      loadActive();
     });
   }
 
@@ -157,7 +191,13 @@
           if (msg.type === 'new_booking') { loadNew(); if (window.Telegram && Telegram.WebApp) Telegram.WebApp.HapticFeedback.notificationOccurred('success'); }
         } catch (e) {}
       };
-      ws.onclose = function() { setTimeout(connectWs, 5000); };
+      ws.onclose = function(event) {
+        if (event && event.code === 4003) {
+          alert('Сессия истекла, обновите страницу');
+          return;
+        }
+        setTimeout(connectWs, 5000);
+      };
       ws.onerror = function() { ws.close(); };
     } catch (e) {}
   })();

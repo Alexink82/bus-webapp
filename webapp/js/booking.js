@@ -7,7 +7,7 @@
   const timeStr = params.get('time') || '';
 
   if (!routeId || !fromCity || !toCity || !dateStr || !timeStr) {
-    window.location.href = 'index.html';
+    window.location.href = 'index.html?error=invalid_booking_link';
     return;
   }
 
@@ -172,13 +172,48 @@
       if (typeof showAppAlert === 'function') showAppAlert('В профиле нет сохранённых данных пассажира или они неполные.', 'Профиль');
       return;
     }
-    for (var i = 0; i < passengerCount && i < savedPassengersForFill.length; i++) {
-      var s = savedPassengersForFill[i];
-      var pass = (s.passport || '').replace(/\s/g, '');
-      var countryCode = pass.replace(/\D/g, '').length === 10 ? 'RU' : (pass.length >= 9 && /^[A-Z]{2}\d{7}$/i.test(pass.replace(/[^A-Z0-9]/g, '')) ? 'BY' : 'OTHER');
-      passengers[i] = { last_name: s.last_name || '', first_name: s.first_name || '', middle_name: s.middle_name || '', birth_date: s.birth_date || '', passport: s.passport || '', passport_country: countryCode, citizenship: countryCode };
+    var root = document.getElementById('app-modal-root') || (function() { var r = document.createElement('div'); r.id = 'app-modal-root'; r.className = 'app-modal-root'; document.body.appendChild(r); return r; })();
+    var overlay = document.createElement('div');
+    overlay.className = 'app-modal-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    var opts = savedPassengersForFill.map(function(p, idx) {
+      var label = (p.last_name || '') + ' ' + (p.first_name || '') + (p.birth_date ? ' | ' + (typeof datePickerIsoToDisplay === 'function' ? datePickerIsoToDisplay(p.birth_date) : p.birth_date) : '');
+      return '<option value="' + idx + '">' + label.replace(/</g, '&lt;') + '</option>';
+    }).join('');
+    var rows = '';
+    for (var slot = 0; slot < passengerCount; slot++) {
+      rows += '<div class="field-group"><label>Пассажир ' + (slot + 1) + '</label><select id="fillSlot' + slot + '" class="fill-slot-select" aria-label="Выберите пассажира">' +
+        '<option value="">— Не подставлять</option>' + opts + '</select></div>';
     }
-    renderPassengers();
+    var html = '<div class="app-modal-header"><h2 class="app-modal-title">Вставить данные пассажира</h2><button type="button" class="app-modal-close fill-profile-close" aria-label="Закрыть">&times;</button></div>' +
+      '<div class="app-modal-body"><p class="field-hint">Выберите, чьи данные подставить в каждую позицию.</p>' + rows + '</div>' +
+      '<div class="app-modal-footer"><button type="button" class="btn btn-secondary app-modal-btn fill-profile-cancel">Отмена</button><button type="button" class="btn btn-primary app-modal-btn fill-profile-apply">Подставить</button></div>';
+    overlay.innerHTML = '<div class="app-modal-content">' + html + '</div>';
+    var content = overlay.querySelector('.app-modal-content');
+    function closeFillModal() {
+      overlay.classList.remove('app-modal-visible');
+      setTimeout(function() { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 200);
+    }
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) closeFillModal(); });
+    content.querySelector('.fill-profile-close').addEventListener('click', closeFillModal);
+    content.querySelector('.fill-profile-cancel').addEventListener('click', closeFillModal);
+    content.querySelector('.fill-profile-apply').addEventListener('click', function() {
+      for (var i = 0; i < passengerCount; i++) {
+        var sel = content.querySelector('#fillSlot' + i);
+        if (!sel) continue;
+        var idx = parseInt(sel.value, 10);
+        if (isNaN(idx) || idx < 0 || !savedPassengersForFill[idx]) continue;
+        var s = savedPassengersForFill[idx];
+        var pass = (s.passport || '').replace(/\s/g, '');
+        var countryCode = pass.replace(/\D/g, '').length === 10 ? 'RU' : (pass.length >= 9 && /^[A-Z]{2}\d{7}$/i.test(pass.replace(/[^A-Z0-9]/g, '')) ? 'BY' : 'OTHER';
+        passengers[i] = { last_name: s.last_name || '', first_name: s.first_name || '', middle_name: s.middle_name || '', birth_date: s.birth_date || '', passport: s.passport || '', passport_country: countryCode, citizenship: countryCode };
+      }
+      closeFillModal();
+      renderPassengers();
+    });
+    root.appendChild(overlay);
+    requestAnimationFrame(function() { overlay.classList.add('app-modal-visible'); });
   }
 
   document.getElementById('fillFromProfile').addEventListener('click', fillFromSavedPassengers);

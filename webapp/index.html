@@ -519,6 +519,13 @@
         fillCities();
         renderSchedule();
         var params = new URLSearchParams(window.location.search);
+        if (params.get('error') === 'invalid_booking_link') {
+          if (typeof showAppAlert === 'function') showAppAlert('Указан неполный маршрут. Выберите маршрут, дату и время.', 'Ошибка ссылки');
+          else alert('Указан неполный маршрут. Выберите маршрут, дату и время.');
+          params.delete('error');
+          var clean = window.location.pathname + (params.toString() ? ('?' + params.toString()) : '');
+          window.history.replaceState({}, '', clean);
+        }
         var fromUrl = params.get('from');
         var toUrl = params.get('to');
         if (fromUrl && toUrl && fromSelect && toSelect) {
