@@ -30,6 +30,10 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Uvicorn может переопределить logging после импорта модуля.
+    # Повторная настройка в startup гарантирует, что логи приложения
+    # (request/startup/errors) действительно уходят в stdout Render.
+    setup_logging()
     await init_db()
 
     # Автоматические миграции Alembic (синхронный command.upgrade в потоке)
@@ -194,5 +198,4 @@ async def health():
 webapp_path = os.path.join(os.path.dirname(__file__), "..", "webapp")
 if os.path.isdir(webapp_path):
     app.mount("/", StaticFiles(directory=webapp_path, html=True), name="webapp")
-
 
