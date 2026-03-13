@@ -80,6 +80,27 @@ def test_create_booking_validation_invalid_route(client):
     assert r.json().get("detail") == "route_not_found"
 
 
+def test_create_booking_accepts_extra_fields_ignored(client):
+    """CreateBookingIn с extra='ignore' не падает при лишних полях (например save_passengers_to_profile)."""
+    from datetime import date, timedelta
+    soon = (date.today() + timedelta(days=30)).isoformat()
+    payload = {
+        "route_id": "nonexistent_route",
+        "from_city": "A",
+        "to_city": "B",
+        "departure_date": soon,
+        "departure_time": "12:00",
+        "passengers": [{"last_name": "Иванов", "first_name": "Иван", "birth_date": "1990-01-01"}],
+        "phone": "+375291234567",
+        "payment_method": "cash",
+        "save_passengers_to_profile": True,
+        "unknown_field": "ignored",
+    }
+    r = client.post("/api/bookings", json=payload)
+    assert r.status_code == 404
+    assert r.json().get("detail") == "route_not_found"
+
+
 @pytest.mark.skipif(not _has_db_url, reason="DATABASE_URL not set")
 def test_get_booking_not_found(client):
     """Получение несуществующей брони -> 404."""

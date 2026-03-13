@@ -2,7 +2,7 @@
 import os
 from typing import List
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 def _env_ids_list(primary_key: str, fallback_key: str) -> List[int]:
@@ -57,6 +57,12 @@ class Settings(BaseSettings):
     # WebPay callback (проверка подписи/секрета в проде)
     webpay_callback_secret: str = ""
 
+    model_config = SettingsConfigDict(
+        env_file=[".env", "../.env"],
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
     @property
     def admin_ids_list(self) -> List[int]:
         # Поддержка ADMIN_IDS и опечатки ADMIN_ID в Render
@@ -104,11 +110,6 @@ class Settings(BaseSettings):
             return [o.strip().rstrip("/") for o in env_raw.split(",") if o.strip()]
         # Не задано — разрешаем все, иначе при открытии из Telegram (origin web.telegram.org) CORS блокирует /api/*
         return ["*"]
-
-    class Config:
-        env_file = [".env", "../.env"]
-        env_file_encoding = "utf-8"
-        extra = "ignore"
 
 
 def get_settings() -> Settings:
