@@ -21,6 +21,8 @@
     stepperSteps.forEach(function(s) {
       s.classList.toggle('active', parseInt(s.getAttribute('data-step'), 10) === step);
     });
+    var stepperEl = document.querySelector('.stepper');
+    if (stepperEl) stepperEl.classList.toggle('stepper--step2', step === 2);
     var toStep2Btn = document.getElementById('toStep2');
     var backBtn = document.getElementById('backToStep1');
     var submitBtn = document.getElementById('submitBooking');
@@ -299,8 +301,7 @@
           '<p class="field-hint passport-format-hint">' + (selectedCountry ? 'Пример: ' + selectedCountry.example : 'Введите номер паспорта') + '</p>' +
           '<input type="text" class="passport-input" data-i="' + i + '" data-f="passport" value="' + (passportDisplay || '') + '" placeholder="' + passportPlaceholder + '" maxlength="20">' +
           '<p class="passport-warning">Паспортные данные передаются пограничным службам. Ошибка в номере → отказ в посадке.</p>' +
-          '<button type="button" class="mrz-toggle" data-i="' + i + '">Ввести из MRZ (машинно-читаемая зона)</button>' +
-          '<div class="mrz-block hidden" data-i="' + i + '"><input type="text" class="mrz-line1" placeholder="Строка 1 (P&lt;UTO...)" maxlength="44"><input type="text" class="mrz-line2" placeholder="Строка 2 (123456...)" maxlength="44">' +
+'<span class="mrz-toggle-wrap"><button type="button" class="mrz-toggle" data-i="' + i + '">Ввести из MRZ</button> <button type="button" class="mrz-hint-trigger" data-i="' + i + '" aria-label="Что такое MRZ?">?</button></span><div class="mrz-hint-text hidden" data-i="' + i + '" role="tooltip">MRZ — две строки внизу разворота паспорта. Введите их в поля ниже.</div><div class="mrz-block hidden" data-i="' + i + '"><input type="text" class="mrz-line1" placeholder="Строка 1 (P&lt;UTO...)" maxlength="44"><input type="text" class="mrz-line2" placeholder="Строка 2 (123456...)" maxlength="44">' +
           '<div class="mrz-actions"><button type="button" class="mrz-parse">Распознать</button><button type="button" class="mrz-cancel">Отмена</button></div></div>' +
           '<span class="field-error" data-passenger-error="' + i + '"></span></div>';
         var birthDisplayDob = (birthIso && typeof isoToDob === 'function') ? isoToDob(birthIso) : (birthVal.indexOf('.') !== -1 ? birthVal : (birthIso ? (birthIso.slice(8, 10) + '.' + birthIso.slice(5, 7) + '.' + birthIso.slice(0, 4)) : ''));
@@ -383,6 +384,14 @@
         var block = btn.closest('.passenger-block');
         var mrzBlock = block && block.querySelector('.mrz-block[data-i="' + i + '"]');
         if (mrzBlock) mrzBlock.classList.remove('hidden');
+      });
+    });
+    list.querySelectorAll('.mrz-hint-trigger').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var i = btn.getAttribute('data-i');
+        var block = btn.closest('.passenger-block');
+        var hintEl = block && block.querySelector('.mrz-hint-text[data-i="' + i + '"]');
+        if (hintEl) hintEl.classList.toggle('hidden');
       });
     });
     list.querySelectorAll('.mrz-cancel').forEach(function(btn) {
@@ -700,9 +709,19 @@
     var base = typeof BASE_URL !== 'undefined' ? BASE_URL : '';
     var submitBtn = getEl('submitBooking');
     submitBtn.disabled = true;
+    submitBtn.classList.add('loading');
+    if (!submitBtn.querySelector('.btn-spinner')) {
+      var spinner = document.createElement('span');
+      spinner.className = 'btn-spinner';
+      spinner.setAttribute('aria-hidden', 'true');
+      submitBtn.appendChild(spinner);
+    }
     function onError(e) {
       var msg = typeof errorToMessage === 'function' ? errorToMessage(e) : (e && e.message ? e.message : 'Ошибка создания заявки. Попробуйте ещё раз.');
       setError('phoneError', msg);
+      submitBtn.classList.remove('loading');
+      var sp = submitBtn.querySelector('.btn-spinner');
+      if (sp) sp.remove();
       submitBtn.disabled = false;
     }
     var idemHeaders = { 'X-Idempotency-Key': idemKey };

@@ -53,7 +53,7 @@
       '<div class="field-group"><label>Отчество</label><input type="text" id="apMiddle" placeholder="Иванович" value="' + (middleVal.replace(/"/g, '&quot;') || '') + '"></div>' +
       '<div class="field-group"><label>Дата рождения <span class="required">*</span></label><p class="field-hint">Введите дату в формате ДД.ММ.ГГГГ</p><input type="hidden" id="apBirthIso" value="' + (birthIsoVal || '') + '"><input type="text" id="apBirthInput" class="birth-date-input" placeholder="ДД.ММ.ГГГГ" value="' + (birthVal.replace(/"/g, '&quot;') || '') + '" autocomplete="off"></div>' +
       '<div class="field-group passport-group"><label>Страна выдачи паспорта <span class="required">*</span></label><select id="apCountry" aria-label="Страна выдачи">' + topCountries.map(function(c) { return '<option value="' + c.code + '"' + (countryVal === c.code ? ' selected' : '') + '>' + c.name + '</option>'; }).join('') + '<option value="' + otherCode + '"' + (countryVal === otherCode ? ' selected' : '') + '>Другая страна</option></select></div>' +
-      '<div class="field-group"><label>Номер паспорта / ID <span class="required">*</span></label><p class="field-hint" id="apPassportHint">Пример: MP 1234567</p><input type="text" id="apPassport" maxlength="20" placeholder="MP 1234567" value="' + (passportVal.replace(/"/g, '&quot;') || '') + '"><p class="passport-warning">Паспортные данные передаются пограничным службам. Ошибка в номере → отказ в посадке.</p><button type="button" class="mrz-toggle" id="apMrzToggle">Ввести из MRZ</button><div class="mrz-block hidden" id="apMrzBlock"><input type="text" class="mrz-line1" placeholder="Строка 1" maxlength="44"><input type="text" class="mrz-line2" placeholder="Строка 2" maxlength="44"><div class="mrz-actions"><button type="button" class="mrz-parse">Распознать</button><button type="button" class="mrz-cancel">Отмена</button></div></div></div>' +
+      '<div class="field-group"><label>Номер паспорта / ID <span class="required">*</span></label><p class="field-hint" id="apPassportHint">Пример: MP 1234567</p><input type="text" id="apPassport" maxlength="20" placeholder="MP 1234567" value="' + (passportVal.replace(/"/g, '&quot;') || '') + '"><p class="passport-warning">Паспортные данные передаются пограничным службам. Ошибка в номере → отказ в посадке.</p><span class="mrz-toggle-wrap"><button type="button" class="mrz-toggle" id="apMrzToggle">Ввести из MRZ</button> <button type="button" class="mrz-hint-trigger" id="apMrzHint" aria-label="Что такое MRZ?">?</button></span><div id="apMrzHintText" class="mrz-hint-text hidden" role="tooltip">MRZ — машинно-читаемая зона на развороте паспорта: две строки внизу страницы. Скопируйте их в поля ниже.</div><div class="mrz-block hidden" id="apMrzBlock"><input type="text" class="mrz-line1" placeholder="Строка 1" maxlength="44"><input type="text" class="mrz-line2" placeholder="Строка 2" maxlength="44"><div class="mrz-actions"><button type="button" class="mrz-parse">Распознать</button><button type="button" class="mrz-cancel">Отмена</button></div></div></div>' +
       '<p id="addPassengerError" class="field-error"></p>' +
       '</form></div>' +
       '<div class="app-modal-footer"><button type="button" class="btn btn-secondary app-modal-btn" id="addPassengerCancel">Отмена</button><button type="button" class="btn btn-primary app-modal-btn" id="addPassengerSave">Сохранить</button></div>';
@@ -105,6 +105,11 @@
         var c = citizenshipSel.value;
         if (typeof passportFormatInput === 'function') { var v = passportFormatInput(this.value, c); if (v !== this.value) this.value = v; }
       });
+    }
+    var mrzHint = content.querySelector('#apMrzHint');
+    var mrzHintText = content.querySelector('#apMrzHintText');
+    if (mrzHint && mrzHintText) {
+      mrzHint.addEventListener('click', function() { mrzHintText.classList.toggle('hidden'); });
     }
     var mrzToggle = content.querySelector('#apMrzToggle');
     var mrzBlock = content.querySelector('#apMrzBlock');
@@ -191,14 +196,19 @@
     var list = document.getElementById(containerId);
     if (!list) return;
     var esc = function(s) { if (s == null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
+    var getBadge = typeof getStatusBadge === 'function' ? getStatusBadge : function(s) { return { class: 'badge badge--neutral', label: s || '—' }; };
+    var iconCross = (typeof APP_ICONS !== 'undefined' && APP_ICONS.crossS) ? APP_ICONS.crossS : '';
+    var iconCheck = (typeof APP_ICONS !== 'undefined' && APP_ICONS.check) ? APP_ICONS.check : '';
     list.innerHTML = items.length ? items.map(function(b) {
-      var cancelBtn = (b.status !== 'cancelled' && b.status !== 'done' && b.status !== 'ticket_sent') ? ' <button type="button" class="btn btn-outline btn-small cancel-booking" data-id="' + esc(b.booking_id) + '">Отменить</button>' : '';
+      var badge = getBadge(b.status);
+      var badgeHtml = '<span class="' + esc(badge.class) + '">' + (badge.class.indexOf('success') !== -1 ? iconCheck : '') + '<span>' + esc(badge.label) + '</span></span>';
+      var cancelBtn = (b.status !== 'cancelled' && b.status !== 'done' && b.status !== 'ticket_sent') ? ' <button type="button" class="btn btn-outline btn-small cancel-booking" data-id="' + esc(b.booking_id) + '">' + iconCross + ' Отменить</button>' : '';
       var detailsBtn = '<button type="button" class="btn btn-outline btn-small booking-details" data-id="' + esc(b.booking_id) + '">Подробнее</button>';
       return '<div class="trip-card booking-card">' +
         '<div class="booking-card__head"><strong>' + esc(b.booking_id) + '</strong> — ' + esc(b.route_name) + '</div>' +
-        '<div class="booking-card__meta">' + esc(b.departure_date) + ' ' + esc(b.departure_time) + ' | ' + esc(b.price_total) + ' ' + esc(b.currency) + ' | ' + esc(b.status) + '</div>' +
+        '<div class="booking-card__meta">' + esc(b.departure_date) + ' ' + esc(b.departure_time) + ' | ' + esc(b.price_total) + ' ' + esc(b.currency) + ' | ' + badgeHtml + '</div>' +
         '<div class="booking-card__actions">' + detailsBtn + cancelBtn + '</div></div>';
-    }).join('') : '<p>Нет заявок.</p>';
+    }).join('') : (typeof APP_ICONS !== 'undefined' && APP_ICONS.bus ? '<div class="empty-state"><span class="icon icon--l">' + APP_ICONS.bus + '</span><p class="empty-state__title">' + (typeof t === 'function' ? t('noBookings') : 'Пока нет заявок') + '</p><p>' + (typeof t === 'function' ? t('noBookingsHint') : 'Здесь появятся ваши поездки') + '</p></div>' : '<p>' + (typeof t === 'function' ? t('noBookings') : 'Нет заявок') + '.</p>');
     list.querySelectorAll('.cancel-booking').forEach(function(btn) {
       btn.addEventListener('click', function() {
         var msg = typeof t === 'function' ? t('cancelConfirm') : 'Отменить заявку?';
@@ -209,7 +219,7 @@
             var bid = btn.getAttribute('data-id');
             btn.disabled = true;
             apiFn('/api/bookings/' + encodeURIComponent(bid) + '/cancel', { method: 'POST', body: JSON.stringify({}) })
-              .then(function() { loadBookings(); })
+              .then(function() { if (window.Telegram && Telegram.WebApp && Telegram.WebApp.HapticFeedback) Telegram.WebApp.HapticFeedback.notificationOccurred('success'); loadBookings(); })
               .catch(function(e) {
                 var text = typeof errorToMessage === 'function' ? errorToMessage(e) : (e && e.message ? e.message : 'Ошибка');
                 (typeof showAppAlert === 'function' ? showAppAlert(text, typeof t === 'function' ? t('error') : 'Ошибка') : alert(text));
@@ -231,7 +241,58 @@
     });
   }
 
+  function updateProfileStats(items) {
+    var block = document.getElementById('profileStatsBlock');
+    if (!block) return;
+    var tripsEl = document.getElementById('profileStatTrips');
+    var spentEl = document.getElementById('profileStatSpent');
+    var nextEl = document.getElementById('profileStatNext');
+    if (!items.length) {
+      block.classList.add('hidden');
+      return;
+    }
+    block.classList.remove('hidden');
+    var completed = items.filter(function(b) { return b.status === 'done'; });
+    var paidOrDone = items.filter(function(b) { return ['paid', 'ticket_sent', 'done'].indexOf(b.status) !== -1; });
+    var totalSpent = paidOrDone.reduce(function(sum, b) { return sum + (parseFloat(b.price_total) || 0); }, 0);
+    var currency = (paidOrDone[0] && paidOrDone[0].currency) || 'BYN';
+    if (tripsEl) tripsEl.textContent = completed.length;
+    if (spentEl) spentEl.textContent = Math.round(totalSpent * 100) / 100 + ' ' + currency;
+    var upcoming = items.filter(function(b) {
+      return ['new', 'active', 'paid', 'payment_link_sent', 'ticket_sent'].indexOf(b.status) !== -1 && b.departure_date;
+    });
+    if (nextEl) {
+      if (!upcoming.length) {
+        nextEl.textContent = '—';
+        return;
+      }
+      upcoming.sort(function(a, b) {
+        var da = (a.departure_date || '') + ' ' + (a.departure_time || '');
+        var db = (b.departure_date || '') + ' ' + (b.departure_time || '');
+        return da.localeCompare(db);
+      });
+      var next = upcoming[0];
+      var depDate = next.departure_date;
+      var depTime = next.departure_time || '';
+      var label = depDate + (depTime ? ' ' + depTime : '');
+      var today = new Date().toISOString().slice(0, 10);
+      if (depDate === today) label = (typeof t === 'function' ? t('today') : 'Сегодня') + (depTime ? ' ' + depTime : '');
+      nextEl.textContent = label;
+    }
+  }
+
+  function showBookingsSkeleton() {
+    var html = '<div class="skeleton-card trip-card"><div class="skeleton skeleton-line skeleton-line--title"></div><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line skeleton-line--short"></div></div>' +
+      '<div class="skeleton-card trip-card"><div class="skeleton skeleton-line skeleton-line--title"></div><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line skeleton-line--short"></div></div>' +
+      '<div class="skeleton-card trip-card"><div class="skeleton skeleton-line skeleton-line--title"></div><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line skeleton-line--short"></div></div>';
+    ['bookingsListActive', 'bookingsListUpcoming', 'bookingsListCompleted', 'bookingsListCancelled'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.innerHTML = html;
+    });
+  }
+
   function loadBookings() {
+    showBookingsSkeleton();
     apiFn('/api/user/bookings').then(function(data) {
       var items = data.bookings || [];
       var today = new Date().toISOString().slice(0, 10);
@@ -239,6 +300,7 @@
       var upcoming = items.filter(function(b) { return b.status === 'new' && b.departure_date >= today; });
       var completed = items.filter(function(b) { return b.status === 'done'; });
       var cancelled = items.filter(function(b) { return b.status === 'cancelled'; });
+      updateProfileStats(items);
       renderBookingCards(active, 'bookingsListActive');
       renderBookingCards(upcoming, 'bookingsListUpcoming');
       renderBookingCards(completed, 'bookingsListCompleted');
@@ -336,18 +398,32 @@
       root.appendChild(overlay);
       requestAnimationFrame(function() { overlay.classList.add('app-modal-visible'); });
     };
+    var badge = typeof getStatusBadge === 'function' ? getStatusBadge(booking.status) : { class: 'badge badge--neutral', label: booking.status || '—' };
+    var iconCheck = (typeof APP_ICONS !== 'undefined' && APP_ICONS.check) ? APP_ICONS.check : '';
+    var statusBadgeHtml = '<span class="' + esc(badge.class) + '">' + (badge.class.indexOf('success') !== -1 ? iconCheck : '') + '<span>' + esc(badge.label) + '</span></span>';
+    var showQr = (booking.status === 'paid' || booking.status === 'active' || booking.status === 'ticket_sent');
+    var qrBlock = showQr ? '<div class="booking-details-modal__qr-wrap"><p class="booking-details-modal__qr-label">QR билета</p><div id="bookingDetailsQr" class="booking-details-modal__qr" data-booking-id="' + esc(booking.booking_id) + '"></div></div>' : '';
+    var successUrl = window.location.origin + window.location.pathname.replace(/profile\.html$/, 'success.html') + '?booking_id=' + encodeURIComponent(booking.booking_id);
     var html = '<div class="booking-details-modal">' +
+      qrBlock +
       '<p><strong>Маршрут:</strong> ' + esc(booking.route_name) + ' (' + esc(from) + ' → ' + esc(to) + ')</p>' +
       '<p><strong>Дата и время:</strong> ' + esc(booking.departure_date) + ' ' + esc(booking.departure_time) + '</p>' +
       '<p><strong>Пассажиры:</strong><br>' + passengersStr + '</p>' +
       (booking.contact_phone ? '<p><strong>Контактный телефон:</strong> ' + esc(booking.contact_phone) + '</p>' : '') +
       '<p><strong>Стоимость:</strong> ' + esc(booking.price_total) + ' ' + esc(booking.currency || 'BYN') + '</p>' +
-      '<p><strong>Статус:</strong> ' + esc(booking.status) + '</p>' +
+      '<p><strong>Статус:</strong> ' + statusBadgeHtml + '</p>' +
       '<div class="booking-details-modal__actions">' +
       '<button type="button" class="btn btn-primary reschedule-date-btn">' + esc(rescheduleText) + '</button> ' +
       '<a href="success.html?booking_id=' + encodeURIComponent(booking.booking_id) + '" class="btn btn-outline">Страница заявки</a></div></div>';
     if (typeof showAppModal === 'function') {
       showAppModal({ title: (typeof t === 'function' ? t('details') : 'Подробнее'), html: html, buttons: [{ text: typeof t === 'function' ? t('close') : 'Закрыть', primary: true }], hideHeaderClose: true });
+      setTimeout(function() {
+        var qrEl = document.getElementById('bookingDetailsQr');
+        if (qrEl && typeof QRCode !== 'undefined' && !qrEl.querySelector('canvas') && !qrEl.querySelector('img')) {
+          qrEl.innerHTML = '';
+          new QRCode(qrEl, { text: successUrl, width: 80, height: 80 });
+        }
+      }, 150);
       var btn = document.querySelector('.app-modal-root .reschedule-date-btn');
       if (btn) btn.addEventListener('click', function() { window.__rescheduleClick && window.__rescheduleClick(); });
     } else {
@@ -360,13 +436,14 @@
     apiFn('/api/user/passengers').then(function(data) {
       var items = data.passengers || [];
       var esc = function(s) { if (s == null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
+      var iconPassenger = (typeof APP_ICONS !== 'undefined' && APP_ICONS.passenger) ? APP_ICONS.passenger : '';
       list.innerHTML = items.map(function(p) {
         var nameLine = esc(p.last_name) + ' ' + esc(p.first_name) + (p.middle_name ? ' ' + esc(p.middle_name) : '');
         var dobLine = typeof datePickerIsoToDisplay === 'function' ? (datePickerIsoToDisplay(p.birth_date) || p.birth_date) : p.birth_date;
         var docLine = p.passport ? ('Документ: ' + esc(p.passport)) : '';
         return '<div class="passenger-card trip-card" data-id="' + esc(p.id) + '">' +
           '<div class="passenger-card__info">' +
-          '<div class="passenger-card__name">' + nameLine + '</div>' +
+          '<div class="passenger-card__name">' + iconPassenger + ' ' + nameLine + '</div>' +
           (dobLine ? '<div class="passenger-card__meta">' + esc(dobLine) + '</div>' : '') +
           (docLine ? '<div class="passenger-card__meta">' + docLine + '</div>' : '') +
           '</div>' +
@@ -403,6 +480,8 @@
     }).catch(function() { list.innerHTML = '<p>\u041e\u0448\u0438\u0431\u043a\u0430 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0438.</p>'; });
   }
 
+  var refreshBookingsBtn = document.getElementById('refreshBookingsBtn');
+  if (refreshBookingsBtn) refreshBookingsBtn.addEventListener('click', function() { loadBookings(); if (window.Telegram && Telegram.WebApp && Telegram.WebApp.HapticFeedback) Telegram.WebApp.HapticFeedback.impactOccurred('light'); });
   document.getElementById('addPassenger').addEventListener('click', function() {
     if (typeof showAddPassengerModal === 'function') {
       showAddPassengerModal(apiFn, loadPassengers);
@@ -424,4 +503,22 @@
 
   loadBookings();
   loadPassengers();
+
+  var profilePhoneEl = document.getElementById('profilePhone');
+  var saveProfileBtn = document.getElementById('saveProfileBtn');
+  if (profilePhoneEl && saveProfileBtn) {
+    apiFn('/api/user/profile').then(function(data) { if (data && data.phone) profilePhoneEl.value = data.phone || ''; }).catch(function() {});
+    saveProfileBtn.addEventListener('click', function() {
+      var phone = profilePhoneEl.value.trim();
+      saveProfileBtn.disabled = true;
+      apiFn('/api/user/profile', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone: phone }) })
+        .then(function() {
+          var msg = document.getElementById('profileSaveMessage');
+          if (msg) { msg.textContent = (typeof t === 'function' ? t('saved') : 'Сохранено.'); msg.classList.remove('hidden'); setTimeout(function() { msg.classList.add('hidden'); }, 2000); }
+          if (window.Telegram && Telegram.WebApp && Telegram.WebApp.HapticFeedback) Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+        })
+        .catch(function(e) { (typeof showAppAlert === 'function' ? showAppAlert : alert)((e && e.message) || (typeof t === 'function' ? t('error') : 'Ошибка'), (typeof t === 'function' ? t('error') : 'Ошибка')); })
+        .finally(function() { saveProfileBtn.disabled = false; });
+    });
+  }
 })();

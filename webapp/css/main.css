@@ -698,6 +698,10 @@ body {
   margin-top: 0;
 }
 .booking-details-modal p { margin-bottom: 10px; font-size: 0.95rem; }
+.booking-details-modal__qr-wrap { margin-bottom: 12px; text-align: center; }
+.booking-details-modal__qr-label { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px; }
+.booking-details-modal__qr { display: inline-block; }
+.booking-details-modal__qr canvas { display: block; }
 .booking-details-modal__actions { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 10px; }
 .booking-details-modal__actions a { text-decoration: none; }
 
@@ -711,6 +715,13 @@ body {
 .btn-link { background: none; border: none; color: var(--accent); cursor: pointer; text-decoration: underline; font-size: inherit; padding: 0; }
 .btn-link:hover { color: var(--accent-hover); }
 
+.mrz-toggle-wrap { display: inline-flex; align-items: center; gap: 6px; }
+.mrz-hint-trigger { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); font-size: 0.85rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.mrz-hint-trigger:hover { color: var(--accent); border-color: var(--accent); }
+.mrz-hint-text { font-size: 0.85rem; color: var(--text-muted); margin-top: 6px; padding: 8px; background: var(--surface-elevated); border-radius: var(--radius); }
+.profile-edit-phone { margin-bottom: 20px; }
+.profile-edit-phone .settings-input { display: block; width: 100%; max-width: 280px; margin: 6px 0 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font-size: 1rem; }
+.profile-refresh-wrap { margin-bottom: 12px; }
 .profile-section { margin-bottom: 24px; }
 .profile-section__title { font-size: 1.1rem; margin-bottom: 8px; }
 .profile-section__hint { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 12px; }
@@ -732,6 +743,34 @@ body {
 .trip-price {
   font-size: 0.9rem;
   margin-top: 4px;
+}
+
+/* Профиль — блок статистики (Фаза 3) */
+.profile-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.profile-stats.hidden { display: none; }
+.profile-stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  text-align: center;
+}
+.profile-stat-card__value {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.profile-stat-card__label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 2px;
 }
 
 .booking-card { max-width: 100%; }
@@ -999,6 +1038,101 @@ body {
   white-space: nowrap;
   border: 0;
 }
+
+/* ========== Иконки (Фаза 2) ========== */
+.icon {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  flex-shrink: 0;
+  color: currentColor;
+  vertical-align: -0.2em;
+}
+.icon--s { width: 1em; height: 1em; }
+.icon--l { width: 3rem; height: 3rem; }
+
+/* Плашки статусов (badge) — совместимы с main theme */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 999px;
+}
+.badge .icon { width: 14px; height: 14px; vertical-align: middle; }
+.badge--new { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+.badge--pending { background: rgba(234, 179, 8, 0.2); color: #eab308; }
+.badge--success { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+.badge--error { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+.badge--neutral { background: var(--border); color: var(--text-muted); }
+[data-theme="light"] .badge--new { background: rgba(59, 130, 246, 0.15); color: #2563eb; }
+[data-theme="light"] .badge--pending { background: rgba(234, 179, 8, 0.2); color: #ca8a04; }
+[data-theme="light"] .badge--success { background: rgba(34, 197, 94, 0.2); color: #16a34a; }
+[data-theme="light"] .badge--error { background: rgba(239, 68, 68, 0.15); color: #dc2626; }
+
+/* Кнопка с состоянием загрузки */
+.btn.loading {
+  position: relative;
+  color: transparent !important;
+  pointer-events: none;
+}
+.btn.loading .btn-spinner {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  margin: -12px 0 0 -12px;
+  width: 24px;
+  height: 24px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: btnSpinner 0.6s linear infinite;
+}
+@keyframes btnSpinner {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn.loading .btn-spinner { animation-duration: 1s; }
+}
+.reduce-motion .btn.loading .btn-spinner { animation-duration: 1s; }
+
+/* Пустое состояние «Мои брони» */
+.empty-state {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--text-muted);
+}
+.empty-state .icon--l {
+  margin-bottom: 12px;
+  opacity: 0.7;
+  display: inline-block;
+}
+.empty-state .icon--l svg {
+  width: 100%;
+  height: 100%;
+}
+.empty-state__title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+/* Скелетон при загрузке (Фаза 4) */
+.skeleton { background: linear-gradient(90deg, var(--border) 25%, var(--surface) 50%, var(--border) 75%); background-size: 200% 100%; animation: skeletonShimmer 1s ease-in-out infinite; border-radius: var(--radius); }
+.skeleton-card { padding: 16px; margin-bottom: 12px; }
+.skeleton-card .skeleton-line { height: 14px; margin-bottom: 8px; }
+.skeleton-card .skeleton-line--short { width: 60%; }
+.skeleton-card .skeleton-line--title { height: 18px; width: 80%; margin-bottom: 10px; }
+@keyframes skeletonShimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+@media (prefers-reduced-motion: reduce) { .skeleton { animation: none; background: var(--border); } }
+.reduce-motion .skeleton { animation: none; background: var(--border); }
 
 /* FAQ page */
 .faq-search-wrap {

@@ -43,6 +43,21 @@
       <div id="tab-profileBookings" class="tab-content active">
         <section id="bookingsSection">
           <h2 id="bookingsTitle" class="visually-hidden" data-i18n="myBookings">Мои брони</h2>
+          <div id="profileStatsBlock" class="profile-stats hidden" aria-label="Сводка по поездкам">
+            <div class="profile-stat-card">
+              <span id="profileStatTrips" class="profile-stat-card__value">0</span>
+              <span class="profile-stat-card__label" data-i18n="statTrips">Поездок</span>
+            </div>
+            <div class="profile-stat-card">
+              <span id="profileStatSpent" class="profile-stat-card__value">0 BYN</span>
+              <span class="profile-stat-card__label" data-i18n="statSpent">Потрачено</span>
+            </div>
+            <div class="profile-stat-card">
+              <span id="profileStatNext" class="profile-stat-card__value">—</span>
+              <span class="profile-stat-card__label" data-i18n="statNextTrip">Следующая поездка</span>
+            </div>
+          </div>
+          <p class="profile-refresh-wrap"><button type="button" id="refreshBookingsBtn" class="btn btn-outline btn-small" data-i18n="refresh">Обновить</button></p>
           <div class="segmented-control" role="tablist">
             <button class="segment active" data-tab="active" role="tab" aria-selected="true">Активные</button>
             <button class="segment" data-tab="upcoming" role="tab" aria-selected="false">Предстоящие</button>
@@ -65,6 +80,12 @@
       <div id="tab-profileSettings" class="tab-content">
         <section id="settingsSection" class="settings-section">
           <h2 id="settingsTitle" class="visually-hidden" data-i18n="settings">Настройки</h2>
+          <div class="settings-group profile-edit-phone">
+            <label for="profilePhone" id="profilePhoneLabel" data-i18n="contactPhone">Телефон</label>
+            <input type="tel" id="profilePhone" class="settings-input" placeholder="+375 29 123 45 67" autocomplete="tel">
+            <button type="button" id="saveProfileBtn" class="btn btn-small btn-primary" data-i18n="save">Сохранить</button>
+            <p id="profileSaveMessage" class="settings-hint hidden"></p>
+          </div>
           <div class="settings-group">
             <label for="langSelect" id="langLabel" data-i18n="language">Язык</label>
             <select id="langSelect" class="settings-select" aria-label="Язык">
@@ -93,6 +114,8 @@
   <script src="https://unpkg.com/imask"></script>
   <script src="js/input-masks.js"></script>
   <script src="js/passport-config.js"></script>
+  <script src="js/icons.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="js/theme.js"></script>
   <script src="js/segmented-control.js"></script>
   <script src="js/app-modal.js"></script>

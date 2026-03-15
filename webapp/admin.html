@@ -24,6 +24,7 @@
     <div id="loginWarning" class="warning hidden">Войдите через Telegram (как администратор).</div>
     <div id="adminTabs" class="segmented-control hidden" role="tablist">
       <button type="button" class="segment active" data-tab="statsPanel" role="tab" aria-selected="true">Статистика</button>
+      <button type="button" class="segment" data-tab="bookingsPanel" role="tab" aria-selected="false">Все заявки</button>
       <button type="button" class="segment" data-tab="adminsPanel" role="tab" aria-selected="false">Админы</button>
       <button type="button" class="segment" data-tab="logsPanel" role="tab" aria-selected="false">Логи</button>
       <button type="button" class="segment" data-tab="roleAuditPanel" role="tab" aria-selected="false">Роли</button>
@@ -50,6 +51,16 @@
               <div class="admin-stat-card__label">BYN</div>
             </div>
           </div>
+          <div class="admin-stats-charts">
+            <div class="admin-chart-wrap">
+              <canvas id="statsChartBookings" height="200" aria-label="График заявок по дням"></canvas>
+              <p class="admin-chart-label">Заявок по дням</p>
+            </div>
+            <div class="admin-chart-wrap">
+              <canvas id="statsChartRoutes" height="200" aria-label="График заявок по маршрутам"></canvas>
+              <p class="admin-chart-label">Заявок по маршрутам</p>
+            </div>
+          </div>
           <div class="admin-actions">
             <button type="button" id="exportCsv" class="btn btn--secondary btn--block">📥 Экспорт CSV</button>
             <div class="admin-archive mt-4">
@@ -60,6 +71,30 @@
               <button type="button" id="runArchiveBtn" class="btn btn--secondary btn--small ml-2">Выполнить архивацию</button>
             </div>
           </div>
+        </section>
+        </div>
+        <div id="tab-bookingsPanel" class="tab-content">
+        <section id="bookingsPanel">
+          <h2 class="admin-section__title">Все заявки</h2>
+          <div class="admin-bookings-filters">
+            <input type="date" id="bookingsFromDate" class="input" placeholder="От">
+            <input type="date" id="bookingsToDate" class="input" placeholder="До">
+            <select id="bookingsStatus" class="input">
+              <option value="">Статус: все</option>
+              <option value="new">Новая</option>
+              <option value="active">В работе</option>
+              <option value="paid">Оплачено</option>
+              <option value="ticket_sent">Билет отправлен</option>
+              <option value="done">Завершено</option>
+              <option value="cancelled">Отменено</option>
+            </select>
+            <button type="button" id="bookingsApplyFilters" class="btn btn--primary">Применить</button>
+            <button type="button" id="bookingsCancelBulk" class="btn btn--outline hidden" title="Отменить выбранные заявки">Отменить выбранные</button>
+          </div>
+          <div id="bookingsListWrap" class="admin-bookings-list">
+            <p class="text-secondary">Загрузка...</p>
+          </div>
+          <div id="bookingsPagination" class="admin-bookings-pagination"></div>
         </section>
         </div>
         <div id="tab-adminsPanel" class="tab-content">
@@ -131,6 +166,7 @@
     </main>
   </div>
   <script src="js/segmented-control.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="js/api.js?v=2"></script>
   <script src="js/auth.js?v=2"></script>
   <script src="js/app-modal.js?v=2"></script>
@@ -163,6 +199,36 @@
         };
       }
 
+      var statsChartBookingsInstance = null;
+      var statsChartRoutesInstance = null;
+      function drawStatsCharts(data) {
+        var byDay = data.by_day || {};
+        var byRoute = data.by_route || {};
+        var dayLabels = Object.keys(byDay).sort();
+        var dayValues = dayLabels.map(function(d) { return byDay[d] || 0; });
+        var routeLabels = Object.keys(byRoute).sort();
+        var routeValues = routeLabels.map(function(r) { return byRoute[r] || 0; });
+        var bg = getComputedStyle(document.documentElement).getPropertyValue('--color-bg').trim() || '#1a1a2e';
+        var surface = getComputedStyle(document.documentElement).getPropertyValue('--color-surface').trim() || '#16213e';
+        var accent = getComputedStyle(document.documentElement).getPropertyValue('--color-accent').trim() || '#e94560';
+        var text = getComputedStyle(document.documentElement).getPropertyValue('--color-text-primary').trim() || '#e8e8ee';
+        if (statsChartBookingsInstance) { statsChartBookingsInstance.destroy(); statsChartBookingsInstance = null; }
+        if (statsChartRoutesInstance) { statsChartRoutesInstance.destroy(); statsChartRoutesInstance = null; }
+        if (typeof Chart !== 'undefined' && dayLabels.length) {
+          statsChartBookingsInstance = new Chart(document.getElementById('statsChartBookings'), {
+            type: 'bar',
+            data: { labels: dayLabels, datasets: [{ label: 'Заявок', data: dayValues, backgroundColor: accent, borderColor: accent, borderWidth: 1 }] },
+            options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: text } }, x: { ticks: { color: text, maxRotation: 45 } } } }
+          });
+        }
+        if (typeof Chart !== 'undefined' && routeLabels.length) {
+          statsChartRoutesInstance = new Chart(document.getElementById('statsChartRoutes'), {
+            type: 'bar',
+            data: { labels: routeLabels, datasets: [{ label: 'Заявок', data: routeValues, backgroundColor: accent, borderColor: accent, borderWidth: 1 }] },
+            options: { indexAxis: 'y', responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { color: text } }, y: { ticks: { color: text } } } }
+          });
+        }
+      }
       function loadStats(period) {
         var range = periodToDates(period || 'month');
         api('/api/admin/stats?from_date=' + encodeURIComponent(range.from_date) + '&to_date=' + encodeURIComponent(range.to_date)).then(function(data) {
@@ -174,6 +240,7 @@
           document.getElementById('statsPeriod').innerHTML = 'Период: <strong>' + data.from_date + '</strong> — <strong>' + data.to_date + '</strong>';
           document.getElementById('statsBookings').textContent = data.total_bookings != null ? data.total_bookings : '—';
           document.getElementById('statsSum').textContent = data.total_sum != null ? data.total_sum : '—';
+          drawStatsCharts(data);
         }).catch(function() { document.getElementById('loginWarning').classList.remove('hidden'); document.getElementById('loginWarning').textContent = 'Нет доступа (не админ).'; });
       }
 
@@ -261,10 +328,68 @@
         }).catch(function() { document.getElementById('roleAuditContent').innerHTML = '<div class="admin-log-item text-error">Не удалось загрузить</div>'; });
       }
 
+      var bookingsOffset = 0;
+      var bookingsLimit = 50;
+      function loadAdminBookings() {
+        var from = document.getElementById('bookingsFromDate').value || '';
+        var to = document.getElementById('bookingsToDate').value || '';
+        var status = document.getElementById('bookingsStatus').value || '';
+        var qs = 'limit=' + bookingsLimit + '&offset=' + bookingsOffset;
+        if (from) qs += '&from_date=' + encodeURIComponent(from);
+        if (to) qs += '&to_date=' + encodeURIComponent(to);
+        if (status) qs += '&status=' + encodeURIComponent(status);
+        var skeletonRows = Array(5).join('<tr><td></td><td><span class="skeleton" style="display:inline-block;width:80px;height:12px;"></span></td><td><span class="skeleton" style="display:inline-block;width:120px;height:12px;"></span></td><td><span class="skeleton" style="display:inline-block;width:70px;height:12px;"></span></td><td><span class="skeleton" style="display:inline-block;width:50px;height:12px;"></span></td><td><span class="skeleton" style="display:inline-block;width:50px;height:12px;"></span></td><td><span class="skeleton" style="display:inline-block;width:80px;height:12px;"></span></td></tr>');
+        document.getElementById('bookingsListWrap').innerHTML = '<div class="admin-bookings-table-wrap"><table class="admin-bookings-table"><thead><tr><th></th><th>ID</th><th>Маршрут</th><th>Дата / время</th><th>Статус</th><th>Сумма</th><th>Контакт</th></tr></thead><tbody>' + skeletonRows + '</tbody></table></div>';
+        api('/api/admin/bookings?' + qs).then(function(data) {
+          var list = data.bookings || [];
+          var total = data.total != null ? data.total : 0;
+          var esc = function(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
+          var statusLabels = { new: 'Новая', active: 'В работе', paid: 'Оплачено', ticket_sent: 'Билет', done: 'Завершено', cancelled: 'Отменено' };
+          var canCancel = function(s) { return s && ['new', 'active', 'payment_link_sent', 'pending_payment'].indexOf(s) !== -1; };
+          document.getElementById('bookingsListWrap').innerHTML = list.length ? '<div class="admin-bookings-table-wrap"><table class="admin-bookings-table"><thead><tr><th><input type="checkbox" id="bookingsSelectAll" aria-label="Выбрать все"></th><th>ID</th><th>Маршрут</th><th>Дата / время</th><th>Статус</th><th>Сумма</th><th>Контакт</th></tr></thead><tbody>' +
+            list.map(function(b) {
+              var check = canCancel(b.status) ? '<input type="checkbox" class="booking-row-cb" data-id="' + esc(b.booking_id) + '">' : '';
+              return '<tr><td>' + check + '</td><td>' + esc(b.booking_id) + '</td><td>' + esc(b.route_name) + ' (' + esc(b.from_city) + ' → ' + esc(b.to_city) + ')</td><td>' + esc(b.departure_date) + ' ' + esc(b.departure_time) + '</td><td>' + (statusLabels[b.status] || esc(b.status)) + '</td><td>' + esc(b.price_total) + ' ' + esc(b.currency || 'BYN') + '</td><td>' + esc(b.contact_phone) + '</td></tr>';
+            }).join('') + '</tbody></table></div>' : '<p class="text-secondary">Нет заявок за выбранный период.</p>';
+          var bulkBtn = document.getElementById('bookingsCancelBulk');
+          if (bulkBtn) {
+            if (list.some(function(b) { return canCancel(b.status); })) {
+              bulkBtn.classList.remove('hidden');
+              bulkBtn.onclick = function() {
+                var ids = Array.from(document.querySelectorAll('.booking-row-cb:checked')).map(function(cb) { return cb.getAttribute('data-id'); });
+                if (!ids.length) { (typeof showAppAlert === 'function' ? showAppAlert : alert)('Выберите заявки для отмены.', 'Внимание'); return; }
+                if (!confirm('Отменить ' + ids.length + ' заявок?')) return;
+                api('/api/admin/bookings/cancel-bulk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ booking_ids: ids }) })
+                  .then(function(data) { (typeof showToast === 'function' ? showToast : alert)(data.message || 'Готово'); loadAdminBookings(); })
+                  .catch(function(e) { (typeof showAppAlert === 'function' ? showAppAlert : alert)(e.message || 'Ошибка', 'Ошибка'); });
+              };
+            } else bulkBtn.classList.add('hidden');
+          }
+          var selectAllEl = document.getElementById('bookingsSelectAll');
+          if (selectAllEl) selectAllEl.addEventListener('change', function() { document.querySelectorAll('.booking-row-cb').forEach(function(cb) { cb.checked = selectAllEl.checked; }); });
+          var pagination = document.getElementById('bookingsPagination');
+          if (total > bookingsLimit) {
+            var pages = Math.ceil(total / bookingsLimit);
+            var currentPage = Math.floor(bookingsOffset / bookingsLimit) + 1;
+            var prevDisabled = bookingsOffset <= 0;
+            var nextDisabled = bookingsOffset + bookingsLimit >= total;
+            pagination.innerHTML = '<span class="admin-bookings-total">Всего: ' + total + '</span> ' +
+              '<button type="button" class="btn btn--outline btn--small" id="bookingsPrev" ' + (prevDisabled ? 'disabled' : '') + '>← Назад</button> ' +
+              '<span> ' + currentPage + ' / ' + pages + ' </span> ' +
+              '<button type="button" class="btn btn--outline btn--small" id="bookingsNext" ' + (nextDisabled ? 'disabled' : '') + '>Вперёд →</button>';
+            document.getElementById('bookingsPrev').addEventListener('click', function() { if (bookingsOffset > 0) { bookingsOffset -= bookingsLimit; loadAdminBookings(); } });
+            document.getElementById('bookingsNext').addEventListener('click', function() { if (bookingsOffset + bookingsLimit < total) { bookingsOffset += bookingsLimit; loadAdminBookings(); } });
+          } else {
+            pagination.innerHTML = total ? '<span class="admin-bookings-total">Всего: ' + total + '</span>' : '';
+          }
+        }).catch(function() { document.getElementById('bookingsListWrap').innerHTML = '<p class="text-error">Не удалось загрузить заявки.</p>'; });
+      }
+      document.getElementById('bookingsApplyFilters').addEventListener('click', function() { bookingsOffset = 0; loadAdminBookings(); });
       document.querySelectorAll('.segmented-control .segment').forEach(function(btn) {
         btn.addEventListener('click', function() {
           var tab = this.getAttribute('data-tab');
           if (tab === 'roleAuditPanel') loadRoleAudit();
+          if (tab === 'bookingsPanel') loadAdminBookings();
         });
       });
 

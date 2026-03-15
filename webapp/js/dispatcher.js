@@ -61,7 +61,11 @@
 
   const OVERDUE_MINUTES = 15;
 
+  var skeletonCardHtml = '<div class="skeleton-card-dispatcher"><div class="skeleton skeleton--title"></div><div class="skeleton"></div><div class="skeleton skeleton--short"></div></div>';
+  var skeletonListHtml = skeletonCardHtml + skeletonCardHtml + skeletonCardHtml;
   function loadNew() {
+    const list = document.getElementById('newList');
+    if (list) list.innerHTML = skeletonListHtml;
     const f = readFilters();
     const qs = new URLSearchParams({ status: 'new' });
     if (f.route) qs.set('route_id', f.route);
@@ -101,12 +105,19 @@
     }).catch(() => { document.getElementById('newList').innerHTML = '<p>Нет доступа (вы не диспетчер).</p>'; });
   }
 
+  function getBadgeHtml(statusOrPayment) {
+    if (typeof getStatusBadge !== 'function') return statusOrPayment || '—';
+    var badge = getStatusBadge(statusOrPayment);
+    var icon = (badge.class.indexOf('success') !== -1 && typeof APP_ICONS !== 'undefined' && APP_ICONS.check) ? APP_ICONS.check : '';
+    return '<span class="' + badge.class + '">' + icon + '<span>' + (statusOrPayment ? badge.label : '—') + '</span></span>';
+  }
   function renderNewCard(b, esc) {
+    var statusBadge = getBadgeHtml(b.status);
     return `
       <div class="dispatcher-card" data-booking="${esc(b.booking_id)}">
         <strong>${esc(b.booking_id)}</strong> ${esc(b.route_name)}<br>
         ${esc(b.departure_date)} ${esc(b.departure_time)} | ${esc(b.passengers_count)} пасс. | ${esc(b.price_total)} ${esc(b.currency)}
-        <div class="status">${b.status}</div>
+        <div class="status">${statusBadge}</div>
         <div class="actions">
           <button data-action="take" data-id="${b.booking_id}">Взять в работу</button>
         </div>
@@ -126,6 +137,8 @@
   }
 
   function loadActive() {
+    const activeList = document.getElementById('activeList');
+    if (activeList) activeList.innerHTML = skeletonListHtml;
     const f = readFilters();
     const qs = new URLSearchParams({ status: 'active' });
     if (f.route) qs.set('route_id', f.route);
@@ -139,7 +152,7 @@
         <div class="dispatcher-card">
           <strong>${esc(b.booking_id)}</strong> ${esc(b.route_name)}<br>
           ${esc(b.departure_date)} ${esc(b.departure_time)} | ${esc(b.price_total)} ${esc(b.currency)}
-          <div class="status">${esc(b.payment_status)}</div>
+          <div class="status">${getBadgeHtml(b.payment_status || b.status)}</div>
           <div class="actions">
             <button data-id="${b.booking_id}" data-status="paid">Оплачено</button>
             <button data-id="${b.booking_id}" data-status="ticket_sent">Билет отправлен</button>
@@ -195,10 +208,11 @@
       r.ok ? r.json() : r.json().then(data => { throw { status: r.status, body: data }; })
     ).then(b => {
       const esc = (s) => (s == null ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'));
+      const statusBadge = typeof getBadgeHtml === 'function' ? getBadgeHtml(b.status) : esc(b.status);
       document.getElementById('searchResults').innerHTML = `
         <div class="dispatcher-card">
           <strong>${esc(b.booking_id)}</strong> ${esc(b.route_name)}<br>
-          ${esc(b.departure_date)} ${esc(b.departure_time)} | ${esc(b.status)} | ${esc(b.price_total)} ${esc(b.currency)}
+          ${esc(b.departure_date)} ${esc(b.departure_time)} | ${statusBadge} | ${esc(b.price_total)} ${esc(b.currency)}
         </div>
       `;
     }).catch(() => {

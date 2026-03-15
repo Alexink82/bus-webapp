@@ -267,6 +267,10 @@
   height: 2px;
   background: var(--border, var(--tg-theme-secondary-bg-color, #eee));
   margin: 0 4px;
+  transition: background 0.25s ease;
+}
+.stepper--step2 .stepper__connector {
+  background: var(--accent, var(--tg-theme-button-color, #2481cc));
 }
 .stepper .step::after {
   display: none;

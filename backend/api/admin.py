@@ -68,6 +68,90 @@ async def admin_stats(
     }
 
 
+@router.get("/bookings")
+async def admin_list_bookings(
+    from_date: date | None = Query(None),
+    to_date: date | None = Query(None),
+    status: str | None = Query(None),
+    route_id: str | None = Query(None),
+    limit: int = Query(50, le=200),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    admin_id: int = Depends(get_admin_id),
+):
+    """Список заявок для админки с фильтрами и пагинацией."""
+    q = select(Booking).where(Booking.is_archived == False)
+    if from_date:
+        q = q.where(Booking.date >= from_date.isoformat())
+    if to_date:
+        q = q.where(Booking.date <= to_date.isoformat())
+    if status:
+        q = q.where(Booking.status == status)
+    if route_id:
+        q = q.where(Booking.route_id == route_id)
+    q = q.order_by(Booking.created_at.desc()).limit(limit).offset(offset)
+    result = await db.execute(q)
+    rows = result.scalars().all()
+    total_q = select(func.count()).select_from(Booking).where(Booking.is_archived == False)
+    if from_date:
+        total_q = total_q.where(Booking.date >= from_date.isoformat())
+    if to_date:
+        total_q = total_q.where(Booking.date <= to_date.isoformat())
+    if status:
+        total_q = total_q.where(Booking.status == status)
+    if route_id:
+        total_q = total_q.where(Booking.route_id == route_id)
+    total_result = await db.execute(total_q)
+    total_count = total_result.scalar() or 0
+    return {
+        "bookings": [
+            {
+                "booking_id": r.id,
+                "status": r.status,
+                "route_id": r.route_id,
+                "route_name": ROUTES.get(r.route_id, {}).get("name", r.route_id or ""),
+                "from_city": r.from_city or "",
+                "to_city": r.to_city or "",
+                "departure_date": r.date or "",
+                "departure_time": r.departure or "",
+                "price_total": r.price_total,
+                "currency": "BYN",
+                "contact_phone": r.contact_phone or "",
+                "created_at": r.created_at or "",
+            }
+            for r in rows
+        ],
+        "total": total_count,
+        "limit": limit,
+        "offset": offset,
+    }
+
+
+class CancelBulkIn(BaseModel):
+    booking_ids: list[str]
+
+
+@router.post("/bookings/cancel-bulk")
+async def admin_cancel_bulk(
+    body: CancelBulkIn,
+    db: AsyncSession = Depends(get_db),
+    admin_id: int = Depends(get_admin_id),
+):
+    """Массовая отмена заявок (только для админа)."""
+    ids = [x.strip() for x in (body.booking_ids or []) if x and x.strip()]
+    if not ids:
+        return {"cancelled": 0, "message": "Нет выбранных заявок"}
+    stmt = (
+        update(Booking)
+        .where(Booking.id.in_(ids))
+        .where(~Booking.status.in_(("cancelled", "done", "ticket_sent")))
+        .values(status="cancelled")
+    )
+    result = await db.execute(stmt)
+    await db.commit()
+    return {"cancelled": result.rowcount, "message": f"Отменено заявок: {result.rowcount}"}
+
+
 @router.get("/logs")
 async def admin_logs(
     level: str | None = Query(None),

@@ -61,6 +61,11 @@
   margin-bottom: 16px;
 }
 
+.skeleton-card-dispatcher { background: var(--surface); padding: 16px; border-radius: var(--radius); margin-bottom: 12px; }
+.skeleton-card-dispatcher .skeleton { height: 14px; margin-bottom: 8px; border-radius: 4px; }
+.skeleton-card-dispatcher .skeleton--title { height: 18px; width: 70%; }
+.skeleton-card-dispatcher .skeleton--short { width: 50%; }
+
 .dispatcher-card {
   background: var(--surface);
   padding: 16px;
