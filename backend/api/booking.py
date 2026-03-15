@@ -3,6 +3,7 @@ import random
 import string
 from datetime import date, datetime, timedelta
 
+import hashlib
 import json
 from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from fastapi.responses import JSONResponse
@@ -23,9 +24,17 @@ from services.notification import notify_booking_created, notify_booking_status
 from logging_config import log_action
 from services.redis_client import get_redis
 
-IDEMPOTENCY_TTL = 300  # 5 минут
+IDEMPOTENCY_TTL = 300  # 5 мин — для X-Idempotency-Key
+CONTENT_IDEMPOTENCY_TTL = 600  # 10 мин — для дубликата по содержимому (маршрут+дата+время+телефон+user_id)
 
 router = APIRouter(prefix="/api", tags=["booking"])
+
+
+def _content_idempotency_key(route_id: str, departure_date: str, departure_time: str, phone: str, user_id: int | None) -> str:
+    """Ключ для отклонения дубликата заявки за N минут (одно и то же содержимое)."""
+    normalized_phone = "".join(c for c in (phone or "") if c.isdigit())
+    raw = f"{route_id}|{departure_date}|{departure_time}|{normalized_phone}|{user_id or 0}"
+    return hashlib.sha256(raw.encode()).hexdigest()[:32]
 
 
 class CreateBookingIn(BaseModel):
@@ -147,6 +156,18 @@ async def create_booking(
         if bl_by_uid.scalar_one_or_none():
             raise HTTPException(403, detail={"code": "blocked"})
 
+    # Дубликат по содержимому (маршрут + дата + время + телефон + user_id) за последние N минут
+    if redis:
+        content_key = _content_idempotency_key(
+            body.route_id, body.departure_date, body.departure_time, body.phone, user_id if user_id else None
+        )
+        try:
+            cached = await redis.get("idempotency:content:" + content_key)
+            if cached:
+                return JSONResponse(status_code=200, content=json.loads(cached))
+        except Exception:
+            pass
+
     price_one, price_return, price_total = calculate_booking_totals(
         route_dict, body.from_city, body.to_city, body.passengers, dep_date, body.is_round_trip,
     )
@@ -247,10 +268,15 @@ async def create_booking(
         "currency": "BYN",
         "payment_deadline": None,
     }
-    if x_idempotency_key and redis:
-        key = "idempotency:booking:" + (x_idempotency_key.strip()[:128] or "empty")
+    if redis:
         try:
-            await redis.set(key, json.dumps(response_body), ex=IDEMPOTENCY_TTL)
+            if x_idempotency_key:
+                key = "idempotency:booking:" + (x_idempotency_key.strip()[:128] or "empty")
+                await redis.set(key, json.dumps(response_body), ex=IDEMPOTENCY_TTL)
+            content_key = _content_idempotency_key(
+                body.route_id, body.departure_date, departure_time, body.phone, user_id if user_id else None
+            )
+            await redis.set("idempotency:content:" + content_key, json.dumps(response_body), ex=CONTENT_IDEMPOTENCY_TTL)
         except Exception:
             pass
     return response_body

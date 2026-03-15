@@ -60,6 +60,9 @@ class Settings(BaseSettings):
     # WebPay callback (проверка подписи/секрета в проде)
     webpay_callback_secret: str = ""
 
+    # Маршруты из БД (таблица routes + services/cache.py). 0/пусто — из core.constants.ROUTES
+    use_routes_from_db: bool = False
+
     model_config = SettingsConfigDict(
         env_file=[".env", "../.env"],
         env_file_encoding="utf-8",

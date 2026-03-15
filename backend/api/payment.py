@@ -1,10 +1,14 @@
 """Payment WebPay mock and callback.
 Использует Booking.id (не booking_id), paid_at для статуса оплаты.
+Проверка подписи callback: при WEBPAY_CALLBACK_SECRET — X-WebPay-Signature = HMAC-SHA256(raw_body, secret) или body.secret.
 """
+import hmac
+import hashlib
+import json
 import uuid
 from datetime import datetime, timezone, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -74,20 +78,47 @@ async def create_payment(
 class CallbackIn(BaseModel):
     transaction_id: str
     success: bool = True
-    secret: str | None = None
+    secret: str | None = None  # устаревший способ; при наличии secret предпочтительна проверка подписи
+
+
+def _verify_webpay_signature(payload: bytes, signature_header: str | None, secret: str) -> bool:
+    """Проверка подписи: X-WebPay-Signature = HMAC-SHA256(payload, secret) в hex."""
+    if not signature_header or not secret:
+        return False
+    expected = hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, signature_header.strip())
 
 
 @router.post("/payment/callback")
 async def payment_callback(
-    body: CallbackIn,
+    request: Request,
     db: AsyncSession = Depends(get_db),
+    x_webpay_signature: str | None = Header(None, alias="X-WebPay-Signature"),
 ):
-    """WebPay callback. Если задан WEBPAY_CALLBACK_SECRET — проверяем body.secret."""
+    """WebPay callback. При WEBPAY_CALLBACK_SECRET: проверяем X-WebPay-Signature = HMAC-SHA256(raw_body, secret) или body.secret."""
+    raw_body = await request.body()
+    try:
+        data = json.loads(raw_body)
+    except Exception:
+        raise HTTPException(400, detail="invalid_json")
+    body = CallbackIn(
+        transaction_id=data.get("transaction_id", ""),
+        success=bool(data.get("success", True)),
+        secret=data.get("secret"),
+    )
+    if not body.transaction_id:
+        raise HTTPException(400, detail="transaction_id_required")
+
     from config import get_settings
     secret = (get_settings().webpay_callback_secret or "").strip()
     if secret:
-        if (body.secret or "").strip() != secret:
+        if _verify_webpay_signature(raw_body, x_webpay_signature, secret):
+            pass
+        elif (body.secret or "").strip() == secret:
+            pass
+        else:
             raise HTTPException(403, detail="invalid_callback_secret")
+
     result = await db.execute(
         select(WebPayTransaction).where(
             WebPayTransaction.transaction_id == body.transaction_id

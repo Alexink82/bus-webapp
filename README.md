@@ -152,8 +152,9 @@ TG WebApp открывается с домена `t.me` (cross-origin). Запр
 | `REDIS_URL` | Нет | Подключение к Redis (Upstash: `rediss://default:ТОКЕН@хост.upstash.io:6379`). Если задан — rate limit общий для воркеров. |
 | `SENTRY_DSN` | Нет | DSN из Sentry (Project → Getting started) — мониторинг ошибок и производительности. |
 | `SENTRY_SEND_PII` | Нет | `1` или `true` — передавать IP/заголовки в Sentry. |
-| `WEBPAY_CALLBACK_SECRET` | Нет | Секрет для проверки callback WebPay в проде. |
+| `WEBPAY_CALLBACK_SECRET` | Нет | Секрет для проверки callback WebPay. При заданном значении: принимается заголовок **X-WebPay-Signature** = HMAC-SHA256(raw body запроса, секрет) в hex; допускается также передача секрета в теле (body.secret) для совместимости. |
 | `HEALTH_CHECK_DB` | Нет | `1` или `true` — в `/api/health` проверять доступность БД; при недоступности ответ 503 (для UptimeRobot и т.п.). |
+| `USE_ROUTES_FROM_DB` | Нет | `1` или `true` — маршруты для GET `/api/routes` брать из таблицы **routes** через services/cache.py (TTL 10 мин); иначе из констант (core.constants.ROUTES). |
 
 Дополнительно для режима обслуживания: **MAINTENANCE_UNTIL** — дата/время в ISO (UTC), до которого `/api/health` возвращает 503 (см. раздел «CORS и переменные для продакшена»). Для мониторинга доступности БД: **HEALTH_CHECK_DB=1** — тогда при недоступной БД `/api/health` вернёт 503 и `{"status": "degraded", "db": "unavailable"}`.
 
