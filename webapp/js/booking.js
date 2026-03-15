@@ -213,7 +213,7 @@
     var html = '<div class="app-modal-header"><h2 class="app-modal-title">Вставить данные пассажира</h2><button type="button" class="app-modal-close fill-profile-close" aria-label="Закрыть">&times;</button></div>' +
       '<div class="app-modal-body"><p class="field-hint">Выберите, чьи данные подставить в каждую позицию.</p>' + rows + '</div>' +
       '<div class="app-modal-footer"><button type="button" class="btn btn-secondary app-modal-btn fill-profile-cancel">Отмена</button><button type="button" class="btn btn-primary app-modal-btn fill-profile-apply">Подставить</button></div>';
-    overlay.innerHTML = '<div class="app-modal-content">' + html + '</div>';
+    overlay.innerHTML = '<div class="app-modal-content"><div class="app-modal-drag-handle" aria-hidden="true"></div>' + html + '</div>';
     var content = overlay.querySelector('.app-modal-content');
     function closeFillModal() {
       overlay.classList.remove('app-modal-visible');

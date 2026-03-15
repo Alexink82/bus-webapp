@@ -57,22 +57,15 @@
   animation: none;
 }
 
-/* Модальное окно */
+/* Модальное окно (bottom-sheet, анимация задаётся в main.css: slideUpModal) */
 .app-modal-overlay {
   transition: opacity 0.2s ease;
 }
-.app-modal-content {
-  animation: modalIn 0.25s ease-out;
-}
-@keyframes modalIn {
-  from { opacity: 0; transform: scale(0.96); }
-  to { opacity: 1; transform: scale(1); }
-}
 @media (prefers-reduced-motion: reduce) {
-  .app-modal-content { animation: none; }
+  .app-modal-content { animation-duration: 0.15s; }
 }
 .reduce-motion .app-modal-content {
-  animation: none;
+  animation-duration: 0.15s;
 }
 
 /* Лоадер */

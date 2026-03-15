@@ -22,15 +22,16 @@
       <a href="index.html" class="admin-header__exit">Выйти</a>
     </header>
     <div id="loginWarning" class="warning hidden">Войдите через Telegram (как администратор).</div>
-    <div id="adminTabs" class="admin-tabs hidden">
-      <button type="button" class="admin-tab admin-tab--active" data-panel="statsPanel">Статистика</button>
-      <button type="button" class="admin-tab" data-panel="adminsPanel">Администраторы</button>
-      <button type="button" class="admin-tab" data-panel="logsPanel">Логи</button>
-      <button type="button" class="admin-tab" data-panel="roleAuditPanel">История ролей</button>
-      <button type="button" class="admin-tab" data-panel="dispatchersPanel">Диспетчеры</button>
+    <div id="adminTabs" class="segmented-control hidden" role="tablist">
+      <button type="button" class="segment active" data-tab="statsPanel" role="tab" aria-selected="true">Статистика</button>
+      <button type="button" class="segment" data-tab="adminsPanel" role="tab" aria-selected="false">Админы</button>
+      <button type="button" class="segment" data-tab="logsPanel" role="tab" aria-selected="false">Логи</button>
+      <button type="button" class="segment" data-tab="roleAuditPanel" role="tab" aria-selected="false">Роли</button>
+      <button type="button" class="segment" data-tab="dispatchersPanel" role="tab" aria-selected="false">Диспетчеры</button>
     </div>
     <main id="adminMain" class="page hidden">
       <div class="admin-panel">
+        <div id="tab-statsPanel" class="tab-content active">
         <section id="statsPanel">
           <h2 class="admin-section__title">Статистика</h2>
           <div class="admin-period-tabs">
@@ -60,7 +61,9 @@
             </div>
           </div>
         </section>
-        <section id="adminsPanel" class="hidden">
+        </div>
+        <div id="tab-adminsPanel" class="tab-content">
+        <section id="adminsPanel">
           <h2 class="admin-section__title">Администраторы</h2>
           <p class="text-secondary text-small mb-4">Список Telegram ID с правами админа (из переменной ADMIN_IDS на Render и из базы). Добавление сохраняет в базу — новый админ увидит вкладку «Админ» после обновления страницы.</p>
           <div class="form-group">
@@ -73,7 +76,9 @@
             <div id="adminsList"></div>
           </div>
         </section>
-        <section id="logsPanel" class="hidden">
+        </div>
+        <div id="tab-logsPanel" class="tab-content">
+        <section id="logsPanel">
           <h2 class="admin-section__title">Логи</h2>
           <div class="admin-archive mt-4" style="max-width:320px;">
             <strong>Ротация логов</strong>
@@ -89,14 +94,18 @@
             <div id="logsContent"></div>
           </div>
         </section>
-        <section id="roleAuditPanel" class="hidden">
+        </div>
+        <div id="tab-roleAuditPanel" class="tab-content">
+        <section id="roleAuditPanel">
           <h2 class="admin-section__title">История изменений ролей</h2>
           <p class="text-secondary text-small mb-4">Кто и когда добавлял/удалял администраторов и диспетчеров.</p>
           <div class="admin-logs">
             <div id="roleAuditContent"></div>
           </div>
         </section>
-        <section id="dispatchersPanel" class="hidden">
+        </div>
+        <div id="tab-dispatchersPanel" class="tab-content">
+        <section id="dispatchersPanel">
           <h2 class="admin-section__title">Диспетчеры</h2>
           <p class="text-secondary text-small mb-4">Добавленные диспетчеры видят вкладку «Диспетчер» в приложении. Удаление деактивирует доступ.</p>
           <div class="form-group">
@@ -117,9 +126,11 @@
             <div id="dispatchersList"></div>
           </div>
         </section>
+        </div>
       </div>
     </main>
   </div>
+  <script src="js/segmented-control.js"></script>
   <script src="js/api.js?v=2"></script>
   <script src="js/auth.js?v=2"></script>
   <script src="js/app-modal.js?v=2"></script>
@@ -250,16 +261,10 @@
         }).catch(function() { document.getElementById('roleAuditContent').innerHTML = '<div class="admin-log-item text-error">Не удалось загрузить</div>'; });
       }
 
-      document.querySelectorAll('.admin-tab').forEach(function(btn) {
+      document.querySelectorAll('.segmented-control .segment').forEach(function(btn) {
         btn.addEventListener('click', function() {
-          var panel = this.getAttribute('data-panel');
-          document.querySelectorAll('.admin-tab').forEach(function(b) { b.classList.remove('admin-tab--active'); });
-          document.querySelectorAll('#statsPanel, #adminsPanel, #logsPanel, #roleAuditPanel, #dispatchersPanel').forEach(function(p) { p.classList.add('hidden'); });
-          this.classList.add('admin-tab--active');
-          if (panel) {
-            document.getElementById(panel).classList.remove('hidden');
-            if (panel === 'roleAuditPanel') loadRoleAudit();
-          }
+          var tab = this.getAttribute('data-tab');
+          if (tab === 'roleAuditPanel') loadRoleAudit();
         });
       });
 

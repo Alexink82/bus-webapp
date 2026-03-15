@@ -1,6 +1,10 @@
 (function() {
   if (typeof getTelegramUserId === 'function' && !getTelegramUserId()) {
-    document.getElementById('bookingsList').innerHTML = '<p>' + (typeof t === 'function' ? t('loginViaTelegram') : 'Войдите через Telegram, чтобы видеть заявки.') + '</p>';
+    var loginMsg = (typeof t === 'function' ? t('loginViaTelegram') : 'Войдите через Telegram, чтобы видеть заявки.');
+    ['bookingsListActive', 'bookingsListUpcoming', 'bookingsListCompleted', 'bookingsListCancelled'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.innerHTML = '<p>' + loginMsg + '</p>';
+    });
     document.getElementById('passengersSection').innerHTML = '<p>' + (typeof t === 'function' ? t('loginViaTelegramShort') : 'Войдите через Telegram.') + '</p>';
     return;
   }
@@ -53,7 +57,7 @@
       '<p id="addPassengerError" class="field-error"></p>' +
       '</form></div>' +
       '<div class="app-modal-footer"><button type="button" class="btn btn-secondary app-modal-btn" id="addPassengerCancel">Отмена</button><button type="button" class="btn btn-primary app-modal-btn" id="addPassengerSave">Сохранить</button></div>';
-    overlay.innerHTML = '<div class="app-modal-content">' + formHtml + '</div>';
+    overlay.innerHTML = '<div class="app-modal-content"><div class="app-modal-drag-handle" aria-hidden="true"></div>' + formHtml + '</div>';
     var content = overlay.querySelector('.app-modal-content');
     document.body.style.overflow = 'hidden';
     document.body.style.touchAction = 'none';
@@ -183,52 +187,68 @@
     if (birthInput) birthInput.focus();
   };
 
+  function renderBookingCards(items, containerId) {
+    var list = document.getElementById(containerId);
+    if (!list) return;
+    var esc = function(s) { if (s == null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
+    list.innerHTML = items.length ? items.map(function(b) {
+      var cancelBtn = (b.status !== 'cancelled' && b.status !== 'done' && b.status !== 'ticket_sent') ? ' <button type="button" class="btn btn-outline btn-small cancel-booking" data-id="' + esc(b.booking_id) + '">Отменить</button>' : '';
+      var detailsBtn = '<button type="button" class="btn btn-outline btn-small booking-details" data-id="' + esc(b.booking_id) + '">Подробнее</button>';
+      return '<div class="trip-card booking-card">' +
+        '<div class="booking-card__head"><strong>' + esc(b.booking_id) + '</strong> — ' + esc(b.route_name) + '</div>' +
+        '<div class="booking-card__meta">' + esc(b.departure_date) + ' ' + esc(b.departure_time) + ' | ' + esc(b.price_total) + ' ' + esc(b.currency) + ' | ' + esc(b.status) + '</div>' +
+        '<div class="booking-card__actions">' + detailsBtn + cancelBtn + '</div></div>';
+    }).join('') : '<p>Нет заявок.</p>';
+    list.querySelectorAll('.cancel-booking').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var msg = typeof t === 'function' ? t('cancelConfirm') : 'Отменить заявку?';
+        var title = typeof t === 'function' ? t('cancelConfirmTitle') : 'Отмена заявки';
+        (typeof showAppConfirm === 'function' ? showAppConfirm(msg, title) : Promise.resolve(confirm(msg)))
+          .then(function(ok) {
+            if (!ok) return;
+            var bid = btn.getAttribute('data-id');
+            btn.disabled = true;
+            apiFn('/api/bookings/' + encodeURIComponent(bid) + '/cancel', { method: 'POST', body: JSON.stringify({}) })
+              .then(function() { loadBookings(); })
+              .catch(function(e) {
+                var text = typeof errorToMessage === 'function' ? errorToMessage(e) : (e && e.message ? e.message : 'Ошибка');
+                (typeof showAppAlert === 'function' ? showAppAlert(text, typeof t === 'function' ? t('error') : 'Ошибка') : alert(text));
+                btn.disabled = false;
+              });
+          });
+      });
+    });
+    list.querySelectorAll('.booking-details').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var bid = btn.getAttribute('data-id');
+        apiFn('/api/bookings/' + encodeURIComponent(bid))
+          .then(function(booking) { showBookingDetailsModal(booking); })
+          .catch(function(e) {
+            var text = typeof errorToMessage === 'function' ? errorToMessage(e) : (e && e.message ? e.message : 'Ошибка');
+            (typeof showAppAlert === 'function' ? showAppAlert(text, 'Ошибка') : alert(text));
+          });
+      });
+    });
+  }
+
   function loadBookings() {
     apiFn('/api/user/bookings').then(function(data) {
-      var list = document.getElementById('bookingsList');
       var items = data.bookings || [];
-      list.innerHTML = items.length ? items.map(function(b) {
-        var esc = function(s) { if (s == null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
-        var cancelBtn = (b.status !== 'cancelled' && b.status !== 'done' && b.status !== 'ticket_sent') ? ' <button type="button" class="btn btn-outline btn-small cancel-booking" data-id="' + esc(b.booking_id) + '">Отменить</button>' : '';
-        var detailsBtn = '<button type="button" class="btn btn-outline btn-small booking-details" data-id="' + esc(b.booking_id) + '">Подробнее</button>';
-        return '<div class="trip-card booking-card">' +
-          '<div class="booking-card__head"><strong>' + esc(b.booking_id) + '</strong> — ' + esc(b.route_name) + '</div>' +
-          '<div class="booking-card__meta">' + esc(b.departure_date) + ' ' + esc(b.departure_time) + ' | ' + esc(b.price_total) + ' ' + esc(b.currency) + ' | ' + esc(b.status) + '</div>' +
-          '<div class="booking-card__actions">' + detailsBtn + cancelBtn + '</div></div>';
-      }).join('') : '<p>Нет заявок.</p>';
-      list.querySelectorAll('.cancel-booking').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          var msg = typeof t === 'function' ? t('cancelConfirm') : 'Отменить заявку?';
-          var title = typeof t === 'function' ? t('cancelConfirmTitle') : 'Отмена заявки';
-          (typeof showAppConfirm === 'function' ? showAppConfirm(msg, title) : Promise.resolve(confirm(msg)))
-            .then(function(ok) {
-              if (!ok) return;
-              var bid = btn.getAttribute('data-id');
-              btn.disabled = true;
-              apiFn('/api/bookings/' + encodeURIComponent(bid) + '/cancel', { method: 'POST', body: JSON.stringify({}) })
-                .then(function() { loadBookings(); })
-                .catch(function(e) {
-                  var text = typeof errorToMessage === 'function' ? errorToMessage(e) : (e && e.message ? e.message : 'Ошибка');
-                  (typeof showAppAlert === 'function' ? showAppAlert(text, typeof t === 'function' ? t('error') : 'Ошибка') : alert(text));
-                  btn.disabled = false;
-                });
-            });
-        });
+      var today = new Date().toISOString().slice(0, 10);
+      var active = items.filter(function(b) { return ['active', 'paid', 'payment_link_sent', 'ticket_sent'].indexOf(b.status) !== -1; });
+      var upcoming = items.filter(function(b) { return b.status === 'new' && b.departure_date >= today; });
+      var completed = items.filter(function(b) { return b.status === 'done'; });
+      var cancelled = items.filter(function(b) { return b.status === 'cancelled'; });
+      renderBookingCards(active, 'bookingsListActive');
+      renderBookingCards(upcoming, 'bookingsListUpcoming');
+      renderBookingCards(completed, 'bookingsListCompleted');
+      renderBookingCards(cancelled, 'bookingsListCancelled');
+    }).catch(function() {
+      ['bookingsListActive', 'bookingsListUpcoming', 'bookingsListCompleted', 'bookingsListCancelled'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.innerHTML = '<p>Ошибка загрузки.</p>';
       });
-      list.querySelectorAll('.booking-details').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          var bid = btn.getAttribute('data-id');
-          apiFn('/api/bookings/' + encodeURIComponent(bid))
-            .then(function(booking) {
-              showBookingDetailsModal(booking);
-            })
-            .catch(function(e) {
-              var text = typeof errorToMessage === 'function' ? errorToMessage(e) : (e && e.message ? e.message : 'Ошибка');
-              (typeof showAppAlert === 'function' ? showAppAlert(text, 'Ошибка') : alert(text));
-            });
-        });
-      });
-    }).catch(function() { document.getElementById('bookingsList').innerHTML = '<p>\u041e\u0448\u0438\u0431\u043a\u0430 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0438.</p>'; });
+    });
   }
 
   function minutesUntilDeparture(depDateStr, depTimeStr) {

@@ -37,6 +37,7 @@
     var content = document.createElement('div');
     content.className = 'app-modal-content';
     content.innerHTML =
+      '<div class="app-modal-drag-handle" aria-hidden="true"></div>' +
       '<div class="app-modal-header">' +
         '<h2 id="app-modal-title" class="app-modal-title">' + escapeHtml(title) + '</h2>' +
         '<button type="button" class="app-modal-close" aria-label="Закрыть">&times;</button>' +

@@ -53,7 +53,16 @@
       </section>
       <section id="bookingsSection">
         <h2 id="bookingsTitle" data-i18n="myBookings">Мои брони</h2>
-        <div id="bookingsList"></div>
+        <div class="segmented-control" role="tablist">
+          <button class="segment active" data-tab="active" role="tab" aria-selected="true">Активные</button>
+          <button class="segment" data-tab="upcoming" role="tab" aria-selected="false">Предстоящие</button>
+          <button class="segment" data-tab="completed" role="tab" aria-selected="false">Завершённые</button>
+          <button class="segment" data-tab="cancelled" role="tab" aria-selected="false">Отменённые</button>
+        </div>
+        <div id="tab-active" class="tab-content active"><div id="bookingsListActive"></div></div>
+        <div id="tab-upcoming" class="tab-content"><div id="bookingsListUpcoming"></div></div>
+        <div id="tab-completed" class="tab-content"><div id="bookingsListCompleted"></div></div>
+        <div id="tab-cancelled" class="tab-content"><div id="bookingsListCancelled"></div></div>
       </section>
       <section id="passengersSection">
         <h2 id="passengersTitle" data-i18n="savedPassengers">Сохранённые пассажиры</h2>
@@ -74,6 +83,7 @@
   <script src="js/input-masks.js"></script>
   <script src="js/passport-config.js"></script>
   <script src="js/theme.js"></script>
+  <script src="js/segmented-control.js"></script>
   <script src="js/app-modal.js"></script>
   <script src="js/nav.js"></script>
   <script src="js/prefetch.js"></script>
