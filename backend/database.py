@@ -62,7 +62,9 @@ CREATE TABLE IF NOT EXISTS bookings (
     payment_method TEXT,
     dispatcher_id BIGINT,
     taken_at TEXT,
-    paid_at TEXT
+    paid_at TEXT,
+    is_archived BOOLEAN NOT NULL DEFAULT FALSE,
+    cancel_reason TEXT
 )
 """
 _BOT_ROLES_CREATE = """
@@ -73,28 +75,15 @@ CREATE TABLE IF NOT EXISTS bot_roles (
 )
 """
 
-_BOOKINGS_ADD_ARCHIVED = """
-ALTER TABLE bookings ADD COLUMN IF NOT EXISTS is_archived BOOLEAN NOT NULL DEFAULT FALSE
-"""
-
-_BOOKINGS_ADD_CANCEL_REASON = """
-ALTER TABLE bookings ADD COLUMN IF NOT EXISTS cancel_reason TEXT
-"""
-
 
 async def init_db():
-    """Create tables: shared (bookings, bot_roles) IF NOT EXISTS, then webapp-only."""
+    """
+    Create tables: bookings/bot_roles from raw SQL (совместимость с bus-bot), остальное из models.
+    В проде перед стартом выполняется alembic upgrade head.
+    """
     async with engine.begin() as conn:
         await conn.execute(text(_BOOKINGS_CREATE))
         await conn.execute(text(_BOT_ROLES_CREATE))
-        try:
-            await conn.execute(text(_BOOKINGS_ADD_ARCHIVED))
-        except Exception:
-            pass
-        try:
-            await conn.execute(text(_BOOKINGS_ADD_CANCEL_REASON))
-        except Exception:
-            pass
         webapp_tables = [
             t for t in Base.metadata.sorted_tables
             if t.name not in ("bookings", "bot_roles")

@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#1a1a2e">
   <title>Бронирование</title>
   <link rel="stylesheet" href="css/main.css">
-  <link rel="stylesheet" href="css/booking.css">
   <link rel="stylesheet" href="css/telegram-theme.css">
-  <link rel="stylesheet" href="css/animations.css">
+  <link rel="stylesheet" href="css/booking.css">
+  <link rel="stylesheet" href="css/date-picker.css">
   <script>
     (function(){
       var lang = localStorage.getItem('lang');
@@ -22,7 +22,7 @@
   </script>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
-<body>
+<body class="booking-page">
   <div class="container">
     <header class="header">
       <div class="header__logo-bar">
@@ -37,12 +37,18 @@
       </div>
     </header>
 
+    <div class="stepper" aria-label="Шаги бронирования">
+      <div class="step active" data-step="1">1. Пассажиры</div>
+      <span class="stepper__connector" aria-hidden="true"></span>
+      <div class="step" data-step="2">2. Оплата</div>
+    </div>
+
     <main class="main">
       <div id="step1" class="step">
         <p class="step-nav"><a href="index.html" id="backToRoutes">← Изменить маршрут</a></p>
         <h2>Шаг 1. Пассажиры</h2>
         <div id="passengerCount" class="field-group">
-          <label for="passengerNum">Количество пассажиров</label>
+          <label id="passengerCountLabel">Количество пассажиров</label>
           <p class="field-hint">Укажите число мест для бронирования (1–10).</p>
           <div class="count-control">
             <button type="button" id="passengerMinus" aria-label="Уменьшить">−</button>
@@ -56,25 +62,49 @@
         </label>
         <p class="field-hint">Если бронируете не для себя, укажите телефон получателя напоминания.</p>
         <div id="anotherPhoneBlock" class="hidden field-group">
-          <label for="anotherPersonPhone">Телефон получателя</label>
-          <input type="tel" id="anotherPersonPhone" placeholder="+375 29 123 45 67">
+          <label>Телефон получателя</label>
+          <div class="phone-field-row">
+            <select id="anotherPhoneCountry" class="phone-country-select" aria-label="Страна">
+              <option value="BY" selected>+375</option>
+              <option value="RU">+7</option>
+              <option value="UA">+380</option>
+              <option value="PL">+48</option>
+              <option value="LT">+370</option>
+              <option value="LV">+371</option>
+              <option value="GE">+995</option>
+              <option value="AM">+374</option>
+              <option value="OTHER">Другая</option>
+            </select>
+            <input type="tel" id="anotherPersonPhone" class="phone-input" placeholder="+375 (29) 123-45-67" maxlength="20">
+          </div>
           <span id="anotherPersonPhoneError" class="field-error"></span>
         </div>
-        <div id="passengersList"></div>
-        <p id="fillFromProfileWrap" class="fill-from-profile-wrap hidden"><button type="button" id="fillFromProfile" class="btn btn-secondary">Подставить из профиля</button></p>
+        <p id="fillFromProfileWrap" class="fill-from-profile-wrap hidden"><button type="button" id="fillFromProfile" class="btn btn-secondary" data-i18n="addFromSaved">Добавить из сохранённых</button></p>
+        <div id="passengersList"><p class="booking-loading" id="passengersListLoading">Загрузка маршрутов…</p></div>
+        <div id="discountsBlock" class="discounts-block hidden"></div>
         <span id="step1Errors" class="field-error block-error" aria-live="polite"></span>
         <p id="borderDocs" class="border-docs"></p>
-        <div class="step-actions">
-          <button type="button" id="toStep2" class="btn btn-primary">Продолжить</button>
-        </div>
       </div>
 
       <div id="step2" class="step hidden">
         <h2>Шаг 2. Контакт и оплата</h2>
         <div class="field-group phone-field-group">
           <label for="phone">Контактный телефон <span class="required">*</span></label>
-          <p class="field-hint">Номер для связи и подтверждения брони. Формат: +375 29 123 45 67.</p>
-          <input type="tel" id="phone" class="phone-input" placeholder="+375 29 123 45 67" required>
+          <p class="field-hint">Номер для связи и подтверждения брони. Укажите номер, доступный во время поездки. Можно полностью очистить поле и ввести заново.</p>
+          <div class="phone-field-row">
+            <select id="phoneCountry" class="phone-country-select" aria-label="Код страны" name="phoneCountry">
+              <option value="BY" selected>+375</option>
+              <option value="RU">+7</option>
+              <option value="UA">+380</option>
+              <option value="PL">+48</option>
+              <option value="LT">+370</option>
+              <option value="LV">+371</option>
+              <option value="GE">+995</option>
+              <option value="AM">+374</option>
+              <option value="OTHER">Другая</option>
+            </select>
+            <input type="tel" id="phone" name="phone" class="phone-input" placeholder="+375 (29) 123-45-67" required maxlength="20" autocomplete="tel">
+          </div>
           <span id="phoneError" class="field-error" aria-live="polite"></span>
         </div>
         <label class="checkbox-label">
@@ -94,22 +124,28 @@
         </div>
         <div id="paymentTimer" class="timer hidden">30:00</div>
         <p id="priceSummary"></p>
-        <div class="step-actions">
-          <button type="button" id="backToStep1" class="btn btn-secondary">← Назад</button>
-          <button type="button" id="submitBooking" class="btn btn-primary">Забронировать</button>
-        </div>
       </div>
     </main>
+
+    <div class="fixed-bottom-bar" id="fixedBottomBar">
+      <button type="button" id="backToStep1" class="btn btn-secondary" style="display:none;">← Назад</button>
+      <button type="button" id="toStep2" class="btn btn-primary">Продолжить</button>
+      <button type="button" id="submitBooking" class="btn btn-primary" style="display:none;">Забронировать</button>
+    </div>
   </div>
   <script src="js/api.js"></script>
   <script src="js/auth.js"></script>
+  <script src="https://unpkg.com/imask"></script>
   <script src="js/input-masks.js"></script>
+  <script src="js/passport-config.js"></script>
+  <script src="js/phone-config.js"></script>
+  <script src="js/date-picker.js"></script>
   <script src="js/app-modal.js"></script>
   <script src="js/i18n.js"></script>
   <script src="js/settings.js"></script>
   <script src="js/theme.js"></script>
   <script>if (typeof applyI18nToPage === 'function') applyI18nToPage();</script>
   <script src="js/consent.js"></script>
-  <script src="js/booking.js"></script>
+  <script src="js/booking.js?v=5"></script>
 </body>
 </html>

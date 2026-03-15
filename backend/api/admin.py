@@ -113,7 +113,6 @@ async def run_archive(
             Booking.is_archived == False,
         ).values(is_archived=True)
     )
-    await db.commit()
     return {"archived": result.rowcount, "message": f"Archived bookings with date < {threshold}"}
 
 
@@ -140,7 +139,7 @@ async def add_admin(
         row.is_admin = True
     else:
         db.add(BotRole(user_id=body.telegram_id, is_admin=True, is_dispatcher=False))
-    await db.commit()
+    await db.flush()
     from services.roles import load_roles
     await load_roles(db)
     return {"success": True}
@@ -204,7 +203,6 @@ async def add_dispatcher(
         is_active=True,
     )
     db.add(d)
-    await db.commit()
     return {"success": True}
 
 
@@ -222,7 +220,6 @@ async def remove_dispatcher(
     if not d:
         raise HTTPException(404, detail="dispatcher_not_found")
     d.is_active = False
-    await db.commit()
     return {"success": True}
 
 

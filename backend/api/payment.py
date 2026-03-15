@@ -36,27 +36,30 @@ async def create_payment(
     if b.paid_at and str(b.paid_at).strip():
         raise HTTPException(400, detail="already_paid")
 
+    # Сумма только с сервера (не доверяем клиенту)
+    amount = float(b.price_total) if b.price_total is not None else 0.0
+    currency = body.currency or "BYN"
+
     transaction_id = f"MOCK-{uuid.uuid4().hex[:12].upper()}"
     expires_at = datetime.now(timezone.utc) + timedelta(minutes=30)
 
     txn = WebPayTransaction(
         transaction_id=transaction_id,
         booking_id=body.booking_id,
-        amount=body.amount,
-        currency=body.currency,
+        amount=amount,
+        currency=currency,
         status="pending",
-        request_data={"amount": body.amount, "currency": body.currency},
+        request_data={"amount": amount, "currency": currency},
     )
     db.add(txn)
     await db.flush()
-    await db.commit()
 
     return {
         "success": True,
         "transaction_id": transaction_id,
         "payment_url": f"/mock-payment/{transaction_id}",
-        "amount": body.amount,
-        "currency": body.currency,
+        "amount": amount,
+        "currency": currency,
         "expires_at": expires_at.isoformat(),
         "mock_ui": {
             "card": "4111 1111 1111 1111",
@@ -106,5 +109,4 @@ async def payment_callback(
             b.paid_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
             b.status = "paid"
 
-    await db.commit()
     return {"success": True, "payment_status": txn.status}

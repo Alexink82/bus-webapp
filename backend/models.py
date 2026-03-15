@@ -5,6 +5,7 @@ from enum import Enum as PyEnum
 from sqlalchemy import (
     Column,
     Integer,
+    BigInteger,
     String,
     DateTime,
     Date,
@@ -56,7 +57,7 @@ class UserProfile(Base):
 
     __tablename__ = "user_profiles"
 
-    user_id = Column(Integer, primary_key=True)
+    user_id = Column(BigInteger, primary_key=True)
     username = Column(String(100))
     first_name = Column(String(100))
     last_name = Column(String(100))
@@ -77,7 +78,7 @@ class SavedPassenger(Base):
     __tablename__ = "saved_passengers"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("user_profiles.user_id"))
+    user_id = Column(BigInteger, ForeignKey("user_profiles.user_id"))
 
     last_name = Column(String(100))
     first_name = Column(String(100))
@@ -125,15 +126,16 @@ class Booking(Base):
     arrival = Column(String(10))
     passengers = Column(JSON)
     contact_phone = Column(String(30))
-    contact_tg_id = Column(Integer)
+    contact_tg_id = Column(BigInteger)
     contact_username = Column(String(100))
     price_total = Column(Float)
     payment_method = Column(String(20))
-    dispatcher_id = Column(Integer)
+    dispatcher_id = Column(BigInteger)
     taken_at = Column(String(30))
     paid_at = Column(String(30))
     is_archived = Column(Boolean, default=False)
     cancel_reason = Column(Text, nullable=True)
+    reschedule_requested_date = Column(Date, nullable=True)  # запрос пассажира на перенос на эту дату; диспетчер подтверждает или отменяет
 
 
 class BotRole(Base):
@@ -141,7 +143,7 @@ class BotRole(Base):
 
     __tablename__ = "bot_roles"
 
-    user_id = Column(Integer, primary_key=True)
+    user_id = Column(BigInteger, primary_key=True)
     is_admin = Column(Boolean, default=False)
     is_dispatcher = Column(Boolean, default=False)
 
@@ -149,7 +151,7 @@ class BotRole(Base):
 class Dispatcher(Base):
     """Диспетчеры: telegram_id, маршруты (пусто = все)."""
     __tablename__ = "dispatchers"
-    telegram_id = Column(Integer, primary_key=True)
+    telegram_id = Column(BigInteger, primary_key=True)
     name = Column(String(100), default="")
     phone = Column(String(30), default="")
     routes = Column(JSON, default=list)  # [] = все маршруты
@@ -163,11 +165,11 @@ class Blacklist(Base):
     __tablename__ = "blacklist"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer)
+    user_id = Column(BigInteger)
     phone = Column(String(20))
     reason = Column(Text)
     blocked_at = Column(DateTime, server_default=func.now())
-    blocked_by = Column(Integer)
+    blocked_by = Column(BigInteger)
 
 
 class FAQItem(Base):
@@ -194,7 +196,7 @@ class LogEntry(Base):
     timestamp = Column(DateTime, server_default=func.now())
     level = Column(String(20))
     source = Column(String(50))
-    user_id = Column(Integer)
+    user_id = Column(BigInteger)
     action = Column(String(100))
     details = Column(JSON)
     ip_address = Column(String(50))

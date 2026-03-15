@@ -6,6 +6,8 @@
   <meta name="theme-color" content="#e94560">
   <title>Админ-панель — Bus Booking</title>
   <link rel="stylesheet" href="css/design-system.css">
+  <link rel="stylesheet" href="css/telegram-theme.css">
+  <script>(function(){var t=localStorage.getItem('theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);})();</script>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
@@ -87,8 +89,8 @@
       </div>
     </main>
   </div>
-  <script src="js/api.js"></script>
-  <script src="js/auth.js"></script>
+  <script src="js/api.js?v=2"></script>
+  <script src="js/auth.js?v=2"></script>
   <script>
     (function() {
       const uid = typeof getTelegramUserId === 'function' ? getTelegramUserId() : null;
@@ -96,18 +98,12 @@
         document.getElementById('loginWarning').classList.remove('hidden');
         return;
       }
-      const headers = { 'X-Telegram-User-Id': String(uid) };
-      if (typeof getTelegramInitData === 'function' && getTelegramInitData())
-        headers['X-Telegram-Init-Data'] = getTelegramInitData();
-      const base = typeof BASE_URL !== 'undefined' ? BASE_URL : '';
-      function api(path) {
-        return fetch(base + path, { headers }).then(r =>
-          r.json().catch(() => ({})).then(data => {
-            if (!r.ok) throw new Error(data.detail || r.statusText);
-            return data;
-          })
-        );
+      const api = typeof window.api === 'function' ? window.api : null;
+      if (!api) {
+        document.getElementById('loginWarning').textContent = 'Ошибка: не загружен api.js';
+        return;
       }
+      const base = typeof BASE_URL !== 'undefined' ? BASE_URL : '';
       api('/api/admin/stats').then(data => {
         document.getElementById('loginWarning').classList.add('hidden');
         document.getElementById('adminTabs').classList.remove('hidden');
@@ -117,7 +113,9 @@
         document.getElementById('statsSum').textContent = data.total_sum != null ? data.total_sum : '—';
         document.getElementById('exportCsv').onclick = function() {
           const exportUrl = base + '/api/admin/export?from_date=' + encodeURIComponent(data.from_date) + '&to_date=' + encodeURIComponent(data.to_date);
-          fetch(exportUrl, { headers }).then(function(r) {
+          const exportHeaders = { 'X-Telegram-User-Id': String(uid) };
+          if (typeof getTelegramInitData === 'function' && getTelegramInitData()) exportHeaders['X-Telegram-Init-Data'] = getTelegramInitData();
+          fetch(exportUrl, { headers: exportHeaders }).then(function(r) {
             if (!r.ok) return r.json().catch(function() { return {}; }).then(function(d) { throw new Error(d.detail || 'Ошибка экспорта'); });
             return r.blob();
           }).then(function(blob) {
@@ -161,12 +159,7 @@
         var tidEl = document.getElementById('adminTelegramId');
         var tid = parseInt(tidEl.value, 10);
         if (!tid || isNaN(tid)) { alert('Введите Telegram ID (число).'); return; }
-        fetch(base + '/api/admin/admins', {
-          method: 'POST',
-          headers: Object.assign({}, headers, { 'Content-Type': 'application/json' }),
-          body: JSON.stringify({ telegram_id: tid })
-        })
-          .then(function(r) { return r.json().then(function(d) { if (!r.ok) throw new Error(d.detail || 'Ошибка'); return d; }); })
+        api('/api/admin/admins', { method: 'POST', body: JSON.stringify({ telegram_id: tid }) })
           .then(function() { tidEl.value = ''; loadAdmins(); })
           .catch(function(e) { alert(e.message); });
       });
@@ -186,8 +179,7 @@
             btn.addEventListener('click', function() {
               var tid = this.getAttribute('data-tid');
               if (!tid || !confirm('Деактивировать диспетчера? Вкладка «Диспетчер» у него пропадёт.')) return;
-              fetch(base + '/api/admin/dispatchers/' + tid, { method: 'DELETE', headers: headers })
-                .then(function(r) { return r.json().then(function(d) { if (!r.ok) throw new Error(d.detail || 'Ошибка'); return d; }); })
+              api('/api/admin/dispatchers/' + tid, { method: 'DELETE' })
                 .then(function() { loadDispatchers(); })
                 .catch(function(e) { alert(e.message || 'Ошибка удаления'); });
             });
@@ -202,12 +194,7 @@
         if (!tid || isNaN(tid)) { alert('Введите Telegram ID (число).'); return; }
         var name = (document.getElementById('dispName').value || '').trim();
         var phone = (document.getElementById('dispPhone').value || '').trim();
-        fetch(base + '/api/admin/dispatchers', {
-          method: 'POST',
-          headers: Object.assign({}, headers, { 'Content-Type': 'application/json' }),
-          body: JSON.stringify({ telegram_id: tid, name: name, phone: phone, routes: [], direction: '' })
-        })
-          .then(function(r) { return r.json().then(function(d) { if (!r.ok) throw new Error(d.detail === 'dispatcher_exists' ? 'Диспетчер с таким ID уже добавлен.' : (d.detail || 'Ошибка')); return d; }); })
+        api('/api/admin/dispatchers', { method: 'POST', body: JSON.stringify({ telegram_id: tid, name: name, phone: phone, routes: [], direction: '' }) })
           .then(function() { tidEl.value = ''; document.getElementById('dispName').value = ''; document.getElementById('dispPhone').value = ''; loadDispatchers(); })
           .catch(function(e) { alert(e.message); });
       });

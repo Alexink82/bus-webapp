@@ -1,5 +1,8 @@
 """Structured logging configuration.
-Все ошибки и ключевые действия пишут в лог с указанием модуля и контекста.
+
+На Render/PaaS uvicorn часто настраивает root logger раньше приложения.
+Используем basicConfig(force=True), очищаем handlers uvicorn и включаем propagate.
+Дополнительно делаем flush после каждой записи в stdout, чтобы логи сразу видны в Render.
 """
 import logging
 import sys
@@ -10,7 +13,11 @@ from config import get_settings
 
 
 def setup_logging() -> None:
-    """Configure logging for the application."""
+    """Configure logging to stdout and override preconfigured handlers.
+
+    basicConfig(force=True) перезаписывает handlers. Логгеры uvicorn направляем
+    в root. Flush после каждой записи — для Render/Docker.
+    """
     settings = get_settings()
     level = logging.DEBUG if settings.debug else logging.INFO
 
@@ -19,7 +26,26 @@ def setup_logging() -> None:
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
         stream=sys.stdout,
+        force=True,
     )
+
+    # Отключаем отдельные handlers uvicorn, чтобы он шёл в общий root-поток.
+    for logger_name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+        uv_logger = logging.getLogger(logger_name)
+        uv_logger.handlers.clear()
+        uv_logger.propagate = True
+
+    # Flush после каждой записи (Render/Docker)
+    root = logging.getLogger()
+    for h in root.handlers:
+        if getattr(h, "stream", None) is sys.stdout:
+            _emit = h.emit
+            def _emit_and_flush(record, _e=_emit, _stream=h.stream):
+                _e(record)
+                if _stream:
+                    _stream.flush()
+            h.emit = _emit_and_flush
+            break
 
 
 def get_logger(name: str) -> logging.Logger:

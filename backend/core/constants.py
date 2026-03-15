@@ -42,6 +42,7 @@ ROUTES = {
         "price": 120,
         "type": "international",
         "stops": ["Мозырь", "Калинковичи", "Речица", "Гомель", "Москва"],
+        "stop_times": ["16:30", "16:45", "17:15", "17:45", "06:00"],
         "cities": [("Mozyr", "Мозырь"), ("Gomel", "Гомель"), ("Moscow", "Москва")],
         "schedule_days": [0, 1, 2, 3, 4, 5, 6],
     },
@@ -54,6 +55,7 @@ ROUTES = {
         "price": 120,
         "type": "international",
         "stops": ["Москва", "Гомель", "Речица", "Калинковичи", "Мозырь"],
+        "stop_times": ["21:10", "08:10", "08:50", "09:25", "10:00"],
         "cities": [("Moscow", "Москва"), ("Gomel", "Гомель"), ("Mozyr", "Мозырь")],
         "schedule_days": [0, 1, 2, 3, 4, 5, 6],
     },
@@ -66,6 +68,7 @@ ROUTES = {
         "price": 20,
         "type": "local",
         "stops": ["Гомель", "Калинковичи", "Мозырь"],
+        "stop_times": ["12:30", "13:45", "15:00"],
         "cities": [("Gomel", "Гомель"), ("Mozyr", "Мозырь")],
         "schedule_days": [0, 1, 2, 3, 4, 5, 6],
     },
@@ -78,19 +81,22 @@ ROUTES = {
         "price": 20,
         "type": "local",
         "stops": ["Мозырь", "Калинковичи", "Гомель"],
+        "stop_times": ["11:00", "12:15", "13:30"],
         "cities": [("Mozyr", "Мозырь"), ("Gomel", "Гомель")],
         "schedule_days": [0, 1, 2, 3, 4, 5, 6],
     },
 }
 
 # Discount rules per route type (for price calculation)
+# Мозырь—Москва / Москва—Мозырь: до 2 лет 100% с местом, до 11 лет 50% с местом.
+# Гомель—Мозырь—Гомель: до 9 лет 50% с местом.
 DISCOUNT_RULES = {
     "international": {
-        "infant": {"age_to": 2, "discount_percent": 100, "seat": False, "label": "До 2 лет"},
-        "child": {"age_to": 11, "discount_percent": 50, "seat": True, "label": "3-11 лет"},
+        "infant": {"age_to": 2, "discount_percent": 100, "seat": True, "label": "До 2 лет"},
+        "child": {"age_to": 11, "discount_percent": 50, "seat": True, "label": "3–11 лет"},
     },
     "local": {
-        "child": {"age_to": 11, "discount_percent": 50, "seat": True, "label": "Дети 3-11 лет"},
+        "child": {"age_to": 9, "discount_percent": 50, "seat": True, "label": "Дети до 9 лет"},
     },
 }
 

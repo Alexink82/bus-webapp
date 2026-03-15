@@ -35,6 +35,7 @@ def calculate_segment_price(
     to_city: str,
     base_price: float,
 ) -> float:
+    """Цена сегмента = разница кумулятивных offset (полный маршрут = base_price)."""
     if not stops or base_price is None:
         return 0.0
     from_idx = next((i for i, s in enumerate(stops) if s.get("city") == from_city), None)
@@ -43,7 +44,7 @@ def calculate_segment_price(
         return 0.0
     from_offset = float(stops[from_idx].get("price_offset", 0))
     to_offset = float(stops[to_idx].get("price_offset", 0))
-    return base_price + (to_offset - from_offset)
+    return round(to_offset - from_offset, 2)
 
 
 def calculate_passenger_price(

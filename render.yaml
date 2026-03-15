@@ -25,10 +25,16 @@ services:
         description: PostgreSQL URL (create Postgres in Render Dashboard or use external)
         sync: false
       - key: WEBAPP_URL
-        description: Public HTTPS URL of this service (for Telegram Web App button)
+        description: "Public HTTPS URL of this service (e.g. https://bus-booking-xxx.onrender.com). Required for Telegram Web App button and CORS. Set in Render Dashboard after first deploy."
         value: ""
       - key: BACKEND_URL
-        description: Same as WEBAPP_URL or your custom domain
+        description: Same as WEBAPP_URL or your custom domain (optional)
+        value: ""
+      - key: ALLOWED_ORIGINS
+        description: "Comma-separated CORS origins (e.g. https://your-app.onrender.com). If empty, app uses WEBAPP_URL or *."
+        value: ""
+      - key: OPENWEATHER_API_KEY
+        description: Optional; for scheduler/weather if used
         value: ""
       - key: WEBPAY_CALLBACK_SECRET
         description: Secret for WebPay callback (production)

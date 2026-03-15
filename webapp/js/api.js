@@ -9,9 +9,12 @@ var ERROR_MESSAGES = {
   route_not_found: 'Маршрут не найден.',
   booking_not_found: 'Заявка не найдена.',
   cannot_cancel: 'Эту заявку нельзя отменить.',
-  cancel_only_via_dispatcher: 'Отмена менее чем за 2 часа до отправления возможна только через диспетчера. Обратитесь в поддержку.',
+  cancel_only_via_dispatcher: 'Отмена менее чем за 2 часа (международный рейс) или 15 минут (междугородний) до отправления возможна только через диспетчера. Обратитесь в поддержку в Telegram или по телефону.',
   reason_required: 'Укажите причину отмены.',
   not_authorized_to_cancel: 'Нет прав на отмену этой заявки.',
+  not_authorized_to_reschedule: 'Нет прав на перенос этой заявки.',
+  cannot_reschedule_cancelled: 'Нельзя перенести отменённую или завершённую заявку.',
+  reschedule_date_must_be_future: 'Новая дата должна быть в будущем.',
   passenger_not_found: 'Пассажир не найден.',
   invalid_birth_date: 'Неверная дата рождения.',
   init_data_required: 'Требуется вход через Telegram.',
@@ -29,6 +32,9 @@ var ERROR_MESSAGES = {
   name_required: 'Укажите фамилию и имя пассажира.',
   birth_date_future: 'Дата рождения не может быть в будущем.',
   passport_required: 'Укажите паспорт для международного рейса.',
+  passport_invalid_format: 'Неверный формат паспорта. РФ: 4 цифры серии + 6 цифр номера. РБ: 2 буквы + 7 цифр.',
+  passport_series_invalid: 'Некорректная серия паспорта (серия не должна начинаться с 00).',
+  passport_number_invalid: 'Некорректный номер паспорта.',
   empty: 'Заполните данные пассажира.',
   birth_date_invalid: 'Неверный формат даты рождения.'
 };
@@ -108,3 +114,4 @@ window.getTelegramStartParam = getTelegramStartParam;
 window.setTelegramUserId = setTelegramUserId;
 window.userFriendlyMessage = userFriendlyMessage;
 window.escapeHtml = escapeHtml;
+window.ERROR_MESSAGES = ERROR_MESSAGES;

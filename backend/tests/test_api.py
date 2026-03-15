@@ -12,6 +12,7 @@ def test_health(client):
     """Проверка живучести сервера."""
     r = client.get("/api/health")
     assert r.status_code == 200
+    assert r.headers.get("X-Request-Id")
     data = r.json()
     assert data.get("status") == "ok"
 
@@ -79,6 +80,47 @@ def test_create_booking_validation_invalid_route(client):
     assert r.json().get("detail") == "route_not_found"
 
 
+def test_create_booking_validation_invalid_phone(client):
+    """Некорректный телефон -> 400 с кодом invalid_phone (локальный маршрут, без паспорта)."""
+    from datetime import date, timedelta
+    soon = (date.today() + timedelta(days=30)).isoformat()
+    payload = {
+        "route_id": "gomel_mozyr",
+        "from_city": "Гомель",
+        "to_city": "Мозырь",
+        "departure_date": soon,
+        "departure_time": "12:30",
+        "passengers": [{"last_name": "Иванов", "first_name": "Иван", "birth_date": "1990-01-01"}],
+        "phone": "123",
+        "payment_method": "cash",
+    }
+    r = client.post("/api/bookings", json=payload)
+    assert r.status_code == 400
+    data = r.json()
+    assert data.get("detail", {}).get("code") == "invalid_phone"
+
+
+def test_create_booking_accepts_extra_fields_ignored(client):
+    """CreateBookingIn с extra='ignore' не падает при лишних полях (например save_passengers_to_profile)."""
+    from datetime import date, timedelta
+    soon = (date.today() + timedelta(days=30)).isoformat()
+    payload = {
+        "route_id": "nonexistent_route",
+        "from_city": "A",
+        "to_city": "B",
+        "departure_date": soon,
+        "departure_time": "12:00",
+        "passengers": [{"last_name": "Иванов", "first_name": "Иван", "birth_date": "1990-01-01"}],
+        "phone": "+375291234567",
+        "payment_method": "cash",
+        "save_passengers_to_profile": True,
+        "unknown_field": "ignored",
+    }
+    r = client.post("/api/bookings", json=payload)
+    assert r.status_code == 404
+    assert r.json().get("detail") == "route_not_found"
+
+
 @pytest.mark.skipif(not _has_db_url, reason="DATABASE_URL not set")
 def test_get_booking_not_found(client):
     """Получение несуществующей брони -> 404."""
@@ -128,6 +170,12 @@ def test_faq_no_db_required(client):
 def test_cancel_booking_requires_auth(client):
     """Отмена брони без заголовков авторизации -> 401."""
     r = client.post("/api/bookings/ANY-ID/cancel", json={})
+    assert r.status_code == 401
+
+
+def test_reschedule_request_requires_auth(client):
+    """Запрос на перенос даты без авторизации -> 401."""
+    r = client.post("/api/bookings/ANY-ID/reschedule-request", json={"new_date": "2030-06-15"})
     assert r.status_code == 401
 
 

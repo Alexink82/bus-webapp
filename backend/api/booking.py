@@ -4,7 +4,7 @@ import string
 from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Header
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,6 +24,7 @@ router = APIRouter(prefix="/api", tags=["booking"])
 
 
 class CreateBookingIn(BaseModel):
+    model_config = ConfigDict(extra="ignore")
     route_id: str
     from_city: str
     to_city: str
@@ -39,6 +40,32 @@ class CreateBookingIn(BaseModel):
     user_id: int | None = None
 
 
+def _resolve_departure_time(route_info: dict, from_city: str, fallback_time: str) -> str:
+    """Возвращает время отправления из конкретной точки маршрута."""
+    stops = route_info.get("stops") or []
+    stop_times = route_info.get("stop_times") or []
+    if from_city in stops and stop_times:
+        i = stops.index(from_city)
+        if i < len(stop_times) and stop_times[i]:
+            return str(stop_times[i])
+    if from_city == (stops[0] if stops else None):
+        return str(route_info.get("departure") or fallback_time or "")
+    return str(fallback_time or route_info.get("departure") or "")
+
+
+def _ensure_not_departed(departure_date: date, departure_time: str) -> None:
+    """Запрещаем бронирование на уже ушедший рейс (локальное время UTC+3)."""
+    t = (departure_time or "").strip()
+    try:
+        parts = t.split(":")
+        hh, mm = int(parts[0]), int(parts[1]) if len(parts) > 1 else 0
+        dep_dt = datetime(departure_date.year, departure_date.month, departure_date.day, hh, mm)
+    except Exception:
+        return
+    if dep_dt <= get_local_time():
+        raise HTTPException(400, detail={"code": "past_departure_time"})
+
+
 def _route_dict_for_calc(route_id: str):
     r = ROUTES.get(route_id)
     if not r:
@@ -46,7 +73,15 @@ def _route_dict_for_calc(route_id: str):
     route_type = r.get("type", "local")
     stops = r.get("stops", [])
     base = float(r.get("price", 0))
-    stops_api = [{"city": c, "price_offset": base * i // max(len(stops), 1)} for i, c in enumerate(stops)]
+    n = len(stops)
+    if n <= 1:
+        stops_api = [{"city": c, "price_offset": 0.0} for c in stops]
+    else:
+        # Кумулятивные offset: полный маршрут (0 → n-1) = base_price
+        stops_api = [
+            {"city": c, "price_offset": round(base * i / (n - 1), 2)}
+            for i, c in enumerate(stops)
+        ]
     return {
         "id": route_id,
         "name": r["name"],
@@ -112,6 +147,8 @@ async def create_booking(
             profile.phone = body.phone
 
     route_info = ROUTES[body.route_id]
+    departure_time = _resolve_departure_time(route_info, body.from_city, body.departure_time)
+    _ensure_not_departed(dep_date, departure_time)
     now = get_local_time()
     created_at_str = now.strftime("%Y-%m-%dT%H:%M:%S")
 
@@ -124,7 +161,7 @@ async def create_booking(
         from_city=body.from_city,
         to_city=body.to_city,
         date=body.departure_date,
-        departure=body.departure_time,
+        departure=departure_time,
         arrival=route_info.get("arrival", ""),
         passengers=body.passengers,
         contact_phone=body.phone,
@@ -150,7 +187,7 @@ async def create_booking(
             from_city=body.from_city,
             to_city=body.to_city,
             date=body.departure_date,
-            departure=body.departure_time,
+            departure=departure_time,
             arrival=route_info.get("arrival", ""),
             passengers=body.passengers,
             contact_phone=body.phone,
@@ -171,12 +208,11 @@ async def create_booking(
         details={"booking_id": booking_id, "route_id": body.route_id, **({"start_param": x_telegram_start_param} if x_telegram_start_param else {})},
         ip_address=request.client.host if request.client else None,
     )
-    await db.commit()
 
     if user_id and user_id > 0:
         await notify_booking_created(
             user_id, booking_id, route_info["name"],
-            body.departure_date, body.departure_time,
+            body.departure_date, departure_time,
             price_total, "BYN", "ru",
         )
 
@@ -213,11 +249,15 @@ async def get_booking(
     is_admin_user = uid is not None and is_admin(uid)
     route_ids = await get_dispatcher_route_ids(db, uid) if uid else None
     is_dispatcher_user = route_ids is not None
-    full_access = is_owner or is_admin_user or is_dispatcher_user
+    # Диспетчер видит детали только по своим маршрутам (пустой список = все маршруты)
+    dispatcher_can_view = is_dispatcher_user and (not route_ids or b.route_id in route_ids)
+    full_access = is_owner or is_admin_user or dispatcher_can_view
     if full_access:
-        return {
+        res = {
             "booking_id": b.id,
             "status": b.status,
+            "route_id": b.route_id,
+            "route_type": route_info.get("type", "local"),
             "route_name": route_info.get("name", b.route_id),
             "from_city": b.from_city,
             "to_city": b.to_city,
@@ -225,15 +265,21 @@ async def get_booking(
             "departure_time": b.departure,
             "passengers": b.passengers or [],
             "passengers_count": len(b.passengers) if b.passengers else 0,
+            "contact_phone": b.contact_phone or "",
             "price_total": b.price_total,
             "currency": "BYN",
             "payment_status": "paid" if b.paid_at else "pending",
             "payment_deadline": None,
             "created_at": b.created_at,
         }
+        if b.reschedule_requested_date is not None:
+            res["reschedule_requested_date"] = b.reschedule_requested_date.isoformat()
+        return res
     return {
         "booking_id": b.id,
         "status": b.status,
+        "route_id": b.route_id,
+        "route_type": route_info.get("type", "local"),
         "route_name": route_info.get("name", b.route_id),
         "from_city": b.from_city,
         "to_city": b.to_city,
@@ -272,9 +318,9 @@ async def cancel_booking(
         raise HTTPException(403, detail="not_authorized_to_cancel")
 
     # Правила отмены:
-    # — Владелец: заявка в статусе "new" (не взята диспетчером) — можно отменить в любой момент.
-    #   Если заявка уже в работе (active и т.д.) — только не позднее чем за 2 ч до отправления.
-    # — Диспетчер/админ — отмена с обязательной причиной.
+    # — Владелец: заявка в статусе "new" — можно отменить в любой момент.
+    #   Если заявка уже в работе — международный: не позднее 2 ч до отправления; местный: не позднее 15 мин.
+    # — Диспетчер/админ при отмене не от своего имени — с обязательной причиной.
     now = get_local_time()
     if is_owner and b.status != "new":
         try:
@@ -284,14 +330,20 @@ async def cancel_booking(
                 parts = dep_time_str.split(":")
                 h, m = int(parts[0]), int(parts[1]) if len(parts) > 1 else 0
                 departure_dt = datetime(dep_date.year, dep_date.month, dep_date.day, h, m, 0)
-                if now >= departure_dt - timedelta(hours=2):
-                    raise HTTPException(400, detail="cancel_only_via_dispatcher")
+                route_info = ROUTES.get(b.route_id, {})
+                route_type = route_info.get("type", "local")
+                if route_type == "international":
+                    if now >= departure_dt - timedelta(hours=2):
+                        raise HTTPException(400, detail="cancel_only_via_dispatcher")
+                else:
+                    if now >= departure_dt - timedelta(minutes=15):
+                        raise HTTPException(400, detail="cancel_only_via_dispatcher")
         except HTTPException:
             raise
         except (ValueError, TypeError):
             pass
 
-    if is_dispatcher_user or is_admin_user:
+    if (is_dispatcher_user or is_admin_user) and not is_owner:
         reason = (body.reason or "").strip()
         if not reason:
             raise HTTPException(400, detail="reason_required")
@@ -300,7 +352,74 @@ async def cancel_booking(
         b.cancel_reason = None
 
     b.status = "cancelled"
-    await db.commit()
     if b.contact_tg_id:
         await notify_booking_status(b.contact_tg_id, booking_id, "cancelled", "ru")
     return {"success": True, "status": "cancelled"}
+
+
+class RescheduleRequestIn(BaseModel):
+    new_date: str  # YYYY-MM-DD
+
+
+@router.post("/bookings/{booking_id}/reschedule-request")
+async def reschedule_request(
+    booking_id: str,
+    body: RescheduleRequestIn,
+    uid: int = Depends(get_verified_telegram_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Запрос пассажира на перенос даты поездки. Проверяются правила (2 ч / 15 мин); заявка уходит диспетчеру на одобрение."""
+    result = await db.execute(select(Booking).where(Booking.id == booking_id))
+    b = result.scalar_one_or_none()
+    if not b:
+        raise HTTPException(404, detail="booking_not_found")
+    if b.contact_tg_id != uid:
+        raise HTTPException(403, detail="not_authorized_to_reschedule")
+    if b.status in ("cancelled", "done", "ticket_sent"):
+        raise HTTPException(400, detail="cannot_reschedule_cancelled")
+
+    try:
+        new_date = date.fromisoformat(body.new_date.strip())
+    except (ValueError, TypeError):
+        raise HTTPException(400, detail="invalid_date_format")
+    if new_date <= date.today():
+        raise HTTPException(400, detail="reschedule_date_must_be_future")
+
+    route_info = ROUTES.get(b.route_id, {})
+    route_type = route_info.get("type", "local")
+    now = get_local_time()
+    try:
+        dep_date = date.fromisoformat(b.date) if b.date else None
+        dep_time_str = (b.departure or "").strip()[:8]
+        if dep_date and dep_time_str and len(dep_time_str) >= 5:
+            parts = dep_time_str.split(":")
+            h, m = int(parts[0]), int(parts[1]) if len(parts) > 1 else 0
+            departure_dt = datetime(dep_date.year, dep_date.month, dep_date.day, h, m, 0)
+            if route_type == "international":
+                if now >= departure_dt - timedelta(hours=2):
+                    raise HTTPException(400, detail="cancel_only_via_dispatcher")
+            else:
+                if now >= departure_dt - timedelta(minutes=15):
+                    raise HTTPException(400, detail="cancel_only_via_dispatcher")
+    except HTTPException:
+        raise
+    except (ValueError, TypeError):
+        pass
+
+    b.reschedule_requested_date = new_date
+    await db.commit()
+
+    try:
+        from api.websocket import manager
+        await manager.broadcast_reschedule_request(
+            booking_id=b.id,
+            route_id=b.route_id,
+            route_name=route_info.get("name", b.route_id),
+            new_date=new_date.isoformat(),
+            from_city=b.from_city or "",
+            to_city=b.to_city or "",
+        )
+    except Exception:
+        pass
+
+    return {"success": True, "reschedule_requested_date": body.new_date}
