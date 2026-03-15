@@ -2,7 +2,7 @@
 import os
 from typing import List
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 def _env_ids_list(primary_key: str, fallback_key: str) -> List[int]:
@@ -45,14 +45,26 @@ class Settings(BaseSettings):
 
     # App
     debug: bool = False
-    webapp_url: str = "http://localhost:8000"
-    backend_url: str = "http://localhost:8000"
+    webapp_url: str = ""
+    backend_url: str = ""
+    # CORS: список разрешённых origin; ALLOWED_ORIGINS в env или allowed_origins (строка "*" = все / webapp_url)
+    allowed_origins: str = "*"
+    allow_credentials: bool = False
+
+    # Rate limiting (requests per minute per IP; 0 = off)
+    rate_limit: int = 120
+
+    # Redis (optional). Если задан — rate limit хранится в Redis (общий для воркеров). Формат: rediss://default:TOKEN@host:6379 для Upstash TLS
+    redis_url: str = ""
 
     # WebPay callback (проверка подписи/секрета в проде)
     webpay_callback_secret: str = ""
 
-    # Rate limiting (requests per minute per IP; 0 = off)
-    rate_limit: int = 120
+    model_config = SettingsConfigDict(
+        env_file=[".env", "../.env"],
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     @property
     def admin_ids_list(self) -> List[int]:
@@ -92,10 +104,15 @@ class Settings(BaseSettings):
                 continue
         return out
 
-    class Config:
-        env_file = [".env", "../.env"]
-        env_file_encoding = "utf-8"
-        extra = "ignore"
+    @property
+    def cors_origins(self) -> List[str]:
+        """Список origin для CORS. Явно задайте ALLOWED_ORIGINS в env (через запятую).
+        Если не задано — разрешаем все (*), иначе из Telegram Web App запросы к API блокируются."""
+        env_raw = (os.environ.get("ALLOWED_ORIGINS") or "").strip()
+        if env_raw:
+            return [o.strip().rstrip("/") for o in env_raw.split(",") if o.strip()]
+        # Не задано — разрешаем все, иначе при открытии из Telegram (origin web.telegram.org) CORS блокирует /api/*
+        return ["*"]
 
 
 def get_settings() -> Settings:
