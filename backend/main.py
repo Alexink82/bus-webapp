@@ -123,28 +123,11 @@ app.add_middleware(
 # Rate limit: in-memory fallback или Redis (если задан REDIS_URL)
 _rate_limit_store: dict[str, list[float]] = defaultdict(list)
 RATE_WINDOW = 60.0
-_redis_client = None
 
 # GET-запросы к этим путям не считаются в лимите (чтение, много параллельных при загрузке)
 _RATE_LIMIT_SKIP_PATHS = frozenset(["/api/routes", "/api/news", "/api/faq", "/api/user/roles", "/api/health"])
 
-
-def _get_redis():
-    """Ленивое подключение к Redis (один раз при первом запросе)."""
-    global _redis_client
-    if _redis_client is not None:
-        return _redis_client
-    url = (get_settings().redis_url or "").strip()
-    if not url:
-        return None
-    try:
-        from redis.asyncio import Redis
-        _redis_client = Redis.from_url(url, decode_responses=True)
-        return _redis_client
-    except Exception:
-        logger.warning("Redis connection failed, rate limit uses in-memory store")
-        _redis_client = False  # mark as attempted
-        return None
+from services.redis_client import get_redis as _get_redis
 
 
 @app.middleware("http")

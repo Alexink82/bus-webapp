@@ -696,6 +696,7 @@
       user_id: typeof getTelegramUserId === 'function' && getTelegramUserId() ? parseInt(getTelegramUserId(), 10) : null
     };
     if (getEl('savePassengers') && getEl('savePassengers').checked) payload.save_passengers_to_profile = true;
+    var idemKey = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'bk-' + Date.now() + '-' + Math.random().toString(36).slice(2, 11);
     var base = typeof BASE_URL !== 'undefined' ? BASE_URL : '';
     var submitBtn = getEl('submitBooking');
     submitBtn.disabled = true;
@@ -704,8 +705,9 @@
       setError('phoneError', msg);
       submitBtn.disabled = false;
     }
+    var idemHeaders = { 'X-Idempotency-Key': idemKey };
     if (typeof api === 'function') {
-      api('/api/bookings', { method: 'POST', body: JSON.stringify(payload) })
+      api('/api/bookings', { method: 'POST', body: JSON.stringify(payload), headers: idemHeaders })
         .then(function(res) {
           if (payload.save_passengers_to_profile && pass.length && typeof api === 'function') {
             var saveNext = function(idx) {
@@ -723,7 +725,8 @@
         .catch(onError);
       return;
     }
-    fetch(base + '/api/bookings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+    var fetchHeaders = { 'Content-Type': 'application/json', 'X-Idempotency-Key': idemKey };
+    fetch(base + '/api/bookings', { method: 'POST', headers: fetchHeaders, body: JSON.stringify(payload) })
       .then(function(r) { return r.json().then(function(data) { if (!r.ok) throw new Error(data.detail && (data.detail.code ? (typeof userFriendlyMessage === 'function' ? userFriendlyMessage(data.detail) : data.detail.code) : data.detail) || r.statusText); return data; }); })
       .then(function(res) {
         if (payload.save_passengers_to_profile && pass.length && typeof api === 'function') {

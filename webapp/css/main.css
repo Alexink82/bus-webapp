@@ -917,8 +917,7 @@ body {
   display: flex;
   justify-content: space-around;
   align-items: center;
-  padding: 10px 6px;
-  padding-bottom: max(10px, env(safe-area-inset-bottom));
+  padding: 10px max(6px, env(safe-area-inset-left)) max(10px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-right));
   border-top: 1px solid var(--border);
   gap: 6px;
   min-height: 56px;

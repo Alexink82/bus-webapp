@@ -93,8 +93,8 @@
 | 13 | ~~Быстрые пресеты дат (Сегодня / Завтра / Выходные)~~ | **Сделано:** кнопки «Сегодня», «Завтра», «Выходные» (ближайшая суббота) у поля даты на главной; i18n RU/EN/BE. |
 | 14 | ~~Память последнего маршрута + one-tap повтор~~ | **Сделано:** при отправке формы сохраняем from/to/date в localStorage; на главной кнопка «Повторить последний поиск: X → Y», по клику подставляются значения и выполняется поиск; i18n RU/EN/BE. |
 | 15 | ~~FAQ для BE: question_be/answer_be или документировать~~ | **Сделано:** API — для lang=be отдаётся question_en/answer_en (fallback); в README добавлена заметка «Языки и FAQ» (при необходимости можно добавить question_be/answer_be в БД). |
-| 16 | UI по UI_IMPROVEMENTS_PLAN | Логотип в шапке, кнопка закрытия только вне Telegram, safe area для tab-bar. См. `docs/UI_IMPROVEMENTS_PLAN.md`. |
-| 17 | Идемпотентность create_booking | Idempotency-Key при сетевых ретраях. |
+| 16 | ~~UI по UI_IMPROVEMENTS_PLAN~~ | **Сделано:** логотип в шапке уже был на всех страницах; кнопка «✕» скрыта в Telegram (index, success, profile, faq); tab-bar с safe-area (padding-bottom и padding-left/right с env(safe-area-inset-*)). См. `docs/UI_IMPROVEMENTS_PLAN.md`. |
+| 17 | ~~Идемпотентность create_booking~~ | **Сделано:** опциональный заголовок X-Idempotency-Key; при REDIS_URL повторный запрос с тем же ключом в течение 5 мин возвращает сохранённый ответ (200) без создания дубликата; клиент (booking.js) генерирует ключ при отправке (crypto.randomUUID или fallback); общий Redis в services/redis_client.py. |
 
 ### Стиль и UX (см. TODO_UX_STYLE.md)
 

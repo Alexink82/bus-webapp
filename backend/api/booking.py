@@ -3,7 +3,9 @@ import random
 import string
 from datetime import date, datetime, timedelta
 
+import json
 from fastapi import APIRouter, Depends, HTTPException, Request, Header
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -19,6 +21,9 @@ from services.price_calc import calculate_booking_totals
 from services.validators import validate_phone, validate_passenger, validate_booking_dates
 from services.notification import notify_booking_created, notify_booking_status
 from logging_config import log_action
+from services.redis_client import get_redis
+
+IDEMPOTENCY_TTL = 300  # 5 минут
 
 router = APIRouter(prefix="/api", tags=["booking"])
 
@@ -98,7 +103,17 @@ async def create_booking(
     request: Request,
     db: AsyncSession = Depends(get_db),
     x_telegram_start_param: str | None = Header(None, alias="X-Telegram-Start-Param"),
+    x_idempotency_key: str | None = Header(None, alias="X-Idempotency-Key"),
 ):
+    redis = get_redis()
+    if x_idempotency_key and redis:
+        key = "idempotency:booking:" + (x_idempotency_key.strip()[:128] or "empty")
+        try:
+            cached = await redis.get(key)
+            if cached:
+                return JSONResponse(status_code=200, content=json.loads(cached))
+        except Exception:
+            pass
     try:
         dep_date = date.fromisoformat(body.departure_date)
     except (ValueError, TypeError):
@@ -225,13 +240,20 @@ async def create_booking(
     except Exception:
         pass
 
-    return {
+    response_body = {
         "booking_id": booking_id,
         "status": "new",
         "price_total": price_total,
         "currency": "BYN",
         "payment_deadline": None,
     }
+    if x_idempotency_key and redis:
+        key = "idempotency:booking:" + (x_idempotency_key.strip()[:128] or "empty")
+        try:
+            await redis.set(key, json.dumps(response_body), ex=IDEMPOTENCY_TTL)
+        except Exception:
+            pass
+    return response_body
 
 
 @router.get("/bookings/{booking_id}")
