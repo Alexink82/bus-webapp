@@ -74,7 +74,14 @@
         </div>
         <div class="search-field-block search-field-block--date" id="dateBlock">
           <span class="search-field-block__date-label" id="dateLabel" data-i18n="date">Дата</span>
-          <button type="button" class="search-field-block__date-display" id="dateDisplay"></button>
+          <div class="search-field-block__date-row">
+            <button type="button" class="search-field-block__date-display" id="dateDisplay"></button>
+            <span class="search-field-block__date-presets">
+              <button type="button" class="btn btn-small btn-outline date-preset" data-preset="today" data-i18n="presetToday">Сегодня</button>
+              <button type="button" class="btn btn-small btn-outline date-preset" data-preset="tomorrow" data-i18n="presetTomorrow">Завтра</button>
+              <button type="button" class="btn btn-small btn-outline date-preset" data-preset="weekend" data-i18n="presetWeekend">Выходные</button>
+            </span>
+          </div>
           <input type="date" id="travelDate" required class="search-field-block__date-input">
           <div class="search-field-block__calendar hidden" id="dateCalendar"></div>
         </div>
@@ -354,6 +361,26 @@
         });
       }
       travelDate.addEventListener('change', updateDateDisplay);
+
+      document.querySelectorAll('.date-preset').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var preset = this.getAttribute('data-preset');
+          var d = new Date();
+          d.setHours(0, 0, 0, 0);
+          if (preset === 'tomorrow') d.setDate(d.getDate() + 1);
+          if (preset === 'weekend') {
+            while (d.getDay() !== 6) d.setDate(d.getDate() + 1);
+          }
+          var y = d.getFullYear(), m = d.getMonth() + 1, day = d.getDate();
+          var dateStr = y + '-' + String(m).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+          var min = travelDate.getAttribute('min'), max = travelDate.getAttribute('max');
+          if (min && dateStr < min) dateStr = min;
+          if (max && dateStr > max) dateStr = max;
+          travelDate.value = dateStr;
+          updateDateDisplay();
+          closeDateCalendar();
+        });
+      });
 
       function fillCities() {
         const cities = new Set();

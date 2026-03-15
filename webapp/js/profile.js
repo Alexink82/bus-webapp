@@ -351,7 +351,7 @@
           (docLine ? '<div class="passenger-card__meta">' + docLine + '</div>' : '') +
           '</div>' +
           '<div class="passenger-card__actions">' +
-          '<button type="button" class="btn-link edit-passenger" data-id="' + esc(p.id) + '">Редактировать</button>' +
+          '<button type="button" class="btn btn-small btn-outline edit-passenger" data-id="' + esc(p.id) + '">Редактировать</button>' +
           '<button type="button" class="btn btn-small btn-outline delete-passenger" data-id="' + esc(p.id) + '">Удалить</button>' +
           '</div></div>';
       }).join('');

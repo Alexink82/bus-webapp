@@ -620,6 +620,28 @@ body {
   content: '';
 }
 
+.search-field-block__date-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.search-field-block__date-row .search-field-block__date-display {
+  flex: 1;
+  min-width: 120px;
+}
+
+.search-field-block__date-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.search-field-block__date-presets .btn {
+  white-space: nowrap;
+}
+
 .results {
   margin-bottom: 24px;
 }
