@@ -164,6 +164,8 @@ TG WebApp открывается с домена `t.me` (cross-origin). Запр
 
 **Как передаётся авторизация:** при заданном **BOT_TOKEN** требуется заголовок **X-Telegram-Init-Data** (подпись проверяется по секрету бота). Без BOT_TOKEN (локальная разработка) достаточно **X-Telegram-User-Id**. Роли определяются при каждом запросе по ADMIN_IDS, DISPATCHER_IDS и таблицам bot_roles / dispatchers.
 
+**Языки и FAQ:** в таблице `faq_items` есть поля `question_ru`, `answer_ru`, `question_en`, `answer_en`. Для `GET /api/faq?lang=ru` отдаются русские тексты; для `lang=be` и `lang=en` — английские (отдельных полей для белорусского в БД нет; при необходимости можно добавить `question_be`, `answer_be` и доработать API).
+
 ## Лицензия
 
 MIT

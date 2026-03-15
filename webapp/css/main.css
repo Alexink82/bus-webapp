@@ -782,6 +782,18 @@ body {
   margin-top: 10px;
 }
 
+.last-search-block {
+  margin-bottom: 12px;
+}
+
+.last-search-block.hidden {
+  display: none;
+}
+
+.last-search-block .btn {
+  font-size: 0.9rem;
+}
+
 .schedule-section {
   margin-bottom: 24px;
 }

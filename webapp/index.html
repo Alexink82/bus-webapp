@@ -48,6 +48,11 @@
     </header>
 
     <main class="main">
+      <div id="lastSearchBlock" class="last-search-block hidden">
+        <button type="button" id="repeatLastSearchBtn" class="btn btn-outline btn-small">
+          <span id="lastSearchLabel" data-i18n="repeatLastSearch">Повторить последний поиск</span>: <span id="lastSearchRoute"></span>
+        </button>
+      </div>
       <form id="searchForm" class="search-form">
         <div class="search-field-block" id="fromBlock">
           <button type="button" class="search-field-block__trigger" id="fromTrigger" aria-haspopup="listbox" aria-expanded="false">
@@ -526,12 +531,43 @@
         updateToValue();
       });
 
+      var LAST_SEARCH_KEY = 'bus_booking_last_search';
+      function saveLastSearch(fromCity, toCity, dateStr) {
+        try {
+          if (fromCity && toCity && dateStr) localStorage.setItem(LAST_SEARCH_KEY, JSON.stringify({ from: fromCity, to: toCity, date: dateStr }));
+        } catch (e) {}
+      }
+      function applyLastSearch() {
+        try {
+          var raw = localStorage.getItem(LAST_SEARCH_KEY);
+          if (!raw) return;
+          var data = JSON.parse(raw);
+          var from = data.from, to = data.to, date = data.date;
+          if (!from || !to) return;
+          var cities = new Set();
+          routes.forEach(function(r) { (r.stops || []).forEach(function(s) { if (s.city) cities.add(s.city); }); });
+          if (!cities.has(from) || !cities.has(to)) return;
+          fromSelect.value = from;
+          toSelect.value = to;
+          updateFromValue();
+          updateToValue();
+          if (date) {
+            var min = travelDate.getAttribute('min'), max = travelDate.getAttribute('max');
+            if ((!min || date >= min) && (!max || date <= max)) { travelDate.value = date; updateDateDisplay(); }
+          }
+          searchForm.dispatchEvent(new Event('submit', { cancelable: true }));
+        } catch (e) {}
+      }
+      var repeatBtn = document.getElementById('repeatLastSearchBtn');
+      if (repeatBtn) repeatBtn.addEventListener('click', applyLastSearch);
+
       searchForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const fromCity = fromSelect.value;
         const toCity = toSelect.value;
         const dateStr = travelDate.value;
         if (!fromCity || !toCity || !dateStr) return;
+        saveLastSearch(fromCity, toCity, dateStr);
         var stops, iFrom, iTo;
         var matching = routes.filter(function(r) {
           stops = r.stops || [];
@@ -575,6 +611,20 @@
           updateFromValue();
           updateToValue();
         }
+        var lastBlock = document.getElementById('lastSearchBlock');
+        var lastLabel = document.getElementById('lastSearchRoute');
+        try {
+          var raw = localStorage.getItem(LAST_SEARCH_KEY);
+          if (raw) {
+            var ls = JSON.parse(raw);
+            var cities = new Set();
+            routes.forEach(function(r) { (r.stops || []).forEach(function(s) { if (s.city) cities.add(s.city); }); });
+            if (ls.from && ls.to && cities.has(ls.from) && cities.has(ls.to)) {
+              if (lastBlock) lastBlock.classList.remove('hidden');
+              if (lastLabel) lastLabel.textContent = ls.from + ' → ' + ls.to;
+            }
+          }
+        } catch (err) {}
       }).catch(() => { routes = []; fillCities(); renderSchedule(); if (resultsList) resultsList.innerHTML = '<p class="text-secondary">Не удалось загрузить маршруты.</p>'; resultsSection.classList.remove('hidden'); });
 
       (function() {

@@ -15,19 +15,20 @@ async def list_faq(
     lang: str = "ru",
     db: AsyncSession = Depends(get_db),
 ):
-    """List FAQ items."""
+    """List FAQ items. lang=ru → question_ru/answer_ru; lang=be or lang=en → question_en/answer_en (отдельных полей для белорусского нет)."""
     q = select(FAQItem).where(FAQItem.is_active == True).order_by(FAQItem.order, FAQItem.id)
     if category:
         q = q.where(FAQItem.category == category)
     result = await db.execute(q)
     rows = result.scalars().all()
+    use_ru = (lang or "").strip().lower() == "ru"
     items = []
     for r in rows:
         items.append({
             "id": r.id,
             "category": r.category,
-            "question": r.question_ru if lang == "ru" else r.question_en,
-            "answer": r.answer_ru if lang == "ru" else r.answer_en,
+            "question": r.question_ru if use_ru else (r.question_en or r.question_ru),
+            "answer": r.answer_ru if use_ru else (r.answer_en or r.answer_ru),
         })
     return {"items": items}
 
