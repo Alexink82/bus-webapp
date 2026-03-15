@@ -108,6 +108,26 @@
     });
   };
 
+  /** Неблокирующее уведомление (тот же визуальный стиль, что модалки). type: 'success'|'error'|'info' */
+  window.showToast = function(message, type) {
+    type = type || 'info';
+    var container = document.getElementById('app-toast-root');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'app-toast-root';
+      container.className = 'app-toast';
+      document.body.appendChild(container);
+    }
+    var el = document.createElement('div');
+    el.className = 'app-toast__item app-toast__item--' + type;
+    el.textContent = typeof message === 'string' ? message : errorToMessage(message);
+    container.appendChild(el);
+    setTimeout(function() {
+      if (el.parentNode) el.parentNode.removeChild(el);
+    }, 4000);
+    return el;
+  };
+
   window.errorToMessage = errorToMessage;
   window.showAppModal = showAppModal;
 })();

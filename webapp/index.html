@@ -138,6 +138,7 @@
   <script src="js/settings.js?v=2"></script>
   <script src="js/nav.js?v=2"></script>
   <script src="js/prefetch.js?v=2"></script>
+  <script src="js/app-modal.js?v=2"></script>
   <script src="js/consent.js?v=2"></script>
   <script>
     (function() {
@@ -595,8 +596,7 @@
         renderSchedule();
         var params = new URLSearchParams(window.location.search);
         if (params.get('error') === 'invalid_booking_link') {
-          if (typeof showAppAlert === 'function') showAppAlert('Указан неполный маршрут. Выберите маршрут, дату и время.', 'Ошибка ссылки');
-          else alert('Указан неполный маршрут. Выберите маршрут, дату и время.');
+          (typeof showAppAlert === 'function' ? showAppAlert : alert)('Указан неполный маршрут. Выберите маршрут, дату и время.', 'Ошибка ссылки');
           params.delete('error');
           var clean = window.location.pathname + (params.toString() ? ('?' + params.toString()) : '');
           window.history.replaceState({}, '', clean);

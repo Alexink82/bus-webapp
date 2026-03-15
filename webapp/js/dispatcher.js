@@ -120,7 +120,7 @@
       btn.addEventListener('click', () => {
         api('/api/dispatcher/bookings/' + btn.dataset.id + '/take', { method: 'POST' })
           .then(() => { loadNew(); loadActive(); loadStats(); })
-          .catch(e => alert(e && e.message ? e.message : 'Произошла ошибка. Попробуйте позже.'));
+          .catch(e => { var msg = e && e.message ? e.message : 'Произошла ошибка. Попробуйте позже.'; (typeof showAppAlert === 'function' ? showAppAlert : alert)(msg, 'Ошибка'); });
       });
     });
   }
@@ -160,7 +160,7 @@
             method: 'POST',
             body: JSON.stringify(payload),
             headers: { 'Content-Type': 'application/json' },
-          }).then(() => { loadActive(); loadStats(); }).catch(e => alert(e && e.message ? e.message : 'Произошла ошибка. Попробуйте позже.'));
+          }).then(() => { loadActive(); loadStats(); }).catch(e => { var msg = e && e.message ? e.message : 'Произошла ошибка. Попробуйте позже.'; (typeof showAppAlert === 'function' ? showAppAlert : alert)(msg, 'Ошибка'); });
         });
       });
     }).catch(() => { document.getElementById('activeList').innerHTML = '<p>Нет доступа (вы не диспетчер).</p>'; });
@@ -229,7 +229,7 @@
       };
       ws.onclose = function(event) {
         if (event && event.code === 4003) {
-          alert('Сессия истекла, обновите страницу');
+          (typeof showAppAlert === 'function' ? showAppAlert : alert)('Сессия истекла, обновите страницу', 'Сессия');
           return;
         }
         setTimeout(connectWs, 5000);

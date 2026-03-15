@@ -15,6 +15,7 @@
     <div class="header__logo-bar">
       <img src="img/logo.png" alt="СТОЛИЦА" class="header__logo" width="160" height="40">
     </div>
+    <div id="roleShellPlaceholder"></div>
     <header class="admin-header">
       <span class="admin-header__title">⚙️ Админ-панель</span>
       <a href="index.html" class="admin-header__exit">Выйти</a>
@@ -111,6 +112,8 @@
   </div>
   <script src="js/api.js?v=2"></script>
   <script src="js/auth.js?v=2"></script>
+  <script src="js/app-modal.js?v=2"></script>
+  <script src="js/nav.js?v=2"></script>
   <script>
     (function() {
       const uid = typeof getTelegramUserId === 'function' ? getTelegramUserId() : null;
@@ -179,20 +182,21 @@
           a.download = 'bookings.csv';
           a.click();
           URL.revokeObjectURL(a.href);
-        }).catch(function(e) { alert(e.message || 'Ошибка экспорта'); });
+        }).catch(function(e) { (typeof showAppAlert === 'function' ? showAppAlert : alert)(e.message || 'Ошибка экспорта', 'Ошибка'); });
       });
 
       document.getElementById('runArchiveBtn').addEventListener('click', function() {
         var daysEl = document.getElementById('archiveOlderDays');
         var days = parseInt(daysEl.value, 10);
-        if (isNaN(days) || days < 30 || days > 365) { alert('Укажите число дней от 30 до 365.'); return; }
+        if (isNaN(days) || days < 30 || days > 365) { (typeof showAppAlert === 'function' ? showAppAlert : alert)('Укажите число дней от 30 до 365.', 'Ошибка'); return; }
         if (!confirm('Пометить заявки старше ' + days + ' дней как архивированные? Они не будут учитываться в статистике.')) return;
         api('/api/admin/archive?older_than_days=' + days, { method: 'POST' })
           .then(function(data) {
-            alert('Архивировано заявок: ' + (data.archived != null ? data.archived : 0));
+            var n = data.archived != null ? data.archived : 0;
+            if (typeof showToast === 'function') showToast('Архивировано заявок: ' + n, 'success'); else alert('Архивировано заявок: ' + n);
             loadStats(document.querySelector('.admin-period-tab--active')?.getAttribute('data-period') || 'month');
           })
-          .catch(function(e) { alert(e.message || 'Ошибка архивации'); });
+          .catch(function(e) { (typeof showAppAlert === 'function' ? showAppAlert : alert)(e.message || 'Ошибка архивации', 'Ошибка'); });
       });
       api('/api/admin/logs?limit=50').then(data => {
         const logs = data.logs || [];
@@ -243,10 +247,10 @@
       document.getElementById('addAdminBtn').addEventListener('click', function() {
         var tidEl = document.getElementById('adminTelegramId');
         var tid = parseInt(tidEl.value, 10);
-        if (!tid || isNaN(tid)) { alert('Введите Telegram ID (число).'); return; }
+        if (!tid || isNaN(tid)) { (typeof showAppAlert === 'function' ? showAppAlert : alert)('Введите Telegram ID (число).', 'Ошибка'); return; }
         api('/api/admin/admins', { method: 'POST', body: JSON.stringify({ telegram_id: tid }) })
           .then(function() { tidEl.value = ''; loadAdmins(); loadRoleAudit(); })
-          .catch(function(e) { alert(e.message); });
+          .catch(function(e) { (typeof showAppAlert === 'function' ? showAppAlert : alert)(e.message, 'Ошибка'); });
       });
 
       function loadDispatchers() {
@@ -266,7 +270,7 @@
               if (!tid || !confirm('Деактивировать диспетчера? Вкладка «Диспетчер» у него пропадёт.')) return;
               api('/api/admin/dispatchers/' + tid, { method: 'DELETE' })
                 .then(function() { loadDispatchers(); loadRoleAudit(); })
-                .catch(function(e) { alert(e.message || 'Ошибка удаления'); });
+                .catch(function(e) { (typeof showAppAlert === 'function' ? showAppAlert : alert)(e.message || 'Ошибка удаления', 'Ошибка'); });
             });
           });
         }).catch(function() { document.getElementById('dispatchersList').innerHTML = '<div class="admin-log-item text-error">Не удалось загрузить список</div>'; });
@@ -276,12 +280,12 @@
       document.getElementById('addDispatcherBtn').addEventListener('click', function() {
         var tidEl = document.getElementById('dispTelegramId');
         var tid = parseInt(tidEl.value, 10);
-        if (!tid || isNaN(tid)) { alert('Введите Telegram ID (число).'); return; }
+        if (!tid || isNaN(tid)) { (typeof showAppAlert === 'function' ? showAppAlert : alert)('Введите Telegram ID (число).', 'Ошибка'); return; }
         var name = (document.getElementById('dispName').value || '').trim();
         var phone = (document.getElementById('dispPhone').value || '').trim();
         api('/api/admin/dispatchers', { method: 'POST', body: JSON.stringify({ telegram_id: tid, name: name, phone: phone, routes: [], direction: '' }) })
           .then(function() { tidEl.value = ''; document.getElementById('dispName').value = ''; document.getElementById('dispPhone').value = ''; loadDispatchers(); loadRoleAudit(); })
-          .catch(function(e) { alert(e.message); });
+          .catch(function(e) { (typeof showAppAlert === 'function' ? showAppAlert : alert)(e.message, 'Ошибка'); });
       });
 
       if (window.Telegram && Telegram.WebApp) Telegram.WebApp.ready();
