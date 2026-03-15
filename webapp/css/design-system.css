@@ -2,6 +2,24 @@
    Bus Booking Web App — Design System CSS
    ============================================ */
 
+/* Единый стиль с основным приложением: при подключённом main.css админка (.app) использует его переменные */
+.app {
+  --color-bg: var(--bg, #F5F5F7);
+  --color-surface: var(--surface, #FFFFFF);
+  --color-surface-elevated: var(--surface-elevated, #FFFFFF);
+  --color-text-primary: var(--text, #1D1D1F);
+  --color-text-secondary: var(--text-muted, #6E6E73);
+  --color-text-tertiary: var(--text-muted, #8E8E93);
+  --color-border: var(--border, #E5E5EA);
+  --color-accent: var(--accent, #E85D4C);
+  --color-accent-hover: var(--accent-hover, #D14A3A);
+  --color-accent-light: rgba(233, 69, 96, 0.15);
+  --font-family: var(--font, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+  --radius-md: var(--radius, 12px);
+  --radius-lg: var(--radius, 12px);
+  --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.15);
+}
+
 /* CSS Variables */
 :root {
   /* Colors — Light Theme */

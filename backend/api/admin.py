@@ -4,9 +4,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Header, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from sqlalchemy import select, func, update
+from sqlalchemy import select, func, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 import io
 import csv
 
@@ -147,6 +147,20 @@ async def run_archive(
         ).values(is_archived=True)
     )
     return {"archived": result.rowcount, "message": f"Archived bookings with date < {threshold}"}
+
+
+@router.post("/rotate-logs")
+async def rotate_logs(
+    older_than_days: int = Query(30, ge=7, le=365),
+    db: AsyncSession = Depends(get_db),
+    admin_id: int = Depends(get_admin_id),
+):
+    """Удалить записи из log_entries старше N дней. Для ротации логов (cron или вручную)."""
+    cutoff = datetime.now(timezone.utc) - timedelta(days=older_than_days)
+    result = await db.execute(delete(LogEntry).where(LogEntry.timestamp < cutoff))
+    await db.flush()
+    await log_action(db, "INFO", "admin", "rotate_logs", user_id=admin_id, details={"older_than_days": older_than_days, "deleted": result.rowcount})
+    return {"deleted": result.rowcount, "older_than_days": older_than_days}
 
 
 @router.get("/admins")
