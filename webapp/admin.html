@@ -30,6 +30,11 @@
       <div class="admin-panel">
         <section id="statsPanel">
           <h2 class="admin-section__title">Статистика</h2>
+          <div class="admin-period-tabs">
+            <button type="button" class="admin-period-tab admin-period-tab--active" data-period="day">День</button>
+            <button type="button" class="admin-period-tab" data-period="week">Неделя</button>
+            <button type="button" class="admin-period-tab" data-period="month">Месяц</button>
+          </div>
           <div id="statsPeriod" class="admin-period"></div>
           <div class="admin-stats">
             <div class="admin-stat-card">
@@ -43,6 +48,13 @@
           </div>
           <div class="admin-actions">
             <button type="button" id="exportCsv" class="btn btn--secondary btn--block">📥 Экспорт CSV</button>
+            <div class="admin-archive mt-4">
+              <label class="form-label">Архивация старых заявок</label>
+              <p class="text-secondary text-small mb-2">Пометить заявки старше N дней как архивированные (они не попадают в статистику).</p>
+              <input type="number" id="archiveOlderDays" class="input" value="90" min="30" max="365" style="max-width:100px; display:inline-block; margin-right:8px;">
+              <span>дней</span>
+              <button type="button" id="runArchiveBtn" class="btn btn--secondary btn--small ml-2">Выполнить архивацию</button>
+            </div>
           </div>
         </section>
         <section id="adminsPanel" class="hidden">
@@ -104,29 +116,76 @@
         return;
       }
       const base = typeof BASE_URL !== 'undefined' ? BASE_URL : '';
-      api('/api/admin/stats').then(data => {
-        document.getElementById('loginWarning').classList.add('hidden');
-        document.getElementById('adminTabs').classList.remove('hidden');
-        document.getElementById('adminMain').classList.remove('hidden');
-        document.getElementById('statsPeriod').innerHTML = 'Период: <strong>' + data.from_date + '</strong> — <strong>' + data.to_date + '</strong>';
-        document.getElementById('statsBookings').textContent = data.total_bookings != null ? data.total_bookings : '—';
-        document.getElementById('statsSum').textContent = data.total_sum != null ? data.total_sum : '—';
-        document.getElementById('exportCsv').onclick = function() {
-          const exportUrl = base + '/api/admin/export?from_date=' + encodeURIComponent(data.from_date) + '&to_date=' + encodeURIComponent(data.to_date);
-          const exportHeaders = { 'X-Telegram-User-Id': String(uid) };
-          if (typeof getTelegramInitData === 'function' && getTelegramInitData()) exportHeaders['X-Telegram-Init-Data'] = getTelegramInitData();
-          fetch(exportUrl, { headers: exportHeaders }).then(function(r) {
-            if (!r.ok) return r.json().catch(function() { return {}; }).then(function(d) { throw new Error(d.detail || 'Ошибка экспорта'); });
-            return r.blob();
-          }).then(function(blob) {
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = 'bookings.csv';
-            a.click();
-            URL.revokeObjectURL(a.href);
-          }).catch(function(e) { alert(e.message || 'Ошибка экспорта'); });
+      let statsFromDate = '', statsToDate = '';
+
+      function periodToDates(period) {
+        var today = new Date();
+        var y = today.getFullYear(), m = today.getMonth(), d = today.getDate();
+        var from = new Date(y, m, d);
+        if (period === 'week') from.setDate(from.getDate() - 6);
+        if (period === 'month') from.setDate(from.getDate() - 29);
+        var to = new Date(y, m, d);
+        return {
+          from_date: from.getFullYear() + '-' + String(from.getMonth() + 1).padStart(2, '0') + '-' + String(from.getDate()).padStart(2, '0'),
+          to_date: to.getFullYear() + '-' + String(to.getMonth() + 1).padStart(2, '0') + '-' + String(to.getDate()).padStart(2, '0')
         };
-      }).catch(function() { document.getElementById('loginWarning').classList.remove('hidden'); document.getElementById('loginWarning').textContent = 'Нет доступа (не админ).'; });
+      }
+
+      function loadStats(period) {
+        var range = periodToDates(period || 'month');
+        api('/api/admin/stats?from_date=' + encodeURIComponent(range.from_date) + '&to_date=' + encodeURIComponent(range.to_date)).then(function(data) {
+          document.getElementById('loginWarning').classList.add('hidden');
+          document.getElementById('adminTabs').classList.remove('hidden');
+          document.getElementById('adminMain').classList.remove('hidden');
+          statsFromDate = data.from_date;
+          statsToDate = data.to_date;
+          document.getElementById('statsPeriod').innerHTML = 'Период: <strong>' + data.from_date + '</strong> — <strong>' + data.to_date + '</strong>';
+          document.getElementById('statsBookings').textContent = data.total_bookings != null ? data.total_bookings : '—';
+          document.getElementById('statsSum').textContent = data.total_sum != null ? data.total_sum : '—';
+        }).catch(function() { document.getElementById('loginWarning').classList.remove('hidden'); document.getElementById('loginWarning').textContent = 'Нет доступа (не админ).'; });
+      }
+
+      loadStats('month');
+
+      document.querySelectorAll('.admin-period-tab').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var period = this.getAttribute('data-period');
+          document.querySelectorAll('.admin-period-tab').forEach(function(b) { b.classList.remove('admin-period-tab--active'); });
+          this.classList.add('admin-period-tab--active');
+          loadStats(period);
+        });
+      });
+
+      document.getElementById('exportCsv').addEventListener('click', function() {
+        var from = statsFromDate || periodToDates('month').from_date;
+        var to = statsToDate || periodToDates('month').to_date;
+        var exportUrl = base + '/api/admin/export?from_date=' + encodeURIComponent(from) + '&to_date=' + encodeURIComponent(to);
+        var exportHeaders = { 'X-Telegram-User-Id': String(uid) };
+        if (typeof getTelegramInitData === 'function' && getTelegramInitData()) exportHeaders['X-Telegram-Init-Data'] = getTelegramInitData();
+        fetch(exportUrl, { headers: exportHeaders }).then(function(r) {
+          if (!r.ok) return r.json().catch(function() { return {}; }).then(function(d) { throw new Error(d.detail || 'Ошибка экспорта'); });
+          return r.blob();
+        }).then(function(blob) {
+          var a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = 'bookings.csv';
+          a.click();
+          URL.revokeObjectURL(a.href);
+        }).catch(function(e) { alert(e.message || 'Ошибка экспорта'); });
+      });
+
+      document.getElementById('runArchiveBtn').addEventListener('click', function() {
+        var daysEl = document.getElementById('archiveOlderDays');
+        var days = parseInt(daysEl.value, 10);
+        if (isNaN(days) || days < 30 || days > 365) { alert('Укажите число дней от 30 до 365.'); return; }
+        if (!confirm('Пометить заявки старше ' + days + ' дней как архивированные? Они не будут учитываться в статистике.')) return;
+        api('/api/admin/archive?older_than_days=' + days, { method: 'POST' })
+          .then(function(data) {
+            alert('Архивировано заявок: ' + (data.archived != null ? data.archived : 0));
+            loadStats(document.querySelector('.admin-period-tab--active')?.getAttribute('data-period') || 'month');
+          })
+          .catch(function(e) { alert(e.message || 'Ошибка архивации'); });
+      });
       api('/api/admin/logs?limit=50').then(data => {
         const logs = data.logs || [];
         const esc = (s) => (s == null ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'));

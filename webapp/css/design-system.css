@@ -1220,8 +1220,16 @@ body {
 .admin-stat-card { background-color: var(--color-surface); border-radius: var(--radius-lg); padding: var(--space-4); box-shadow: var(--shadow-card); text-align: center; }
 .admin-stat-card__value { font-size: var(--font-size-3xl); font-weight: var(--font-weight-bold); color: var(--color-accent); margin-bottom: var(--space-1); }
 .admin-stat-card__label { font-size: var(--font-size-sm); color: var(--color-text-secondary); }
+.admin-period-tabs { display: flex; gap: var(--space-2); margin-bottom: var(--space-3); }
+.admin-period-tab { padding: var(--space-2) var(--space-4); font-size: var(--font-size-sm); color: var(--color-text-secondary); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); cursor: pointer; transition: all var(--transition-fast); }
+.admin-period-tab:hover { border-color: var(--color-accent); color: var(--color-accent); }
+.admin-period-tab--active { background: var(--color-accent-light); border-color: var(--color-accent); color: var(--color-accent); }
 .admin-period { background-color: var(--color-surface); border-radius: var(--radius-lg); padding: var(--space-4); margin-bottom: var(--space-4); box-shadow: var(--shadow-card); font-size: var(--font-size-sm); color: var(--color-text-secondary); }
 .admin-period strong { color: var(--color-text-primary); }
+.admin-archive { padding-top: var(--space-2); border-top: 1px solid var(--color-border); }
+.admin-archive .mb-2 { margin-bottom: var(--space-2); }
+.mb-2 { margin-bottom: var(--space-2); }
+.ml-2 { margin-left: var(--space-2); }
 .admin-actions { margin-bottom: var(--space-6); }
 .admin-actions .btn--secondary { width: 100%; }
 .admin-logs { background-color: var(--color-surface); border-radius: var(--radius-lg); padding: var(--space-4); box-shadow: var(--shadow-card); }
