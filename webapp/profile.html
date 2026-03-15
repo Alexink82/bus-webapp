@@ -35,40 +35,51 @@
       </div>
     </header>
     <main class="main">
-      <section id="settingsSection" class="settings-section">
-        <h2 id="settingsTitle" data-i18n="settings">Настройки</h2>
-        <div class="settings-group">
-          <label for="langSelect" id="langLabel" data-i18n="language">Язык</label>
-          <select id="langSelect" class="settings-select" aria-label="Язык">
-            <option value="ru">Русский</option>
-            <option value="en">English</option>
-            <option value="be">Беларуская</option>
-          </select>
-        </div>
-        <label class="settings-checkbox">
-          <input type="checkbox" id="reduceMotionCheck" aria-describedby="reduceMotionHint">
-          <span id="reduceMotionLabel" data-i18n="reduceAnimations">Уменьшить анимации</span>
-        </label>
-        <p id="reduceMotionHint" class="settings-hint" data-i18n="reduceAnimationsHint">Рекомендуется при чувствительности к движению на экране.</p>
-      </section>
-      <section id="bookingsSection">
-        <h2 id="bookingsTitle" data-i18n="myBookings">Мои брони</h2>
-        <div class="segmented-control" role="tablist">
-          <button class="segment active" data-tab="active" role="tab" aria-selected="true">Активные</button>
-          <button class="segment" data-tab="upcoming" role="tab" aria-selected="false">Предстоящие</button>
-          <button class="segment" data-tab="completed" role="tab" aria-selected="false">Завершённые</button>
-          <button class="segment" data-tab="cancelled" role="tab" aria-selected="false">Отменённые</button>
-        </div>
-        <div id="tab-active" class="tab-content active"><div id="bookingsListActive"></div></div>
-        <div id="tab-upcoming" class="tab-content"><div id="bookingsListUpcoming"></div></div>
-        <div id="tab-completed" class="tab-content"><div id="bookingsListCompleted"></div></div>
-        <div id="tab-cancelled" class="tab-content"><div id="bookingsListCancelled"></div></div>
-      </section>
-      <section id="passengersSection">
-        <h2 id="passengersTitle" data-i18n="savedPassengers">Сохранённые пассажиры</h2>
-        <div id="passengersList"></div>
-        <button type="button" id="addPassenger" class="btn btn-small" data-i18n="add">Добавить</button>
-      </section>
+      <div class="segmented-control profile-tabs" role="tablist">
+        <button class="segment active" data-tab="profileBookings" role="tab" aria-selected="true" data-i18n="myBookings">Мои брони</button>
+        <button class="segment" data-tab="profilePassengers" role="tab" aria-selected="false" data-i18n="savedPassengers">Пассажиры</button>
+        <button class="segment" data-tab="profileSettings" role="tab" aria-selected="false" data-i18n="settings">Настройки</button>
+      </div>
+      <div id="tab-profileBookings" class="tab-content active">
+        <section id="bookingsSection">
+          <h2 id="bookingsTitle" class="visually-hidden" data-i18n="myBookings">Мои брони</h2>
+          <div class="segmented-control" role="tablist">
+            <button class="segment active" data-tab="active" role="tab" aria-selected="true">Активные</button>
+            <button class="segment" data-tab="upcoming" role="tab" aria-selected="false">Предстоящие</button>
+            <button class="segment" data-tab="completed" role="tab" aria-selected="false">Завершённые</button>
+            <button class="segment" data-tab="cancelled" role="tab" aria-selected="false">Отменённые</button>
+          </div>
+          <div id="tab-active" class="tab-content active"><div id="bookingsListActive"></div></div>
+          <div id="tab-upcoming" class="tab-content"><div id="bookingsListUpcoming"></div></div>
+          <div id="tab-completed" class="tab-content"><div id="bookingsListCompleted"></div></div>
+          <div id="tab-cancelled" class="tab-content"><div id="bookingsListCancelled"></div></div>
+        </section>
+      </div>
+      <div id="tab-profilePassengers" class="tab-content">
+        <section id="passengersSection">
+          <h2 id="passengersTitle" class="visually-hidden" data-i18n="savedPassengers">Сохранённые пассажиры</h2>
+          <div id="passengersList"></div>
+          <button type="button" id="addPassenger" class="btn btn-small" data-i18n="add">Добавить</button>
+        </section>
+      </div>
+      <div id="tab-profileSettings" class="tab-content">
+        <section id="settingsSection" class="settings-section">
+          <h2 id="settingsTitle" class="visually-hidden" data-i18n="settings">Настройки</h2>
+          <div class="settings-group">
+            <label for="langSelect" id="langLabel" data-i18n="language">Язык</label>
+            <select id="langSelect" class="settings-select" aria-label="Язык">
+              <option value="ru">Русский</option>
+              <option value="en">English</option>
+              <option value="be">Беларуская</option>
+            </select>
+          </div>
+          <label class="settings-checkbox">
+            <input type="checkbox" id="reduceMotionCheck" aria-describedby="reduceMotionHint">
+            <span id="reduceMotionLabel" data-i18n="reduceAnimations">Уменьшить анимации</span>
+          </label>
+          <p id="reduceMotionHint" class="settings-hint" data-i18n="reduceAnimationsHint">Рекомендуется при чувствительности к движению на экране.</p>
+        </section>
+      </div>
     </main>
     <nav class="tab-bar" id="tabBar">
       <a href="index.html" class="tab">🎫 Бронь</a>

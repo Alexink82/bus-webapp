@@ -691,7 +691,7 @@
       is_for_another_person: getEl('forAnotherPerson').checked,
       another_person_phone: getEl('forAnotherPerson').checked ? anotherPhone : null,
       phone: phone,
-      save_phone_in_profile: getEl('savePhone').checked,
+      save_phone_in_profile: getEl('savePhone').checked || (getEl('savePassengers') && getEl('savePassengers').checked),
       payment_method: paymentMethod,
       user_id: typeof getTelegramUserId === 'function' && getTelegramUserId() ? parseInt(getTelegramUserId(), 10) : null
     };

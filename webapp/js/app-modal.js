@@ -28,6 +28,7 @@
     var message = options.message || '';
     var html = options.html || '';
     var buttons = options.buttons || [{ text: 'OK', primary: true }];
+    var hideHeaderClose = options.hideHeaderClose === true;
     var root = ensureContainer();
     var overlay = document.createElement('div');
     overlay.className = 'app-modal-overlay';
@@ -40,7 +41,7 @@
       '<div class="app-modal-drag-handle" aria-hidden="true"></div>' +
       '<div class="app-modal-header">' +
         '<h2 id="app-modal-title" class="app-modal-title">' + escapeHtml(title) + '</h2>' +
-        '<button type="button" class="app-modal-close" aria-label="Закрыть">&times;</button>' +
+        (hideHeaderClose ? '' : '<button type="button" class="app-modal-close" aria-label="Закрыть">&times;</button>') +
       '</div>' +
       '<div class="app-modal-body">' +
         (message ? '<p class="app-modal-message">' + escapeHtml(message) + '</p>' : '') +
@@ -71,7 +72,8 @@
     overlay.addEventListener('click', function(e) {
       if (e.target === overlay) { close(); resolveResult(false); }
     });
-    content.querySelector('.app-modal-close').addEventListener('click', function() {
+    var headerCloseBtn = content.querySelector('.app-modal-close');
+    if (headerCloseBtn) headerCloseBtn.addEventListener('click', function() {
       close();
       resolveResult(false);
     });

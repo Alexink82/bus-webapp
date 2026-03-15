@@ -633,13 +633,19 @@ body {
 }
 
 .search-field-block__date-presets {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  width: 100%;
 }
 
 .search-field-block__date-presets .btn {
   white-space: nowrap;
+}
+
+.search-field-block__date-presets .date-preset--full {
+  width: 100%;
+  margin: 0;
 }
 
 .results {
@@ -696,12 +702,12 @@ body {
 .booking-details-modal__actions a { text-decoration: none; }
 
 /* Карточка пассажира в профиле (как в личном кабинете) */
-.passenger-card { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 12px; }
-.passenger-card__info { flex: 1; min-width: 0; }
+.passenger-card { display: flex; flex-direction: column; gap: 12px; }
+.passenger-card__info { min-width: 0; }
 .passenger-card__name { font-weight: 600; font-size: 1rem; margin-bottom: 4px; }
 .passenger-card__meta { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 2px; }
-.passenger-card__actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.passenger-card__actions .btn-small { margin-top: 0; }
+.passenger-card__actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 4px; padding-top: 12px; border-top: 1px solid var(--border); }
+.passenger-card__actions .btn-small { margin-top: 0; flex: 1; min-width: 0; }
 .btn-link { background: none; border: none; color: var(--accent); cursor: pointer; text-decoration: underline; font-size: inherit; padding: 0; }
 .btn-link:hover { color: var(--accent-hover); }
 
@@ -980,6 +986,18 @@ body {
 
 .hidden {
   display: none !important;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* FAQ page */

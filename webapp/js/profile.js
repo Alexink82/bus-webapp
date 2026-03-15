@@ -347,7 +347,7 @@
       '<button type="button" class="btn btn-primary reschedule-date-btn">' + esc(rescheduleText) + '</button> ' +
       '<a href="success.html?booking_id=' + encodeURIComponent(booking.booking_id) + '" class="btn btn-outline">Страница заявки</a></div></div>';
     if (typeof showAppModal === 'function') {
-      showAppModal({ title: (typeof t === 'function' ? t('details') : 'Подробнее'), html: html, buttons: [{ text: typeof t === 'function' ? t('close') : 'Закрыть', primary: true }] });
+      showAppModal({ title: (typeof t === 'function' ? t('details') : 'Подробнее'), html: html, buttons: [{ text: typeof t === 'function' ? t('close') : 'Закрыть', primary: true }], hideHeaderClose: true });
       var btn = document.querySelector('.app-modal-root .reschedule-date-btn');
       if (btn) btn.addEventListener('click', function() { window.__rescheduleClick && window.__rescheduleClick(); });
     } else {
