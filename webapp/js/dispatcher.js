@@ -59,6 +59,8 @@
     };
   }
 
+  const OVERDUE_MINUTES = 15;
+
   function loadNew() {
     const f = readFilters();
     const qs = new URLSearchParams({ status: 'new' });
@@ -66,27 +68,61 @@
     if (f.date) qs.set('departure_date', f.date);
     if (f.payment) qs.set('payment_status', f.payment);
     api('/api/dispatcher/bookings?' + qs.toString()).then(data => {
-      const list = document.getElementById('newList');
       const items = data.bookings || [];
-      const esc = (s) => (s == null ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'));
-      list.innerHTML = items.map(b => `
-        <div class="dispatcher-card" data-booking="${esc(b.booking_id)}">
-          <strong>${esc(b.booking_id)}</strong> ${esc(b.route_name)}<br>
-          ${esc(b.departure_date)} ${esc(b.departure_time)} | ${esc(b.passengers_count)} пасс. | ${esc(b.price_total)} ${esc(b.currency)}
-          <div class="status">${b.status}</div>
-          <div class="actions">
-            <button data-action="take" data-id="${b.booking_id}">Взять в работу</button>
-          </div>
-        </div>
-      `).join('') || '<p>Нет новых заявок.</p>';
-      list.querySelectorAll('[data-action="take"]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          api('/api/dispatcher/bookings/' + btn.dataset.id + '/take', { method: 'POST' })
-            .then(() => { loadNew(); loadActive(); loadStats(); })
-            .catch(e => alert(e && e.message ? e.message : 'Произошла ошибка. Попробуйте позже.'));
-        });
+      const now = Date.now();
+      const threshold = OVERDUE_MINUTES * 60 * 1000;
+      const overdue = items.filter(b => {
+        const created = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return created && (now - created) > threshold;
       });
+      const fresh = items.filter(b => {
+        const created = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return !created || (now - created) <= threshold;
+      });
+
+      const overdueBlock = document.getElementById('overdueBlock');
+      const overdueCountEl = document.getElementById('overdueCount');
+      const overdueListEl = document.getElementById('overdueList');
+      if (overdue.length > 0) {
+        overdueBlock.classList.remove('hidden');
+        overdueCountEl.textContent = overdue.length + ' заявок ждут более ' + OVERDUE_MINUTES + ' мин.';
+        const esc = (s) => (s == null ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'));
+        overdueListEl.innerHTML = overdue.map(b => renderNewCard(b, esc)).join('');
+        bindTakeButtons(overdueListEl);
+      } else {
+        overdueBlock.classList.add('hidden');
+        overdueListEl.innerHTML = '';
+      }
+
+      const list = document.getElementById('newList');
+      const esc = (s) => (s == null ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'));
+      list.innerHTML = fresh.map(b => renderNewCard(b, esc)).join('') || '<p>Нет новых заявок.</p>';
+      bindTakeButtons(list);
     }).catch(() => { document.getElementById('newList').innerHTML = '<p>Нет доступа (вы не диспетчер).</p>'; });
+  }
+
+  function renderNewCard(b, esc) {
+    return `
+      <div class="dispatcher-card" data-booking="${esc(b.booking_id)}">
+        <strong>${esc(b.booking_id)}</strong> ${esc(b.route_name)}<br>
+        ${esc(b.departure_date)} ${esc(b.departure_time)} | ${esc(b.passengers_count)} пасс. | ${esc(b.price_total)} ${esc(b.currency)}
+        <div class="status">${b.status}</div>
+        <div class="actions">
+          <button data-action="take" data-id="${b.booking_id}">Взять в работу</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function bindTakeButtons(container) {
+    if (!container) return;
+    container.querySelectorAll('[data-action="take"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        api('/api/dispatcher/bookings/' + btn.dataset.id + '/take', { method: 'POST' })
+          .then(() => { loadNew(); loadActive(); loadStats(); })
+          .catch(e => alert(e && e.message ? e.message : 'Произошла ошибка. Попробуйте позже.'));
+      });
+    });
   }
 
   function loadActive() {

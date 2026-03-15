@@ -723,6 +723,43 @@ body {
 }
 .booking-card__actions .btn-small { margin-top: 0; }
 
+.my-active-booking {
+  margin-bottom: 20px;
+  padding: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.my-active-booking.hidden {
+  display: none;
+}
+
+.my-active-booking__title {
+  font-size: 1rem;
+  margin: 0 0 10px 0;
+  color: var(--text);
+}
+
+.my-active-booking__card p {
+  margin: 0 0 6px 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.my-active-booking__id {
+  font-weight: 600;
+  color: var(--text) !important;
+}
+
+.my-active-booking__status {
+  font-style: italic;
+}
+
+.my-active-booking .btn {
+  margin-top: 10px;
+}
+
 .schedule-section {
   margin-bottom: 24px;
 }

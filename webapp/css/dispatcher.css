@@ -23,6 +23,36 @@
   display: none;
 }
 
+.dispatcher-overdue {
+  margin-bottom: 16px;
+  padding: 12px;
+  background: rgba(200, 80, 60, 0.12);
+  border: 1px solid rgba(200, 80, 60, 0.4);
+  border-radius: var(--radius);
+}
+
+.dispatcher-overdue.hidden {
+  display: none;
+}
+
+.dispatcher-overdue__title {
+  margin: 0 0 4px 0;
+  font-size: 1rem;
+  color: var(--text);
+}
+
+.dispatcher-overdue__count {
+  margin: 0 0 8px 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.dispatcher-new__title {
+  margin: 0 0 8px 0;
+  font-size: 1rem;
+  color: var(--text-muted);
+}
+
 .warning {
   background: #4a1c1c;
   color: #f88;

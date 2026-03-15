@@ -82,6 +82,17 @@
         <p class="search-form__hint" id="findTripsHint" data-i18n="findTripsHint">Время отправления и цена появятся после нажатия «Найти рейсы».</p>
       </form>
 
+      <section id="myActiveBooking" class="my-active-booking hidden">
+        <h3 class="my-active-booking__title">Моя заявка</h3>
+        <div class="my-active-booking__card" id="myActiveBookingCard">
+          <p class="my-active-booking__id" id="myActiveBookingId"></p>
+          <p class="my-active-booking__route" id="myActiveBookingRoute"></p>
+          <p class="my-active-booking__status" id="myActiveBookingStatus"></p>
+          <p class="my-active-booking__next" id="myActiveBookingNext"></p>
+          <a href="#" id="myActiveBookingLink" class="btn btn-outline btn-small">Подробнее</a>
+        </div>
+      </section>
+
       <section id="results" class="results hidden">
         <h2>Рейсы на <span id="resultsDate"></span></h2>
         <div id="resultsList"></div>
@@ -564,6 +575,32 @@
 
       setMinDate();
       updateDateDisplay();
+
+      function loadMyActiveBooking() {
+        if (typeof getTelegramUserId !== 'function' || !getTelegramUserId()) return;
+        var section = document.getElementById('myActiveBooking');
+        var card = document.getElementById('myActiveBookingCard');
+        if (!section || !card) return;
+        api('/api/user/bookings').then(function(data) {
+          var list = data.bookings || [];
+          var active = list.find(function(b) { return b.status && b.status !== 'cancelled' && b.status !== 'done'; });
+          if (!active) {
+            section.classList.add('hidden');
+            return;
+          }
+          section.classList.remove('hidden');
+          var statusLabels = { new: 'Новая', active: 'В работе', payment_link_sent: 'Ссылка на оплату отправлена', paid: 'Оплачено', ticket_sent: 'Билет отправлен', pending_payment: 'Ожидание оплаты' };
+          var nextLabels = { new: 'Диспетчер возьмёт заявку в работу и свяжется с вами.', active: 'Ожидайте ссылку на оплату или уточнение.', payment_link_sent: 'Оплатите по ссылке от диспетчера.', paid: 'Ожидайте отправки билета.', ticket_sent: 'Заявка почти завершена.', pending_payment: 'Оплатите в кассу или по ссылке.' };
+          document.getElementById('myActiveBookingId').textContent = active.booking_id || '';
+          document.getElementById('myActiveBookingRoute').textContent = (active.from_city || '') + ' → ' + (active.to_city || '') + ', ' + (active.departure_date || '') + ' ' + (active.departure_time || '');
+          document.getElementById('myActiveBookingStatus').textContent = 'Статус: ' + (statusLabels[active.status] || active.status);
+          document.getElementById('myActiveBookingNext').textContent = nextLabels[active.status] || '';
+          var link = document.getElementById('myActiveBookingLink');
+          if (link) link.href = 'booking.html?id=' + encodeURIComponent(active.booking_id);
+        }).catch(function() { section.classList.add('hidden'); });
+      }
+      loadMyActiveBooking();
+
       if (window.Telegram && Telegram.WebApp) Telegram.WebApp.ready();
 
       var loader = document.getElementById('appLoader');
