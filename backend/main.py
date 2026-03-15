@@ -220,30 +220,44 @@ app.include_router(faq_router)
 
 @app.api_route("/api/health", methods=["GET", "HEAD"])
 async def health():
-    """Статус сервиса. При MAINTENANCE_UNTIL (ISO дата-время) в будущем возвращает режим технических работ."""
+    """Статус сервиса. При MAINTENANCE_UNTIL — режим техработ. При заданной БД — проверка доступности (503 при недоступности)."""
     import os
     from datetime import datetime, timezone
+    from sqlalchemy import text
+
     until_raw = (os.environ.get("MAINTENANCE_UNTIL") or "").strip()
-    if not until_raw:
-        return {"status": "ok", "maintenance": False}
-    try:
-        # Поддержка формата с Z и без (считаем UTC если нет таймзоны)
-        if until_raw.endswith("Z"):
-            until = datetime.fromisoformat(until_raw.replace("Z", "+00:00"))
-        else:
-            until = datetime.fromisoformat(until_raw)
-            if until.tzinfo is None:
-                until = until.replace(tzinfo=timezone.utc)
-    except ValueError:
-        return {"status": "ok", "maintenance": False}
-    now = datetime.now(timezone.utc)
-    if now < until:
-        return {
-            "status": "maintenance",
-            "maintenance": True,
-            "maintenance_until": until.isoformat(),
-        }
-    return {"status": "ok", "maintenance": False}
+    if until_raw:
+        try:
+            if until_raw.endswith("Z"):
+                until = datetime.fromisoformat(until_raw.replace("Z", "+00:00"))
+            else:
+                until = datetime.fromisoformat(until_raw)
+                if until.tzinfo is None:
+                    until = until.replace(tzinfo=timezone.utc)
+            if datetime.now(timezone.utc) < until:
+                return {
+                    "status": "maintenance",
+                    "maintenance": True,
+                    "maintenance_until": until.isoformat(),
+                }
+        except ValueError:
+            pass
+
+    payload = {"status": "ok", "maintenance": False}
+    # Опционально: при HEALTH_CHECK_DB=1 и заданной БД — пинг БД; при недоступности 503 (для мониторинга).
+    if os.environ.get("HEALTH_CHECK_DB", "").strip() in ("1", "true", "yes") and get_settings().database_url:
+        try:
+            from database import AsyncSessionLocal
+            async with AsyncSessionLocal() as session:
+                await session.execute(text("SELECT 1"))
+            payload["db"] = "ok"
+        except Exception:
+            logger.warning("Health check: DB unreachable", exc_info=True)
+            return JSONResponse(
+                status_code=503,
+                content={"status": "degraded", "maintenance": False, "db": "unavailable"},
+            )
+    return payload
 
 # Mount static webapp (HTML/CSS/JS) — после всех API-маршрутов, иначе /api/health отдаёт статика
 webapp_path = os.path.join(os.path.dirname(__file__), "..", "webapp")

@@ -196,3 +196,260 @@ def test_news_no_db_required(client):
     """Новости/кэш возвращают 200."""
     r = client.get("/api/news")
     assert r.status_code == 200
+
+
+@pytest.mark.skipif(not _has_db_url, reason="DATABASE_URL not set")
+def test_health_db_check_when_enabled(client):
+    """При HEALTH_CHECK_DB=1 и доступной БД в ответе есть db: ok."""
+    os.environ["HEALTH_CHECK_DB"] = "1"
+    try:
+        r = client.get("/api/health")
+        assert r.status_code == 200
+        data = r.json()
+        assert data.get("status") == "ok"
+        assert data.get("db") == "ok"
+    finally:
+        os.environ.pop("HEALTH_CHECK_DB", None)
+
+
+# --- Access-control: get_booking и cancel (владелец / админ / диспетчер / чужой). BOT_TOKEN пустой → X-Telegram-User-Id. ---
+
+def _env_for_access_tests():
+    """Временно выставить env для тестов ролей (BOT_TOKEN пустой, ADMIN_IDS, DISPATCHER_IDS)."""
+    old = {}
+    for k in ("BOT_TOKEN", "ADMIN_IDS", "DISPATCHER_IDS"):
+        old[k] = os.environ.get(k)
+    os.environ["BOT_TOKEN"] = ""
+    os.environ["ADMIN_IDS"] = "999"
+    os.environ["DISPATCHER_IDS"] = "222"
+    return old
+
+
+def _restore_env(old):
+    for k, v in old.items():
+        if v is None:
+            os.environ.pop(k, None)
+        else:
+            os.environ[k] = v
+
+
+@pytest.mark.skipif(not _has_db_url, reason="DATABASE_URL not set")
+def test_get_booking_access_control_owner_sees_full(client):
+    """Владелец заявки (X-Telegram-User-Id = contact_tg_id) видит полный ответ: passengers, contact_phone."""
+    from datetime import date, timedelta
+    old = _env_for_access_tests()
+    try:
+        soon = (date.today() + timedelta(days=14)).isoformat()
+        payload = {
+            "route_id": "gomel_mozyr",
+            "from_city": "Гомель",
+            "to_city": "Мозырь",
+            "departure_date": soon,
+            "departure_time": "12:30",
+            "passengers": [{"last_name": "Иванов", "first_name": "Иван", "birth_date": "1990-01-01"}],
+            "phone": "+375291234567",
+            "payment_method": "cash",
+            "user_id": 111,
+        }
+        r = client.post("/api/bookings", json=payload)
+        assert r.status_code == 200
+        booking_id = r.json().get("booking_id")
+        assert booking_id
+        r2 = client.get(f"/api/bookings/{booking_id}", headers={"X-Telegram-User-Id": "111"})
+        assert r2.status_code == 200
+        data = r2.json()
+        assert "passengers" in data
+        assert "contact_phone" in data
+    finally:
+        _restore_env(old)
+
+
+@pytest.mark.skipif(not _has_db_url, reason="DATABASE_URL not set")
+def test_get_booking_access_control_stranger_sees_limited(client):
+    """Чужой (без заголовка или другой user_id) видит ограниченный ответ: без passengers и contact_phone."""
+    from datetime import date, timedelta
+    old = _env_for_access_tests()
+    try:
+        soon = (date.today() + timedelta(days=14)).isoformat()
+        payload = {
+            "route_id": "gomel_mozyr",
+            "from_city": "Гомель",
+            "to_city": "Мозырь",
+            "departure_date": soon,
+            "departure_time": "12:30",
+            "passengers": [{"last_name": "Петров", "first_name": "Пётр", "birth_date": "1985-05-05"}],
+            "phone": "+375299999999",
+            "payment_method": "cash",
+            "user_id": 111,
+        }
+        r = client.post("/api/bookings", json=payload)
+        assert r.status_code == 200
+        booking_id = r.json().get("booking_id")
+        assert booking_id
+        r2 = client.get(f"/api/bookings/{booking_id}")
+        assert r2.status_code == 200
+        data = r2.json()
+        assert "passengers" not in data
+        assert "contact_phone" not in data
+        assert "passengers_count" in data
+        r3 = client.get(f"/api/bookings/{booking_id}", headers={"X-Telegram-User-Id": "12345"})
+        assert r3.status_code == 200
+        data3 = r3.json()
+        assert "passengers" not in data3
+        assert "contact_phone" not in data3
+    finally:
+        _restore_env(old)
+
+
+@pytest.mark.skipif(not _has_db_url, reason="DATABASE_URL not set")
+def test_get_booking_access_control_admin_sees_full(client):
+    """Админ (ADMIN_IDS) видит полный ответ заявки."""
+    from datetime import date, timedelta
+    old = _env_for_access_tests()
+    try:
+        soon = (date.today() + timedelta(days=14)).isoformat()
+        payload = {
+            "route_id": "gomel_mozyr",
+            "from_city": "Гомель",
+            "to_city": "Мозырь",
+            "departure_date": soon,
+            "departure_time": "12:30",
+            "passengers": [{"last_name": "Сидоров", "first_name": "Сидор", "birth_date": "1992-02-02"}],
+            "phone": "+375337777777",
+            "payment_method": "cash",
+            "user_id": 111,
+        }
+        r = client.post("/api/bookings", json=payload)
+        assert r.status_code == 200
+        booking_id = r.json().get("booking_id")
+        r2 = client.get(f"/api/bookings/{booking_id}", headers={"X-Telegram-User-Id": "999"})
+        assert r2.status_code == 200
+        assert "passengers" in r2.json()
+        assert "contact_phone" in r2.json()
+    finally:
+        _restore_env(old)
+
+
+@pytest.mark.skipif(not _has_db_url, reason="DATABASE_URL not set")
+def test_get_booking_access_control_dispatcher_sees_full(client):
+    """Диспетчер (DISPATCHER_IDS) видит полный ответ заявки по своим маршрутам."""
+    from datetime import date, timedelta
+    old = _env_for_access_tests()
+    try:
+        soon = (date.today() + timedelta(days=14)).isoformat()
+        payload = {
+            "route_id": "gomel_mozyr",
+            "from_city": "Гомель",
+            "to_city": "Мозырь",
+            "departure_date": soon,
+            "departure_time": "12:30",
+            "passengers": [{"last_name": "Диспетчеров", "first_name": "Дисп", "birth_date": "1988-08-08"}],
+            "phone": "+375336666666",
+            "payment_method": "cash",
+            "user_id": 111,
+        }
+        r = client.post("/api/bookings", json=payload)
+        assert r.status_code == 200
+        booking_id = r.json().get("booking_id")
+        r2 = client.get(f"/api/bookings/{booking_id}", headers={"X-Telegram-User-Id": "222"})
+        assert r2.status_code == 200
+        assert "passengers" in r2.json()
+    finally:
+        _restore_env(old)
+
+
+@pytest.mark.skipif(not _has_db_url, reason="DATABASE_URL not set")
+def test_cancel_booking_access_control_owner_can_cancel(client):
+    """Владелец может отменить свою заявку (статус new)."""
+    from datetime import date, timedelta
+    old = _env_for_access_tests()
+    try:
+        soon = (date.today() + timedelta(days=14)).isoformat()
+        payload = {
+            "route_id": "gomel_mozyr",
+            "from_city": "Гомель",
+            "to_city": "Мозырь",
+            "departure_date": soon,
+            "departure_time": "12:30",
+            "passengers": [{"last_name": "Отменов", "first_name": "Иван", "birth_date": "1990-01-01"}],
+            "phone": "+375255555555",
+            "payment_method": "cash",
+            "user_id": 111,
+        }
+        r = client.post("/api/bookings", json=payload)
+        assert r.status_code == 200
+        booking_id = r.json().get("booking_id")
+        r2 = client.post(
+            f"/api/bookings/{booking_id}/cancel",
+            json={},
+            headers={"X-Telegram-User-Id": "111"},
+        )
+        assert r2.status_code == 200
+        data = r2.json()
+        assert data.get("status") == "cancelled"
+    finally:
+        _restore_env(old)
+
+
+@pytest.mark.skipif(not _has_db_url, reason="DATABASE_URL not set")
+def test_cancel_booking_access_control_stranger_403(client):
+    """Чужой пользователь не может отменить заявку -> 403."""
+    from datetime import date, timedelta
+    old = _env_for_access_tests()
+    try:
+        soon = (date.today() + timedelta(days=14)).isoformat()
+        payload = {
+            "route_id": "gomel_mozyr",
+            "from_city": "Гомель",
+            "to_city": "Мозырь",
+            "departure_date": soon,
+            "departure_time": "12:30",
+            "passengers": [{"last_name": "Чужой", "first_name": "Не", "birth_date": "1991-01-01"}],
+            "phone": "+375254444444",
+            "payment_method": "cash",
+            "user_id": 111,
+        }
+        r = client.post("/api/bookings", json=payload)
+        assert r.status_code == 200
+        booking_id = r.json().get("booking_id")
+        r2 = client.post(
+            f"/api/bookings/{booking_id}/cancel",
+            json={},
+            headers={"X-Telegram-User-Id": "12345"},
+        )
+        assert r2.status_code == 403
+        assert r2.json().get("detail") == "not_authorized_to_cancel"
+    finally:
+        _restore_env(old)
+
+
+@pytest.mark.skipif(not _has_db_url, reason="DATABASE_URL not set")
+def test_cancel_booking_access_control_admin_can_cancel_with_reason(client):
+    """Админ может отменить заявку с указанием причины (reason обязателен не от владельца)."""
+    from datetime import date, timedelta
+    old = _env_for_access_tests()
+    try:
+        soon = (date.today() + timedelta(days=14)).isoformat()
+        payload = {
+            "route_id": "gomel_mozyr",
+            "from_city": "Гомель",
+            "to_city": "Мозырь",
+            "departure_date": soon,
+            "departure_time": "12:30",
+            "passengers": [{"last_name": "АдминОтмена", "first_name": "А", "birth_date": "1993-03-03"}],
+            "phone": "+375253333333",
+            "payment_method": "cash",
+            "user_id": 111,
+        }
+        r = client.post("/api/bookings", json=payload)
+        assert r.status_code == 200
+        booking_id = r.json().get("booking_id")
+        r2 = client.post(
+            f"/api/bookings/{booking_id}/cancel",
+            json={"reason": "Причина от админа"},
+            headers={"X-Telegram-User-Id": "999"},
+        )
+        assert r2.status_code == 200
+        assert r2.json().get("status") == "cancelled"
+    finally:
+        _restore_env(old)
