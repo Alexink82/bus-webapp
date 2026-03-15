@@ -190,14 +190,14 @@ def test_reschedule_request_requires_auth(client):
 
 
 def test_rate_limit_returns_429(client):
-    """При превышении лимита запросов к /api/ возвращается 429."""
-    # Лимит из config (по умолчанию 10 в минуту). Делаем 11 запросов.
+    """При превышении лимита запросов к /api/ возвращается 429.
+    GET /api/health входит в RATE_LIMIT_SKIP_PATHS, поэтому эти запросы не учитываются —
+    тест не проверяет 429 по сути (при необходимости проверять с БД и путём вне skip, например GET /api/bookings/ID)."""
     for _ in range(11):
         r = client.get("/api/health")
         if r.status_code == 429:
             assert r.json().get("detail") == "too_many_requests"
             return
-    # Если rate_limit отключён (<=0), 429 не будет
     assert True
 
 

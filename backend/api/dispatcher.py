@@ -42,6 +42,9 @@ async def list_bookings(
     q = select(Booking).where(Booking.route_id.in_(route_ids))
     if status:
         q = q.where(Booking.status == status)
+        # Во вкладке «В работе» показываем только заявки, взятые текущим диспетчером
+        if status == "active":
+            q = q.where(Booking.dispatcher_id == dispatcher_id)
     if route_id:
         q = q.where(Booking.route_id == route_id)
     if departure_date:

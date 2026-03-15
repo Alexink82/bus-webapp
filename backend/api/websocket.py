@@ -84,6 +84,7 @@ manager = ConnectionManager()
 @router.websocket("/ws/dispatcher/{dispatcher_id}")
 async def websocket_dispatcher(websocket: WebSocket, dispatcher_id: int):
     did = int(dispatcher_id)
+    route_ids = None
     await websocket.accept()
     settings = get_settings()
     if (settings.bot_token or "").strip():
@@ -103,11 +104,13 @@ async def websocket_dispatcher(websocket: WebSocket, dispatcher_id: int):
             return
     else:
         async with AsyncSessionLocal() as db:
-            if await get_dispatcher_route_ids(db, did) is None:
+            route_ids = await get_dispatcher_route_ids(db, did)
+            if route_ids is None:
                 await websocket.close(code=4003)
                 return
-    async with AsyncSessionLocal() as db:
-        route_ids = await get_dispatcher_route_ids(db, did)
+    if (settings.bot_token or "").strip():
+        async with AsyncSessionLocal() as db:
+            route_ids = await get_dispatcher_route_ids(db, did)
     if route_ids is None:
         await websocket.close(code=4003)
         return

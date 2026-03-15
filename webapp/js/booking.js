@@ -183,9 +183,9 @@
       var wrap = document.getElementById('fillFromProfileWrap');
       if (wrap) {
         wrap.classList.toggle('hidden', !savedPassengersForFill.length);
-        if (savedPassengersForFill.length && typeof t === 'function') {
+        if (savedPassengersForFill.length) {
           var fillBtn = document.getElementById('fillFromProfile');
-          if (fillBtn) fillBtn.textContent = t('addFromSaved');
+          if (fillBtn) fillBtn.textContent = (typeof t === 'function' ? t('addFromSaved') : 'Вставить из сохранённых');
         }
       }
     }).catch(function() {});

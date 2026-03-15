@@ -183,7 +183,7 @@ class FAQItem(Base):
     question_en = Column(String(200))
     answer_ru = Column(Text)
     answer_en = Column(Text)
-    order = Column(Integer, default=0)
+    order = Column("sort_order", Integer, default=0)  # в БД — sort_order (order зарезервировано в PostgreSQL)
     is_active = Column(Boolean, default=True)
 
 
