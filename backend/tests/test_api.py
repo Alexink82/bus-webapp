@@ -167,6 +167,16 @@ def test_faq_no_db_required(client):
     assert "items" in data
 
 
+@pytest.mark.skipif(not _has_db_url, reason="DATABASE_URL not set")
+def test_faq_lang_be_returns_200(client):
+    """FAQ с lang=be возвращает 200 (fallback на question_en/answer_en)."""
+    r = client.get("/api/faq?lang=be")
+    assert r.status_code == 200
+    data = r.json()
+    assert "items" in data
+    assert isinstance(data["items"], list)
+
+
 def test_cancel_booking_requires_auth(client):
     """Отмена брони без заголовков авторизации -> 401."""
     r = client.post("/api/bookings/ANY-ID/cancel", json={})

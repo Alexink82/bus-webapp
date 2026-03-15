@@ -13,6 +13,7 @@ import csv
 from database import get_db
 from config import get_settings
 from api.auth_deps import get_verified_telegram_user_id
+from logging_config import log_action
 from services.roles import is_admin
 from services.roles import get_all_admin_ids, get_all_dispatcher_ids
 from models import Booking, Dispatcher, LogEntry, BotRole
@@ -99,6 +100,38 @@ async def admin_logs(
     }
 
 
+ROLE_AUDIT_ACTIONS = ("add_admin", "add_dispatcher", "delete_dispatcher")
+
+
+@router.get("/role-audit")
+async def admin_role_audit(
+    limit: int = Query(50, le=200),
+    db: AsyncSession = Depends(get_db),
+    admin_id: int = Depends(get_admin_id),
+):
+    """История изменений ролей: кто, когда добавил/удалил админа или диспетчера."""
+    q = (
+        select(LogEntry)
+        .where(LogEntry.source == "admin", LogEntry.action.in_(ROLE_AUDIT_ACTIONS))
+        .order_by(LogEntry.timestamp.desc())
+        .limit(limit)
+    )
+    result = await db.execute(q)
+    rows = result.scalars().all()
+    return {
+        "entries": [
+            {
+                "id": r.id,
+                "timestamp": r.timestamp.isoformat() if r.timestamp else None,
+                "action": r.action,
+                "user_id": r.user_id,
+                "details": r.details or {},
+            }
+            for r in rows
+        ]
+    }
+
+
 @router.post("/archive")
 async def run_archive(
     older_than_days: int = Query(90),
@@ -142,6 +175,7 @@ async def add_admin(
     await db.flush()
     from services.roles import load_roles
     await load_roles(db)
+    await log_action(db, "INFO", "admin", "add_admin", user_id=admin_id, details={"target_telegram_id": body.telegram_id})
     return {"success": True}
 
 
@@ -220,6 +254,7 @@ async def remove_dispatcher(
     if not d:
         raise HTTPException(404, detail="dispatcher_not_found")
     d.is_active = False
+    await log_action(db, "INFO", "admin", "delete_dispatcher", user_id=admin_id, details={"target_telegram_id": telegram_id})
     return {"success": True}
 
 
