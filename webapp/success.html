@@ -5,9 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#1a1a2e">
   <title>Заявка создана</title>
-  <link rel="stylesheet" href="css/main.css">
-  <link rel="stylesheet" href="css/telegram-theme.css">
-  <link rel="stylesheet" href="css/animations.css">
   <script>
     (function(){
       var lang = localStorage.getItem('lang');
@@ -18,12 +15,14 @@
     })();
   </script>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/telegram-theme-CcW_xsPe.css">
+  <link rel="stylesheet" crossorigin href="/assets/animations-DgAdRxMd.css">
 </head>
 <body class="success-page">
   <div class="container">
     <header class="header">
       <div class="header__logo-bar">
-        <img src="img/logo.png" alt="СТОЛИЦА" class="header__logo" width="160" height="40">
+        <img src="/assets/logo-DHd3bDT6.png" alt="СТОЛИЦА" class="header__logo" width="160" height="40">
       </div>
       <div class="header__row">
         <button type="button" id="themeToggle" class="theme-toggle" aria-label="Сменить тему" title="Светлая/тёмная тема">☀️</button>
@@ -53,76 +52,6 @@
       <a href="faq.html" class="tab"><span class="tab-bar__icon">❓</span><span class="tab-bar__label" data-i18n="tabFaq">FAQ</span></a>
     </nav>
   </div>
-  <script src="js/api.js?v=2"></script>
-  <script src="js/icons.js"></script>
-  <script src="js/auth.js?v=2"></script>
-  <script src="js/app-modal.js?v=2"></script>
-  <script src="js/i18n.js?v=2"></script>
-  <script src="js/settings.js?v=2"></script>
-  <script src="js/theme.js?v=2"></script>
-  <script src="js/nav.js?v=2"></script>
-  <script>
-    (function() {
-      if (typeof applyI18nToPage === 'function') applyI18nToPage();
-      if (window.Telegram && Telegram.WebApp && Telegram.WebApp.HapticFeedback) Telegram.WebApp.HapticFeedback.notificationOccurred('success');
-      var closeBtn = document.getElementById('tgCloseBtn');
-      if (closeBtn) {
-        var inTelegram = window.Telegram && Telegram.WebApp && Telegram.WebApp.initData;
-        if (inTelegram) closeBtn.style.display = 'none';
-        else { closeBtn.style.display = ''; closeBtn.addEventListener('click', function() { if (window.Telegram && Telegram.WebApp) Telegram.WebApp.close(); }); }
-      }
-      const params = new URLSearchParams(window.location.search);
-      const id = params.get('booking_id');
-      var bookingIdEl = document.getElementById('bookingId');
-      if (id) bookingIdEl.textContent = (typeof t === 'function' ? t('bookingId') : 'Номер заявки') + ': ' + id;
-      else bookingIdEl.textContent = (typeof t === 'function' ? t('success') : 'Заявка создана') + '.';
-      var statusEl = document.getElementById('statusText');
-      if (id && typeof api === 'function') {
-        api('/api/bookings/' + encodeURIComponent(id)).then(function(b) {
-          if (statusEl && b && b.status) {
-            var statusMap = { new: 'Ожидает подтверждения диспетчером', active: 'В работе', paid: 'Оплачено', ticket_sent: 'Билет отправлен', done: 'Завершено', cancelled: 'Заявка отменена' };
-            var label = statusMap[b.status] || b.status;
-            if (typeof getStatusBadge === 'function') {
-              var badge = getStatusBadge(b.status);
-              var icon = (badge.class.indexOf('success') !== -1 && typeof APP_ICONS !== 'undefined' && APP_ICONS.check) ? APP_ICONS.check : '';
-              statusEl.innerHTML = '<span class="' + badge.class + '">' + icon + '<span>' + label + '</span></span>';
-            } else {
-              statusEl.textContent = label;
-            }
-          }
-        }).catch(function() {});
-      }
-      var cancelBtn = document.getElementById('cancelBookingBtn');
-      if (id && typeof api === 'function' && cancelBtn) {
-        cancelBtn.classList.remove('hidden');
-        cancelBtn.onclick = function() {
-          var msg = typeof t === 'function' ? t('cancelConfirm') : 'Вы уверены, что хотите отменить заявку?';
-          var title = typeof t === 'function' ? t('cancelConfirmTitle') : 'Отмена заявки';
-          (typeof showAppConfirm === 'function' ? showAppConfirm(msg, title) : Promise.resolve(confirm(msg)))
-            .then(function(ok) {
-              if (!ok) return;
-              cancelBtn.disabled = true;
-              api('/api/bookings/' + encodeURIComponent(id) + '/cancel', { method: 'POST', body: JSON.stringify({}) })
-                .then(function() {
-                  document.getElementById('statusText').textContent = typeof t === 'function' ? t('bookingCancelled') : 'Заявка отменена.';
-                  cancelBtn.classList.add('hidden');
-                })
-                .catch(function(e) {
-                  var text = (typeof errorToMessage === 'function' ? errorToMessage(e) : (e && e.message ? e.message : (typeof t === 'function' ? t('error') : 'Ошибка')));
-                  (typeof showAppAlert === 'function' ? showAppAlert(text, typeof t === 'function' ? t('error') : 'Ошибка') : alert(text));
-                  cancelBtn.disabled = false;
-                });
-            });
-        };
-      }
-      if (window.Telegram && Telegram.WebApp) Telegram.WebApp.ready();
-      var backBtn = document.getElementById('backOrCloseBtn');
-      if (backBtn) {
-        backBtn.addEventListener('click', function() {
-          window.location.href = 'index.html';
-        });
-      }
-    })();
-  </script>
+  <script type="module" src="./js/success-entry.js"></script>
 </body>
 </html>

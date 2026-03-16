@@ -1,0 +1,12 @@
+import './maintenance.js';
+import './api.js';
+import './auth.js';
+import './theme.js';
+import './i18n.js';
+import './settings.js';
+import './nav.js';
+import './prefetch.js';
+import './app-modal.js';
+import './consent.js';
+import './web-vitals.js';
+import './index-init.js';

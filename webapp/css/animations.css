@@ -116,6 +116,10 @@
   animation: none;
   stroke-dashoffset: 0;
 }
+.economy-mode .success-checkmark__path {
+  animation: none;
+  stroke-dashoffset: 0;
+}
 
 /* Страница успеха — плавное появление кнопок */
 .success-actions .btn,
@@ -130,6 +134,8 @@
 }
 .reduce-motion .success-actions .btn,
 .reduce-motion .success-actions .success-btn { animation: none; }
+.economy-mode .success-actions .btn,
+.economy-mode .success-actions .success-btn { animation: none; }
 
 /* FAQ — появление пунктов списка */
 .faq-item-dynamic {

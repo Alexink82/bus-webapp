@@ -4,6 +4,7 @@
  */
 (function() {
   function run() {
+    if (typeof window.isEconomyMode === 'function' && window.isEconomyMode()) return;
     var tabBar = document.getElementById('tabBar');
     if (!tabBar) return;
     var currentPath = window.location.pathname.replace(/\/$/, '') || '/index.html';

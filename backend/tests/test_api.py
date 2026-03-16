@@ -1,11 +1,45 @@
 """API tests. Запуск: из папки backend выполнить pytest tests/ -v.
 Для тестов, требующих БД (booking get, faq, news), нужна PostgreSQL (DATABASE_URL).
-Без DATABASE_URL эти тесты пропускаются.
+Без DATABASE_URL или при недоступности сервера эти тесты пропускаются.
 """
 import os
+import socket
 import pytest
 
-_has_db_url = bool(os.environ.get("DATABASE_URL"))
+def _db_reachable():
+    """Проверяет, что по DATABASE_URL можно достучаться до хоста:порт (без логина в БД)."""
+    url = (os.environ.get("DATABASE_URL") or "").strip()
+    if not url:
+        return False
+    try:
+        if url.startswith("postgresql://"):
+            url = url.split("?", 1)[0]
+            rest = url.replace("postgresql://", "", 1)
+        elif url.startswith("postgres://"):
+            rest = url.replace("postgres://", "", 1)
+        else:
+            return bool(url)
+        if "@" in rest:
+            _, rest = rest.rsplit("@", 1)
+        host_port = rest.split("/", 1)[0]
+        if ":" in host_port:
+            host, port_str = host_port.rsplit(":", 1)
+            port = int(port_str)
+        else:
+            host = host_port
+            port = 5432
+        if host in ("", "localhost"):
+            host = "127.0.0.1"
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(2)
+        s.connect((host, port))
+        s.close()
+        return True
+    except Exception:
+        return False
+
+_has_db_url = _db_reachable()
+_skip_no_db_reason = "DATABASE_URL not set or PostgreSQL unreachable"
 
 
 def test_health(client):
@@ -121,7 +155,7 @@ def test_create_booking_accepts_extra_fields_ignored(client):
     assert r.json().get("detail") == "route_not_found"
 
 
-@pytest.mark.skipif(not _has_db_url, reason="DATABASE_URL not set")
+@pytest.mark.skipif(not _has_db_url, reason=_skip_no_db_reason)
 def test_get_booking_not_found(client):
     """Получение несуществующей брони -> 404."""
     r = client.get("/api/bookings/NONEXISTENT-ID-123")
@@ -158,7 +192,7 @@ def test_admin_logs_unauthorized(client):
     assert r.status_code == 401
 
 
-@pytest.mark.skipif(not _has_db_url, reason="DATABASE_URL not set")
+@pytest.mark.skipif(not _has_db_url, reason=_skip_no_db_reason)
 def test_faq_no_db_required(client):
     """FAQ возвращает 200 (может быть пустой список без БД)."""
     r = client.get("/api/faq?lang=ru")
@@ -167,7 +201,7 @@ def test_faq_no_db_required(client):
     assert "items" in data
 
 
-@pytest.mark.skipif(not _has_db_url, reason="DATABASE_URL not set")
+@pytest.mark.skipif(not _has_db_url, reason=_skip_no_db_reason)
 def test_faq_lang_be_returns_200(client):
     """FAQ с lang=be возвращает 200 (fallback на question_en/answer_en)."""
     r = client.get("/api/faq?lang=be")
@@ -201,14 +235,14 @@ def test_rate_limit_returns_429(client):
     assert True
 
 
-@pytest.mark.skipif(not _has_db_url, reason="DATABASE_URL not set")
+@pytest.mark.skipif(not _has_db_url, reason=_skip_no_db_reason)
 def test_news_no_db_required(client):
     """Новости/кэш возвращают 200."""
     r = client.get("/api/news")
     assert r.status_code == 200
 
 
-@pytest.mark.skipif(not _has_db_url, reason="DATABASE_URL not set")
+@pytest.mark.skipif(not _has_db_url, reason=_skip_no_db_reason)
 def test_health_db_check_when_enabled(client):
     """При HEALTH_CHECK_DB=1 и доступной БД в ответе есть db: ok."""
     os.environ["HEALTH_CHECK_DB"] = "1"
@@ -243,7 +277,7 @@ def _restore_env(old):
             os.environ[k] = v
 
 
-@pytest.mark.skipif(not _has_db_url, reason="DATABASE_URL not set")
+@pytest.mark.skipif(not _has_db_url, reason=_skip_no_db_reason)
 def test_get_booking_access_control_owner_sees_full(client):
     """Владелец заявки (X-Telegram-User-Id = contact_tg_id) видит полный ответ: passengers, contact_phone."""
     from datetime import date, timedelta
@@ -274,7 +308,7 @@ def test_get_booking_access_control_owner_sees_full(client):
         _restore_env(old)
 
 
-@pytest.mark.skipif(not _has_db_url, reason="DATABASE_URL not set")
+@pytest.mark.skipif(not _has_db_url, reason=_skip_no_db_reason)
 def test_get_booking_access_control_stranger_sees_limited(client):
     """Чужой (без заголовка или другой user_id) видит ограниченный ответ: без passengers и contact_phone."""
     from datetime import date, timedelta
@@ -311,7 +345,7 @@ def test_get_booking_access_control_stranger_sees_limited(client):
         _restore_env(old)
 
 
-@pytest.mark.skipif(not _has_db_url, reason="DATABASE_URL not set")
+@pytest.mark.skipif(not _has_db_url, reason=_skip_no_db_reason)
 def test_get_booking_access_control_admin_sees_full(client):
     """Админ (ADMIN_IDS) видит полный ответ заявки."""
     from datetime import date, timedelta
@@ -340,7 +374,7 @@ def test_get_booking_access_control_admin_sees_full(client):
         _restore_env(old)
 
 
-@pytest.mark.skipif(not _has_db_url, reason="DATABASE_URL not set")
+@pytest.mark.skipif(not _has_db_url, reason=_skip_no_db_reason)
 def test_get_booking_access_control_dispatcher_sees_full(client):
     """Диспетчер (DISPATCHER_IDS) видит полный ответ заявки по своим маршрутам."""
     from datetime import date, timedelta
@@ -368,7 +402,7 @@ def test_get_booking_access_control_dispatcher_sees_full(client):
         _restore_env(old)
 
 
-@pytest.mark.skipif(not _has_db_url, reason="DATABASE_URL not set")
+@pytest.mark.skipif(not _has_db_url, reason=_skip_no_db_reason)
 def test_cancel_booking_access_control_owner_can_cancel(client):
     """Владелец может отменить свою заявку (статус new)."""
     from datetime import date, timedelta
@@ -401,7 +435,7 @@ def test_cancel_booking_access_control_owner_can_cancel(client):
         _restore_env(old)
 
 
-@pytest.mark.skipif(not _has_db_url, reason="DATABASE_URL not set")
+@pytest.mark.skipif(not _has_db_url, reason=_skip_no_db_reason)
 def test_cancel_booking_access_control_stranger_403(client):
     """Чужой пользователь не может отменить заявку -> 403."""
     from datetime import date, timedelta
@@ -433,7 +467,7 @@ def test_cancel_booking_access_control_stranger_403(client):
         _restore_env(old)
 
 
-@pytest.mark.skipif(not _has_db_url, reason="DATABASE_URL not set")
+@pytest.mark.skipif(not _has_db_url, reason=_skip_no_db_reason)
 def test_cancel_booking_access_control_admin_can_cancel_with_reason(client):
     """Админ может отменить заявку с указанием причины (reason обязателен не от владельца)."""
     from datetime import date, timedelta
@@ -461,5 +495,186 @@ def test_cancel_booking_access_control_admin_can_cancel_with_reason(client):
         )
         assert r2.status_code == 200
         assert r2.json().get("status") == "cancelled"
+    finally:
+        _restore_env(old)
+
+
+# --- Пользователь: dashboard, profile, passengers без авторизации ---
+
+def test_dashboard_unauthorized(client):
+    """GET /api/user/dashboard без заголовка -> 401."""
+    r = client.get("/api/user/dashboard")
+    assert r.status_code == 401
+
+
+def test_user_roles_anonymous(client):
+    """GET /api/user/roles без заголовка -> 200, is_admin False, is_dispatcher False."""
+    r = client.get("/api/user/roles")
+    assert r.status_code == 200
+    data = r.json()
+    assert data.get("is_admin") is False
+    assert data.get("is_dispatcher") is False
+
+
+def test_put_profile_unauthorized(client):
+    """PUT /api/user/profile без авторизации -> 401."""
+    r = client.put("/api/user/profile", json={"phone": "+375291234567"})
+    assert r.status_code == 401
+
+
+def test_post_passengers_unauthorized(client):
+    """POST /api/user/passengers без авторизации -> 401."""
+    r = client.post(
+        "/api/user/passengers",
+        json={"last_name": "Иванов", "first_name": "Иван", "birth_date": "1990-01-01"},
+    )
+    assert r.status_code == 401
+
+
+def test_delete_passenger_unauthorized(client):
+    """DELETE /api/user/passengers/1 без авторизации -> 401."""
+    r = client.delete("/api/user/passengers/1")
+    assert r.status_code == 401
+
+
+# --- Админ: эндпоинты без авторизации -> 401/403 ---
+
+def test_admin_dispatchers_unauthorized(client):
+    """GET /api/admin/dispatchers без заголовка -> 401."""
+    r = client.get("/api/admin/dispatchers")
+    assert r.status_code == 401
+
+
+def test_admin_role_audit_unauthorized(client):
+    """GET /api/admin/role-audit без заголовка -> 401."""
+    r = client.get("/api/admin/role-audit")
+    assert r.status_code == 401
+
+
+def test_admin_export_unauthorized(client):
+    """GET /api/admin/export без заголовка -> 401."""
+    r = client.get("/api/admin/export")
+    assert r.status_code == 401
+
+
+def test_admin_cancel_bulk_unauthorized(client):
+    """POST /api/admin/bookings/cancel-bulk без заголовка -> 401."""
+    r = client.post("/api/admin/bookings/cancel-bulk", json={"booking_ids": []})
+    assert r.status_code == 401
+
+
+def test_admin_stats_forbidden_for_non_admin(client):
+    """GET /api/admin/stats с X-Telegram-User-Id не из ADMIN_IDS -> 403 not_admin."""
+    old = _env_for_access_tests()
+    try:
+        r = client.get("/api/admin/stats", headers={"X-Telegram-User-Id": "888"})
+        assert r.status_code == 403
+        assert r.json().get("detail") == "not_admin"
+    finally:
+        _restore_env(old)
+
+
+@pytest.mark.skipif(not _has_db_url, reason=_skip_no_db_reason)
+def test_dispatcher_bookings_forbidden_for_non_dispatcher(client):
+    """GET /api/dispatcher/bookings с X-Telegram-User-Id не из DISPATCHER_IDS -> 403 not_dispatcher."""
+    old = _env_for_access_tests()
+    try:
+        r = client.get("/api/dispatcher/bookings", headers={"X-Telegram-User-Id": "888"})
+        assert r.status_code == 403
+        assert r.json().get("detail") == "not_dispatcher"
+    finally:
+        _restore_env(old)
+
+
+# --- Диспетчер: эндпоинты без авторизации -> 401 ---
+
+def test_dispatcher_take_unauthorized(client):
+    """POST /api/dispatcher/bookings/ID/take без заголовка -> 401."""
+    r = client.post("/api/dispatcher/bookings/some-id/take", json={})
+    assert r.status_code == 401
+
+
+def test_dispatcher_status_unauthorized(client):
+    """POST /api/dispatcher/bookings/ID/status без заголовка -> 401."""
+    r = client.post(
+        "/api/dispatcher/bookings/some-id/status",
+        json={"status": "active"},
+    )
+    assert r.status_code == 401
+
+
+def test_dispatcher_stats_unauthorized(client):
+    """GET /api/dispatcher/stats без заголовка -> 401."""
+    r = client.get("/api/dispatcher/stats")
+    assert r.status_code == 401
+
+
+def test_dispatcher_export_unauthorized(client):
+    """GET /api/dispatcher/export без заголовка -> 401."""
+    r = client.get("/api/dispatcher/export")
+    assert r.status_code == 401
+
+
+# --- С авторизацией админа/диспетчера (get_roles обращается к БД через get_dispatcher_route_ids) ---
+
+@pytest.mark.skipif(not _has_db_url, reason=_skip_no_db_reason)
+def test_user_roles_with_admin_id_returns_admin(client):
+    """С заголовком X-Telegram-User-Id = ADMIN_IDS пользователь считается админом (is_admin True)."""
+    old = _env_for_access_tests()
+    try:
+        r = client.get("/api/user/roles", headers={"X-Telegram-User-Id": "999"})
+        assert r.status_code == 200
+        assert r.json().get("is_admin") is True
+    finally:
+        _restore_env(old)
+
+
+@pytest.mark.skipif(not _has_db_url, reason=_skip_no_db_reason)
+def test_user_roles_with_unknown_id_returns_not_admin(client):
+    """С заголовком X-Telegram-User-Id не из ADMIN_IDS/DISPATCHER_IDS -> is_admin False."""
+    old = _env_for_access_tests()
+    try:
+        r = client.get("/api/user/roles", headers={"X-Telegram-User-Id": "888"})
+        assert r.status_code == 200
+        data = r.json()
+        assert data.get("is_admin") is False
+        assert data.get("is_dispatcher") is False
+    finally:
+        _restore_env(old)
+
+
+@pytest.mark.skipif(not _has_db_url, reason=_skip_no_db_reason)
+def test_dashboard_returns_structure(client):
+    """GET /api/user/dashboard с авторизацией возвращает profile, passengers, bookings."""
+    old = _env_for_access_tests()
+    try:
+        r = client.get("/api/user/dashboard", headers={"X-Telegram-User-Id": "111"})
+        assert r.status_code == 200
+        data = r.json()
+        assert "profile" in data
+        assert "passengers" in data
+        assert "bookings" in data
+        assert isinstance(data["profile"], dict)
+        assert isinstance(data["passengers"], list)
+        assert isinstance(data["bookings"], list)
+        assert "user_id" in data["profile"] or "exists" in data["profile"]
+    finally:
+        _restore_env(old)
+
+
+@pytest.mark.skipif(not _has_db_url, reason=_skip_no_db_reason)
+def test_dashboard_etag_304(client):
+    """GET /api/user/dashboard: повторный запрос с If-None-Match возвращает 304."""
+    old = _env_for_access_tests()
+    try:
+        r1 = client.get("/api/user/dashboard", headers={"X-Telegram-User-Id": "111"})
+        assert r1.status_code == 200
+        etag = r1.headers.get("ETag")
+        assert etag
+        r2 = client.get(
+            "/api/user/dashboard",
+            headers={"X-Telegram-User-Id": "111", "If-None-Match": etag},
+        )
+        assert r2.status_code == 304
     finally:
         _restore_env(old)

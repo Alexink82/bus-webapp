@@ -18,6 +18,7 @@ from services.roles import is_admin
 from services.roles import get_all_admin_ids, get_all_dispatcher_ids
 from models import Booking, Dispatcher, LogEntry, BotRole
 from core.constants import ROUTES
+from services.dashboard_cache import invalidate_dashboard_cache
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -141,6 +142,10 @@ async def admin_cancel_bulk(
     ids = [x.strip() for x in (body.booking_ids or []) if x and x.strip()]
     if not ids:
         return {"cancelled": 0, "message": "Нет выбранных заявок"}
+    rows = await db.execute(
+        select(Booking.contact_tg_id).where(Booking.id.in_(ids)).where(~Booking.status.in_(("cancelled", "done", "ticket_sent")))
+    )
+    user_ids = {r[0] for r in rows.all() if r[0]}
     stmt = (
         update(Booking)
         .where(Booking.id.in_(ids))
@@ -149,6 +154,8 @@ async def admin_cancel_bulk(
     )
     result = await db.execute(stmt)
     await db.commit()
+    for uid in user_ids:
+        await invalidate_dashboard_cache(uid)
     return {"cancelled": result.rowcount, "message": f"Отменено заявок: {result.rowcount}"}
 
 

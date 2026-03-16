@@ -5,16 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#1a1a2e">
   <title>Профиль</title>
-  <link rel="stylesheet" href="css/main.css">
-  <link rel="stylesheet" href="css/telegram-theme.css">
-  <link rel="stylesheet" href="css/date-picker.css">
   <script>(function(){var t=localStorage.getItem('theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);})();</script>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/telegram-theme-CcW_xsPe.css">
+  <link rel="stylesheet" crossorigin href="/assets/date-picker-xNAwk9GV.css">
 </head>
 <body>
   <div id="maintenanceOverlay" class="maintenance-overlay hidden">
     <div class="maintenance-overlay__inner">
-      <img src="img/logo.png" alt="СТОЛИЦА" class="maintenance-overlay__logo" width="160" height="40">
+      <img src="/assets/logo-DHd3bDT6.png" alt="СТОЛИЦА" class="maintenance-overlay__logo" width="160" height="40">
       <h1>Технические работы</h1>
       <p>Приносим извинения за неудобства. Мы обновляем сервис.</p>
       <p>Примерное время возобновления: <span id="maintenanceUntil">—</span></p>
@@ -24,7 +23,7 @@
   <div class="container" id="appContent">
     <header class="header">
       <div class="header__logo-bar">
-        <img src="img/logo.png" alt="СТОЛИЦА" class="header__logo" width="160" height="40">
+        <img src="/assets/logo-DHd3bDT6.png" alt="СТОЛИЦА" class="header__logo" width="160" height="40">
       </div>
       <div class="header__row">
         <button type="button" id="themeToggle" class="theme-toggle" aria-label="Сменить тему" title="Светлая/тёмная тема">☀️</button>
@@ -94,6 +93,14 @@
               <option value="be">Беларуская</option>
             </select>
           </div>
+          <div class="settings-group">
+            <label for="uiModeSelect" id="uiModeLabel">Режим интерфейса</label>
+            <select id="uiModeSelect" class="settings-select" aria-label="Режим интерфейса">
+              <option value="normal">Нормальный</option>
+              <option value="economy">Экономный</option>
+            </select>
+            <p class="settings-hint">Экономный — меньше эффектов, быстрее на слабых устройствах.</p>
+          </div>
           <label class="settings-checkbox">
             <input type="checkbox" id="reduceMotionCheck" aria-describedby="reduceMotionHint">
             <span id="reduceMotionLabel" data-i18n="reduceAnimations">Уменьшить анимации</span>
@@ -108,46 +115,7 @@
       <a href="faq.html" class="tab"><span class="tab-bar__icon">❓</span><span class="tab-bar__label" data-i18n="tabFaq">FAQ</span></a>
     </nav>
   </div>
-  <script src="js/maintenance.js"></script>
-  <script src="js/api.js"></script>
-  <script src="js/auth.js"></script>
   <script src="https://unpkg.com/imask"></script>
-  <script src="js/input-masks.js"></script>
-  <script src="js/passport-config.js"></script>
-  <script src="js/icons.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="js/theme.js"></script>
-  <script src="js/segmented-control.js"></script>
-  <script src="js/app-modal.js"></script>
-  <script src="js/nav.js"></script>
-  <script src="js/prefetch.js"></script>
-  <script src="js/consent.js"></script>
-  <script src="js/profile.js"></script>
-  <script>
-    (function() {
-      var closeBtn = document.getElementById('tgCloseBtn');
-      if (closeBtn) {
-        var inTelegram = window.Telegram && Telegram.WebApp && Telegram.WebApp.initData;
-        if (inTelegram) closeBtn.style.display = 'none';
-        else { closeBtn.style.display = ''; closeBtn.addEventListener('click', function() { if (window.Telegram && Telegram.WebApp) Telegram.WebApp.close(); }); }
-      }
-      var langSelect = document.getElementById('langSelect');
-      var reduceCheck = document.getElementById('reduceMotionCheck');
-      if (langSelect) {
-        langSelect.value = typeof getLang === 'function' ? getLang() : 'ru';
-        langSelect.addEventListener('change', function() {
-          if (typeof setLang === 'function') setLang(this.value);
-          if (typeof applyI18nToPage === 'function') applyI18nToPage();
-        });
-      }
-      if (reduceCheck) {
-        reduceCheck.checked = typeof getReduceMotion === 'function' ? getReduceMotion() : false;
-        reduceCheck.addEventListener('change', function() {
-          if (typeof setReduceMotion === 'function') setReduceMotion(this.checked);
-        });
-      }
-      if (typeof applyI18nToPage === 'function') applyI18nToPage();
-    })();
-  </script>
+  <script type="module" src="./js/profile-entry.js"></script>
 </body>
 </html>

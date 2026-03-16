@@ -234,7 +234,7 @@
           openCancelReasonModal(bookingId);
           return;
         }
-        api('/api/dispatcher/bookings/' + bookingId + '/status', {
+        api('/api/dispatcher/bookings/' + encodeURIComponent(bookingId) + '/status', {
           method: 'POST',
           body: JSON.stringify({ status: status }),
           headers: { 'Content-Type': 'application/json' },

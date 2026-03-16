@@ -23,6 +23,7 @@ from services.validators import validate_phone, validate_passenger, validate_boo
 from services.notification import notify_booking_created, notify_booking_status
 from logging_config import log_action
 from services.redis_client import get_redis
+from services.dashboard_cache import invalidate_dashboard_cache
 
 IDEMPOTENCY_TTL = 300  # 5 мин — для X-Idempotency-Key
 CONTENT_IDEMPOTENCY_TTL = 600  # 10 мин — для дубликата по содержимому (маршрут+дата+время+телефон+user_id)
@@ -279,6 +280,8 @@ async def create_booking(
             await redis.set("idempotency:content:" + content_key, json.dumps(response_body), ex=CONTENT_IDEMPOTENCY_TTL)
         except Exception:
             pass
+    if user_id:
+        await invalidate_dashboard_cache(user_id)
     return response_body
 
 
@@ -403,6 +406,7 @@ async def cancel_booking(
     b.status = "cancelled"
     if b.contact_tg_id:
         await notify_booking_status(b.contact_tg_id, booking_id, "cancelled", "ru")
+        await invalidate_dashboard_cache(b.contact_tg_id)
     return {"success": True, "status": "cancelled"}
 
 

@@ -54,7 +54,25 @@ function userFriendlyMessage(detail) {
   return String(detail);
 }
 
+var API_CACHE_TTL_MS = 60000;
+var apiCache = new Map();
+
+function apiCacheKey(path) {
+  if (path.startsWith('http')) {
+    try { return new URL(path).pathname + new URL(path).search; } catch (e) { return path; }
+  }
+  return path;
+}
+
+function apiInvalidateUserCache() {
+  var prefix = '/api/user/';
+  apiCache.forEach(function(_, key) {
+    if (key.indexOf(prefix) === 0) apiCache.delete(key);
+  });
+}
+
 async function api(path, options = {}) {
+  const method = (options.method || 'GET').toUpperCase();
   const url = path.startsWith('http') ? path : BASE_URL + path;
   const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
   const telegramId = getTelegramUserId();
@@ -63,13 +81,34 @@ async function api(path, options = {}) {
   if (initData) headers['X-Telegram-Init-Data'] = initData;
   const startParam = typeof getTelegramStartParam === 'function' ? getTelegramStartParam() : '';
   if (startParam) headers['X-Telegram-Start-Param'] = startParam;
-  const res = await fetch(url, { ...options, headers });
+
+  var isGet = method === 'GET';
+  var skipCache = options.skipCache === true;
+  var cacheKey = isGet && !skipCache ? apiCacheKey(path) : null;
+  if (cacheKey) {
+    var entry = apiCache.get(cacheKey);
+    if (entry && entry.expires > Date.now()) return entry.data;
+  }
+
+  const res = await fetch(url, { ...options, headers, method: method });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     let msg = userFriendlyMessage(data.detail) || (data.detail && typeof data.detail === 'object' && data.detail.code ? data.detail.code : null) || (typeof data.detail === 'string' ? data.detail : null) || res.statusText;
     let msgStr = typeof msg === 'string' ? msg : res.statusText;
     if (res.status >= 500) msgStr = 'Временная ошибка сервера. Попробуйте позже.';
     throw new Error(msgStr);
+  }
+
+  if (cacheKey) {
+    apiCache.set(cacheKey, { data: data, expires: Date.now() + API_CACHE_TTL_MS });
+  }
+
+  if (method !== 'GET') {
+    var pathNorm = path.startsWith('http') ? (function() { try { return new URL(path).pathname; } catch (e) { return path; } })() : path;
+    if (pathNorm.indexOf('/api/user/passengers') === 0 || pathNorm === '/api/user/profile' ||
+        pathNorm.indexOf('/api/bookings') === 0 && (pathNorm === '/api/bookings' || pathNorm.indexOf('/cancel') !== -1)) {
+      apiInvalidateUserCache();
+    }
   }
   return data;
 }
@@ -106,8 +145,16 @@ function escapeHtml(str) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+function apiInvalidateCache(prefix) {
+  if (!prefix) { apiCache.clear(); return; }
+  apiCache.forEach(function(_, key) {
+    if (key.indexOf(prefix) === 0) apiCache.delete(key);
+  });
+}
+
 window.BASE_URL = BASE_URL;
 window.api = api;
+window.apiInvalidateCache = apiInvalidateCache;
 window.getTelegramUserId = getTelegramUserId;
 window.getTelegramInitData = getTelegramInitData;
 window.getTelegramStartParam = getTelegramStartParam;
@@ -115,3 +162,7 @@ window.setTelegramUserId = setTelegramUserId;
 window.userFriendlyMessage = userFriendlyMessage;
 window.escapeHtml = escapeHtml;
 window.ERROR_MESSAGES = ERROR_MESSAGES;
+
+if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
+  window.addEventListener('load', function() { navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function() {}); });
+}

@@ -1,10 +1,13 @@
 """User profile and saved passengers API."""
-from fastapi import APIRouter, Depends, HTTPException
+import hashlib
+import json
+import logging
+
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import date
-import logging
 
 from database import get_db
 from api.auth_deps import get_verified_telegram_user_id, get_optional_verified_telegram_user_id
@@ -12,9 +15,108 @@ from models import UserProfile, SavedPassenger, Booking
 from services.roles import is_admin
 from services.roles import get_dispatcher_route_ids
 from services.validators import parse_birth_date
+from services.dashboard_cache import get_dashboard_cached, set_dashboard_cached, invalidate_dashboard_cache
 
 router = APIRouter(prefix="/api/user", tags=["user"])
 log = logging.getLogger(__name__)
+
+
+def _serialize_created_at(v):
+    if v is None:
+        return None
+    return v.isoformat() if hasattr(v, "isoformat") else str(v)
+
+
+def _etag_for_dashboard(data: dict) -> str:
+    raw = json.dumps(data, sort_keys=True, default=_serialize_created_at)
+    return '"' + hashlib.sha256(raw.encode()).hexdigest()[:32] + '"'
+
+
+@router.get("/dashboard")
+async def get_dashboard(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_verified_telegram_user_id),
+):
+    """Один запрос: профиль, пассажиры и заявки пользователя для страницы профиля. Кэш в Redis 60 с. ETag/304."""
+    cached = await get_dashboard_cached(user_id)
+    if cached is not None:
+        etag = _etag_for_dashboard(cached)
+        if request.headers.get("if-none-match") == etag:
+            return Response(status_code=304, headers={"Cache-Control": "private, max-age=0", "ETag": etag})
+        return Response(
+            content=json.dumps(cached, default=_serialize_created_at, ensure_ascii=False),
+            media_type="application/json",
+            headers={"Cache-Control": "private, max-age=0", "ETag": etag},
+        )
+
+    from core.constants import ROUTES
+
+    profile_result = await db.execute(select(UserProfile).where(UserProfile.user_id == user_id))
+    p = profile_result.scalar_one_or_none()
+    profile = (
+        {
+            "user_id": p.user_id,
+            "username": p.username,
+            "first_name": p.first_name,
+            "last_name": p.last_name,
+            "phone": p.phone,
+            "language_code": p.language_code or "ru",
+            "timezone": p.timezone or "Europe/Minsk",
+            "exists": True,
+        }
+        if p
+        else {"user_id": user_id, "exists": False}
+    )
+
+    passengers_result = await db.execute(
+        select(SavedPassenger)
+        .where(SavedPassenger.user_id == user_id)
+        .order_by(SavedPassenger.usage_count.desc(), SavedPassenger.last_used.desc())
+    )
+    passengers_rows = passengers_result.scalars().all()
+    passengers = [
+        {
+            "id": r.id,
+            "last_name": r.last_name,
+            "first_name": r.first_name,
+            "middle_name": r.middle_name or "",
+            "birth_date": str(r.birth_date) if r.birth_date else None,
+            "passport": r.passport or "",
+            "usage_count": r.usage_count,
+        }
+        for r in passengers_rows
+    ]
+
+    bookings_q = select(Booking).where(Booking.contact_tg_id == user_id).order_by(Booking.created_at.desc())
+    bookings_result = await db.execute(bookings_q)
+    bookings_rows = bookings_result.scalars().all()
+    bookings = [
+        {
+            "booking_id": r.id,
+            "status": r.status,
+            "route_name": ROUTES.get(r.route_id, {}).get("name", r.route_id),
+            "from_city": r.from_city,
+            "to_city": r.to_city,
+            "departure_date": r.date,
+            "departure_time": r.departure,
+            "price_total": r.price_total,
+            "currency": "BYN",
+            "created_at": _serialize_created_at(r.created_at),
+        }
+        for r in bookings_rows
+    ]
+
+    data = {"profile": profile, "passengers": passengers, "bookings": bookings}
+    await set_dashboard_cached(user_id, data)
+    etag = _etag_for_dashboard(data)
+    if request.headers.get("if-none-match") == etag:
+        return Response(status_code=304, headers={"Cache-Control": "private, max-age=0", "ETag": etag})
+    return Response(
+        content=json.dumps(data, default=_serialize_created_at, ensure_ascii=False),
+        media_type="application/json",
+        headers={"Cache-Control": "private, max-age=0", "ETag": etag},
+    )
 
 
 @router.get("/roles")
@@ -86,6 +188,7 @@ async def update_profile(
         p.first_name = body.first_name
     if body.last_name is not None:
         p.last_name = body.last_name
+    await invalidate_dashboard_cache(user_id)
     return {"success": True}
 
 
@@ -153,6 +256,7 @@ async def add_passenger(
     )
     db.add(p)
     await db.flush()
+    await invalidate_dashboard_cache(user_id)
     return {"id": p.id, "success": True}
 
 
@@ -183,6 +287,7 @@ async def update_passenger(
     p.middle_name = body.middle_name
     p.birth_date = bd
     p.passport = body.passport or None
+    await invalidate_dashboard_cache(user_id)
     return {"success": True}
 
 
@@ -202,6 +307,7 @@ async def delete_passenger(
     if not p:
         raise HTTPException(404, detail="passenger_not_found")
     await db.delete(p)
+    await invalidate_dashboard_cache(user_id)
     return {"success": True}
 
 

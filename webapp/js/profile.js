@@ -192,6 +192,8 @@
     if (birthInput) birthInput.focus();
   };
 
+  var PROFILE_LIST_PAGE_SIZE = 10;
+
   function renderBookingCards(items, containerId) {
     var list = document.getElementById(containerId);
     if (!list) return;
@@ -199,7 +201,7 @@
     var getBadge = typeof getStatusBadge === 'function' ? getStatusBadge : function(s) { return { class: 'badge badge--neutral', label: s || '—' }; };
     var iconCross = (typeof APP_ICONS !== 'undefined' && APP_ICONS.crossS) ? APP_ICONS.crossS : '';
     var iconCheck = (typeof APP_ICONS !== 'undefined' && APP_ICONS.check) ? APP_ICONS.check : '';
-    list.innerHTML = items.length ? items.map(function(b) {
+    function cardHtml(b) {
       var badge = getBadge(b.status);
       var badgeHtml = '<span class="' + esc(badge.class) + '">' + (badge.class.indexOf('success') !== -1 ? iconCheck : '') + '<span>' + esc(badge.label) + '</span></span>';
       var cancelBtn = (b.status !== 'cancelled' && b.status !== 'done' && b.status !== 'ticket_sent') ? ' <button type="button" class="btn btn-outline btn-small cancel-booking" data-id="' + esc(b.booking_id) + '">' + iconCross + ' Отменить</button>' : '';
@@ -208,7 +210,22 @@
         '<div class="booking-card__head"><strong>' + esc(b.booking_id) + '</strong> — ' + esc(b.route_name) + '</div>' +
         '<div class="booking-card__meta">' + esc(b.departure_date) + ' ' + esc(b.departure_time) + ' | ' + esc(b.price_total) + ' ' + esc(b.currency) + ' | ' + badgeHtml + '</div>' +
         '<div class="booking-card__actions">' + detailsBtn + cancelBtn + '</div></div>';
-    }).join('') : (typeof APP_ICONS !== 'undefined' && APP_ICONS.bus ? '<div class="empty-state"><span class="icon icon--l">' + APP_ICONS.bus + '</span><p class="empty-state__title">' + (typeof t === 'function' ? t('noBookings') : 'Пока нет заявок') + '</p><p>' + (typeof t === 'function' ? t('noBookingsHint') : 'Здесь появятся ваши поездки') + '</p></div>' : '<p>' + (typeof t === 'function' ? t('noBookings') : 'Нет заявок') + '.</p>');
+    }
+    var emptyHtml = typeof APP_ICONS !== 'undefined' && APP_ICONS.bus ? '<div class="empty-state"><span class="icon icon--l">' + APP_ICONS.bus + '</span><p class="empty-state__title">' + (typeof t === 'function' ? t('noBookings') : 'Пока нет заявок') + '</p><p>' + (typeof t === 'function' ? t('noBookingsHint') : 'Здесь появятся ваши поездки') + '</p></div>' : '<p>' + (typeof t === 'function' ? t('noBookings') : 'Нет заявок') + '.</p>';
+    if (!items.length) { list.innerHTML = emptyHtml; return; }
+    var visibleCount = Math.min(PROFILE_LIST_PAGE_SIZE, items.length);
+    var visibleHtml = items.slice(0, visibleCount).map(cardHtml).join('');
+    var moreCount = items.length - visibleCount;
+    var moreHtml = moreCount > 0 ? items.slice(visibleCount).map(cardHtml).join('') : '';
+    list.innerHTML = visibleHtml + (moreCount > 0 ? '<div class="profile-list-more hidden" aria-hidden="true">' + moreHtml + '</div><button type="button" class="btn btn-outline btn-small profile-show-more">Показать ещё (' + moreCount + ')</button>' : '');
+    var showMoreBtn = list.querySelector('.profile-show-more');
+    if (showMoreBtn) {
+      var moreBlock = list.querySelector('.profile-list-more');
+      showMoreBtn.addEventListener('click', function() {
+        if (moreBlock) { moreBlock.classList.remove('hidden'); moreBlock.setAttribute('aria-hidden', 'false'); }
+        showMoreBtn.remove();
+      });
+    }
     list.querySelectorAll('.cancel-booking').forEach(function(btn) {
       btn.addEventListener('click', function() {
         var msg = typeof t === 'function' ? t('cancelConfirm') : 'Отменить заявку?';
@@ -219,7 +236,7 @@
             var bid = btn.getAttribute('data-id');
             btn.disabled = true;
             apiFn('/api/bookings/' + encodeURIComponent(bid) + '/cancel', { method: 'POST', body: JSON.stringify({}) })
-              .then(function() { if (window.Telegram && Telegram.WebApp && Telegram.WebApp.HapticFeedback) Telegram.WebApp.HapticFeedback.notificationOccurred('success'); loadBookings(); })
+              .then(function() { if (window.Telegram && Telegram.WebApp && Telegram.WebApp.HapticFeedback) Telegram.WebApp.HapticFeedback.notificationOccurred('success'); loadDashboard(); })
               .catch(function(e) {
                 var text = typeof errorToMessage === 'function' ? errorToMessage(e) : (e && e.message ? e.message : 'Ошибка');
                 (typeof showAppAlert === 'function' ? showAppAlert(text, typeof t === 'function' ? t('error') : 'Ошибка') : alert(text));
@@ -288,28 +305,6 @@
     ['bookingsListActive', 'bookingsListUpcoming', 'bookingsListCompleted', 'bookingsListCancelled'].forEach(function(id) {
       var el = document.getElementById(id);
       if (el) el.innerHTML = html;
-    });
-  }
-
-  function loadBookings() {
-    showBookingsSkeleton();
-    apiFn('/api/user/bookings').then(function(data) {
-      var items = data.bookings || [];
-      var today = new Date().toISOString().slice(0, 10);
-      var active = items.filter(function(b) { return ['active', 'paid', 'payment_link_sent', 'ticket_sent'].indexOf(b.status) !== -1; });
-      var upcoming = items.filter(function(b) { return b.status === 'new' && b.departure_date >= today; });
-      var completed = items.filter(function(b) { return b.status === 'done'; });
-      var cancelled = items.filter(function(b) { return b.status === 'cancelled'; });
-      updateProfileStats(items);
-      renderBookingCards(active, 'bookingsListActive');
-      renderBookingCards(upcoming, 'bookingsListUpcoming');
-      renderBookingCards(completed, 'bookingsListCompleted');
-      renderBookingCards(cancelled, 'bookingsListCancelled');
-    }).catch(function() {
-      ['bookingsListActive', 'bookingsListUpcoming', 'bookingsListCompleted', 'bookingsListCancelled'].forEach(function(id) {
-        var el = document.getElementById(id);
-        if (el) el.innerHTML = '<p>Ошибка загрузки.</p>';
-      });
     });
   }
 
@@ -387,7 +382,7 @@
         }).then(function() {
           closeRescheduleModal();
           (typeof showAppAlert === 'function' ? showAppAlert : alert)('Заявка на перенос отправлена диспетчеру. Ожидайте подтверждения.', 'Перенести дату');
-          loadBookings();
+          loadDashboard();
         }).catch(function(e) {
           var text = typeof errorToMessage === 'function' ? errorToMessage(e) : (e && e.message ? e.message : 'Ошибка');
           if (errEl) errEl.textContent = text;
@@ -402,7 +397,12 @@
     var iconCheck = (typeof APP_ICONS !== 'undefined' && APP_ICONS.check) ? APP_ICONS.check : '';
     var statusBadgeHtml = '<span class="' + esc(badge.class) + '">' + (badge.class.indexOf('success') !== -1 ? iconCheck : '') + '<span>' + esc(badge.label) + '</span></span>';
     var showQr = (booking.status === 'paid' || booking.status === 'active' || booking.status === 'ticket_sent');
-    var qrBlock = showQr ? '<div class="booking-details-modal__qr-wrap"><p class="booking-details-modal__qr-label">QR билета</p><div id="bookingDetailsQr" class="booking-details-modal__qr" data-booking-id="' + esc(booking.booking_id) + '"></div></div>' : '';
+    var economyQr = showQr && (typeof window.isEconomyMode === 'function' && window.isEconomyMode());
+    var qrBlock = showQr
+      ? (economyQr
+        ? '<div class="booking-details-modal__qr-wrap"><p class="booking-details-modal__qr-label">QR билета</p><button type="button" class="btn btn-small btn-outline show-qr-btn">Показать QR</button><div id="bookingDetailsQr" class="booking-details-modal__qr hidden" data-booking-id="' + esc(booking.booking_id) + '" data-success-url="' + esc(window.location.origin + window.location.pathname.replace(/profile\.html$/, 'success.html') + '?booking_id=' + encodeURIComponent(booking.booking_id)) + '"></div></div>'
+        : '<div class="booking-details-modal__qr-wrap"><p class="booking-details-modal__qr-label">QR билета</p><div id="bookingDetailsQr" class="booking-details-modal__qr" data-booking-id="' + esc(booking.booking_id) + '"></div></div>')
+      : '';
     var successUrl = window.location.origin + window.location.pathname.replace(/profile\.html$/, 'success.html') + '?booking_id=' + encodeURIComponent(booking.booking_id);
     var html = '<div class="booking-details-modal">' +
       qrBlock +
@@ -417,13 +417,40 @@
       '<a href="success.html?booking_id=' + encodeURIComponent(booking.booking_id) + '" class="btn btn-outline">Страница заявки</a></div></div>';
     if (typeof showAppModal === 'function') {
       showAppModal({ title: (typeof t === 'function' ? t('details') : 'Подробнее'), html: html, buttons: [{ text: typeof t === 'function' ? t('close') : 'Закрыть', primary: true }], hideHeaderClose: true });
-      setTimeout(function() {
-        var qrEl = document.getElementById('bookingDetailsQr');
-        if (qrEl && typeof QRCode !== 'undefined' && !qrEl.querySelector('canvas') && !qrEl.querySelector('img')) {
-          qrEl.innerHTML = '';
-          new QRCode(qrEl, { text: successUrl, width: 80, height: 80 });
+      if (economyQr) {
+        var showQrBtn = document.querySelector('.app-modal-root .show-qr-btn');
+        if (showQrBtn) {
+          showQrBtn.addEventListener('click', function() {
+            var qrEl = document.getElementById('bookingDetailsQr');
+            if (!qrEl || qrEl.querySelector('canvas') || qrEl.querySelector('img')) return;
+            var url = qrEl.getAttribute('data-success-url') || successUrl;
+            function renderQr() {
+              qrEl.classList.remove('hidden');
+              qrEl.innerHTML = '';
+              if (typeof QRCode !== 'undefined') { new QRCode(qrEl, { text: url, width: 80, height: 80 }); showQrBtn.style.display = 'none'; return; }
+              var s = document.createElement('script');
+              s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+              s.onload = function() { qrEl.innerHTML = ''; new QRCode(qrEl, { text: url, width: 80, height: 80 }); showQrBtn.style.display = 'none'; };
+              document.head.appendChild(s);
+            }
+            renderQr();
+          });
         }
-      }, 150);
+      } else {
+        setTimeout(function() {
+          var qrEl = document.getElementById('bookingDetailsQr');
+          if (!qrEl || qrEl.querySelector('canvas') || qrEl.querySelector('img')) return;
+          function drawQr() {
+            qrEl.innerHTML = '';
+            if (typeof QRCode !== 'undefined') { new QRCode(qrEl, { text: successUrl, width: 80, height: 80 }); return; }
+            var s = document.createElement('script');
+            s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+            s.onload = function() { qrEl.innerHTML = ''; new QRCode(qrEl, { text: successUrl, width: 80, height: 80 }); };
+            document.head.appendChild(s);
+          }
+          drawQr();
+        }, 150);
+      }
       var btn = document.querySelector('.app-modal-root .reschedule-date-btn');
       if (btn) btn.addEventListener('click', function() { window.__rescheduleClick && window.__rescheduleClick(); });
     } else {
@@ -431,34 +458,47 @@
     }
   }
 
-  function loadPassengers() {
+  function renderPassengersList(items, onSuccess) {
     var list = document.getElementById('passengersList');
-    apiFn('/api/user/passengers').then(function(data) {
-      var items = data.passengers || [];
-      var esc = function(s) { if (s == null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
-      var iconPassenger = (typeof APP_ICONS !== 'undefined' && APP_ICONS.passenger) ? APP_ICONS.passenger : '';
-      list.innerHTML = items.map(function(p) {
-        var nameLine = esc(p.last_name) + ' ' + esc(p.first_name) + (p.middle_name ? ' ' + esc(p.middle_name) : '');
-        var dobLine = typeof datePickerIsoToDisplay === 'function' ? (datePickerIsoToDisplay(p.birth_date) || p.birth_date) : p.birth_date;
-        var docLine = p.passport ? ('Документ: ' + esc(p.passport)) : '';
-        return '<div class="passenger-card trip-card" data-id="' + esc(p.id) + '">' +
-          '<div class="passenger-card__info">' +
-          '<div class="passenger-card__name">' + iconPassenger + ' ' + nameLine + '</div>' +
-          (dobLine ? '<div class="passenger-card__meta">' + esc(dobLine) + '</div>' : '') +
-          (docLine ? '<div class="passenger-card__meta">' + docLine + '</div>' : '') +
-          '</div>' +
-          '<div class="passenger-card__actions">' +
-          '<button type="button" class="btn btn-small btn-outline edit-passenger" data-id="' + esc(p.id) + '">Редактировать</button>' +
-          '<button type="button" class="btn btn-small btn-outline delete-passenger" data-id="' + esc(p.id) + '">Удалить</button>' +
-          '</div></div>';
-      }).join('');
+    if (!list) return;
+    var esc = function(s) { if (s == null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
+    var iconPassenger = (typeof APP_ICONS !== 'undefined' && APP_ICONS.passenger) ? APP_ICONS.passenger : '';
+    function cardHtml(p) {
+      var nameLine = esc(p.last_name) + ' ' + esc(p.first_name) + (p.middle_name ? ' ' + esc(p.middle_name) : '');
+      var dobLine = typeof datePickerIsoToDisplay === 'function' ? (datePickerIsoToDisplay(p.birth_date) || p.birth_date) : p.birth_date;
+      var docLine = p.passport ? ('Документ: ' + esc(p.passport)) : '';
+      return '<div class="passenger-card trip-card" data-id="' + esc(p.id) + '">' +
+        '<div class="passenger-card__info">' +
+        '<div class="passenger-card__name">' + iconPassenger + ' ' + nameLine + '</div>' +
+        (dobLine ? '<div class="passenger-card__meta">' + esc(dobLine) + '</div>' : '') +
+        (docLine ? '<div class="passenger-card__meta">' + docLine + '</div>' : '') +
+        '</div>' +
+        '<div class="passenger-card__actions">' +
+        '<button type="button" class="btn btn-small btn-outline edit-passenger" data-id="' + esc(p.id) + '">Редактировать</button>' +
+        '<button type="button" class="btn btn-small btn-outline delete-passenger" data-id="' + esc(p.id) + '">Удалить</button>' +
+        '</div></div>';
+    }
+    if (!items.length) { list.innerHTML = '<p>Нет сохранённых пассажиров.</p>'; return; }
+    var visibleCount = Math.min(PROFILE_LIST_PAGE_SIZE, items.length);
+    var visibleHtml = items.slice(0, visibleCount).map(cardHtml).join('');
+    var moreCount = items.length - visibleCount;
+    var moreHtml = moreCount > 0 ? items.slice(visibleCount).map(cardHtml).join('') : '';
+    list.innerHTML = visibleHtml + (moreCount > 0 ? '<div class="profile-list-more hidden" aria-hidden="true">' + moreHtml + '</div><button type="button" class="btn btn-outline btn-small profile-show-more">Показать ещё (' + moreCount + ')</button>' : '');
+    var showMoreBtn = list.querySelector('.profile-show-more');
+    if (showMoreBtn) {
+      var moreBlock = list.querySelector('.profile-list-more');
+      showMoreBtn.addEventListener('click', function() {
+        if (moreBlock) { moreBlock.classList.remove('hidden'); moreBlock.setAttribute('aria-hidden', 'false'); }
+        showMoreBtn.remove();
+      });
+    }
       list.querySelectorAll('.delete-passenger').forEach(function(btn) {
         btn.addEventListener('click', function() {
           (typeof showAppConfirm === 'function' ? showAppConfirm('Удалить пассажира из списка?', 'Удаление') : Promise.resolve(confirm('Удалить?')))
             .then(function(ok) {
               if (!ok) return;
               apiFn('/api/user/passengers/' + btn.getAttribute('data-id'), { method: 'DELETE' })
-                .then(loadPassengers)
+                .then(onSuccess)
                 .catch(function(e) {
                   var text = typeof errorToMessage === 'function' ? errorToMessage(e) : (e && e.message ? e.message : 'Ошибка');
                   (typeof showAppAlert === 'function' ? showAppAlert(text, 'Ошибка') : alert(text));
@@ -473,18 +513,51 @@
           if (item) {
             var pass = (item.passport || '').replace(/\s/g, '');
             var countryCode = pass.replace(/\D/g, '').length === 10 ? 'RU' : (pass.length >= 9 && /^[A-Z]{2}\d{7}$/i.test(pass.replace(/[^A-Z0-9]/g, '')) ? 'BY' : 'OTHER');
-            showAddPassengerModal(apiFn, loadPassengers, { id: item.id, last_name: item.last_name, first_name: item.first_name, middle_name: item.middle_name || '', birth_date: item.birth_date || '', passport: item.passport || '', passport_country: countryCode });
+            showAddPassengerModal(apiFn, onSuccess, { id: item.id, last_name: item.last_name, first_name: item.first_name, middle_name: item.middle_name || '', birth_date: item.birth_date || '', passport: item.passport || '', passport_country: countryCode });
           }
         });
       });
-    }).catch(function() { list.innerHTML = '<p>\u041e\u0448\u0438\u0431\u043a\u0430 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0438.</p>'; });
+  }
+
+  function loadPassengers() {
+    var list = document.getElementById('passengersList');
+    apiFn('/api/user/passengers').then(function(data) {
+      renderPassengersList(data.passengers || [], loadPassengers);
+    }).catch(function() { if (list) list.innerHTML = '<p>\u041e\u0448\u0438\u0431\u043a\u0430 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0438.</p>'; });
+  }
+
+  function loadDashboard() {
+    showBookingsSkeleton();
+    var list = document.getElementById('passengersList');
+    apiFn('/api/user/dashboard').then(function(data) {
+      var items = data.bookings || [];
+      var today = new Date().toISOString().slice(0, 10);
+      var active = items.filter(function(b) { return ['active', 'paid', 'payment_link_sent', 'ticket_sent'].indexOf(b.status) !== -1; });
+      var upcoming = items.filter(function(b) { return b.status === 'new' && b.departure_date >= today; });
+      var completed = items.filter(function(b) { return b.status === 'done'; });
+      var cancelled = items.filter(function(b) { return b.status === 'cancelled'; });
+      updateProfileStats(items);
+      renderBookingCards(active, 'bookingsListActive');
+      renderBookingCards(upcoming, 'bookingsListUpcoming');
+      renderBookingCards(completed, 'bookingsListCompleted');
+      renderBookingCards(cancelled, 'bookingsListCancelled');
+      renderPassengersList(data.passengers || [], loadDashboard);
+      var profilePhoneEl = document.getElementById('profilePhone');
+      if (profilePhoneEl && data.profile && data.profile.phone) profilePhoneEl.value = data.profile.phone || '';
+    }).catch(function() {
+      ['bookingsListActive', 'bookingsListUpcoming', 'bookingsListCompleted', 'bookingsListCancelled'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.innerHTML = '<p>Ошибка загрузки.</p>';
+      });
+      if (list) list.innerHTML = '<p>\u041e\u0448\u0438\u0431\u043a\u0430 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0438.</p>';
+    });
   }
 
   var refreshBookingsBtn = document.getElementById('refreshBookingsBtn');
-  if (refreshBookingsBtn) refreshBookingsBtn.addEventListener('click', function() { loadBookings(); if (window.Telegram && Telegram.WebApp && Telegram.WebApp.HapticFeedback) Telegram.WebApp.HapticFeedback.impactOccurred('light'); });
+  if (refreshBookingsBtn) refreshBookingsBtn.addEventListener('click', function() { loadDashboard(); if (window.Telegram && Telegram.WebApp && Telegram.WebApp.HapticFeedback) Telegram.WebApp.HapticFeedback.impactOccurred('light'); });
   document.getElementById('addPassenger').addEventListener('click', function() {
     if (typeof showAddPassengerModal === 'function') {
-      showAddPassengerModal(apiFn, loadPassengers);
+      showAddPassengerModal(apiFn, loadDashboard);
       return;
     }
     var last = prompt('\u0424\u0430\u043c\u0438\u043b\u0438\u044f');
@@ -495,19 +568,17 @@
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ last_name: last, first_name: first, middle_name: '', birth_date: (typeof dobToIso === 'function' ? dobToIso(birth) : birth) || birth, passport: '' })
-    }).then(loadPassengers).catch(function(e) {
+    }).then(loadDashboard).catch(function(e) {
       var text = typeof errorToMessage === 'function' ? errorToMessage(e) : (e && e.message ? e.message : 'Ошибка');
       (typeof showAppAlert === 'function' ? showAppAlert(text, 'Ошибка') : alert(text));
     });
   });
 
-  loadBookings();
-  loadPassengers();
+  loadDashboard();
 
   var profilePhoneEl = document.getElementById('profilePhone');
   var saveProfileBtn = document.getElementById('saveProfileBtn');
   if (profilePhoneEl && saveProfileBtn) {
-    apiFn('/api/user/profile').then(function(data) { if (data && data.phone) profilePhoneEl.value = data.phone || ''; }).catch(function() {});
     saveProfileBtn.addEventListener('click', function() {
       var phone = profilePhoneEl.value.trim();
       saveProfileBtn.disabled = true;
