@@ -19,10 +19,14 @@
     <div id="roleShellPlaceholder"></div>
     <header class="admin-header">
       <span class="admin-header__title">⚙️ Админ-панель</span>
-      <a href="index.html" class="admin-header__exit">Выйти</a>
+      <div class="admin-header__actions">
+        <a href="dispatcher.html" class="admin-header__link">Панель диспетчера</a>
+        <a href="index.html" class="admin-header__exit">Выйти</a>
+      </div>
     </header>
     <div id="loginWarning" class="warning hidden">Войдите через Telegram (как администратор).</div>
-    <div id="adminTabs" class="segmented-control hidden" role="tablist">
+    <div class="admin-layout">
+    <div id="adminTabs" class="segmented-control admin-tabs-nav hidden" role="tablist">
       <button type="button" class="segment active" data-tab="statsPanel" role="tab" aria-selected="true">Статистика</button>
       <button type="button" class="segment" data-tab="bookingsPanel" role="tab" aria-selected="false">Все заявки</button>
       <button type="button" class="segment" data-tab="adminsPanel" role="tab" aria-selected="false">Админы</button>
@@ -30,7 +34,7 @@
       <button type="button" class="segment" data-tab="roleAuditPanel" role="tab" aria-selected="false">Роли</button>
       <button type="button" class="segment" data-tab="dispatchersPanel" role="tab" aria-selected="false">Диспетчеры</button>
     </div>
-    <main id="adminMain" class="page hidden">
+    <main id="adminMain" class="page admin-layout__main hidden">
       <div class="admin-panel">
         <div id="tab-statsPanel" class="tab-content active">
         <section id="statsPanel">
@@ -142,6 +146,7 @@
         <div id="tab-dispatchersPanel" class="tab-content">
         <section id="dispatchersPanel">
           <h2 class="admin-section__title">Диспетчеры</h2>
+          <p class="admin-dispatcher-link-wrap"><a href="dispatcher.html" class="btn btn--primary">Открыть панель диспетчера</a></p>
           <p class="text-secondary text-small mb-4">Добавленные диспетчеры видят вкладку «Диспетчер» в приложении. Удаление деактивирует доступ.</p>
           <div class="form-group">
             <label class="form-label" for="dispTelegramId">Telegram ID (число)</label>
@@ -164,6 +169,7 @@
         </div>
       </div>
     </main>
+    </div>
   </div>
   <script src="js/segmented-control.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>

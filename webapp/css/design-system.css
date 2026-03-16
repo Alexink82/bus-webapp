@@ -1253,10 +1253,15 @@ body {
 .app-toast__item--error { border-left: 4px solid var(--color-error); }
 .app-toast__item--info { border-left: 4px solid var(--color-info); }
 
-.admin-header { display: flex; align-items: center; justify-content: space-between; padding: var(--space-4); background: linear-gradient(135deg, var(--color-accent), var(--color-accent-hover)); color: white; }
+.admin-header { display: flex; align-items: center; justify-content: space-between; padding: var(--space-4); background: linear-gradient(135deg, var(--color-accent), var(--color-accent-hover)); color: white; flex-wrap: wrap; gap: var(--space-2); }
 .admin-header__title { font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); }
+.admin-header__actions { display: flex; align-items: center; gap: var(--space-2); flex-shrink: 0; }
+.admin-header__link { color: rgba(255,255,255,0.95); text-decoration: none; font-size: var(--font-size-sm); padding: 6px 12px; border: 1px solid rgba(255,255,255,0.7); border-radius: 8px; white-space: nowrap; }
+.admin-header__link:hover { background: rgba(255,255,255,0.2); }
 .admin-header__exit { color: white; text-decoration: none; font-size: var(--font-size-sm); padding: 6px 12px; border: 1px solid rgba(255,255,255,0.7); border-radius: 8px; }
 .admin-header__exit:hover { background: rgba(255,255,255,0.2); }
+.admin-dispatcher-link-wrap { margin-bottom: var(--space-4); }
+.admin-dispatcher-link-wrap .btn { display: inline-block; }
 .admin-tabs { display: flex; padding: var(--space-2); background-color: var(--color-surface); border-bottom: 1px solid var(--color-border); gap: var(--space-1); }
 .admin-tab { flex: 1; padding: var(--space-3) var(--space-2); text-align: center; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--color-text-secondary); cursor: pointer; border-radius: var(--radius-md); transition: all var(--transition-fast); }
 .admin-tab--active { background-color: var(--color-accent-light); color: var(--color-accent); }
@@ -1298,3 +1303,67 @@ body {
 .admin-log-item__time { color: var(--color-text-tertiary); }
 .admin-log-item__level--info { color: var(--color-info); }
 .admin-log-item__level--error { color: var(--color-error); }
+
+/* Админка: адаптивность под десктоп (как у диспетчеров) */
+.admin-layout {
+  display: block;
+  padding: var(--space-4);
+  min-height: 0;
+}
+@media (min-width: 1024px) {
+  .app {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+  .admin-layout {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: var(--space-6);
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: var(--space-6);
+    width: 100%;
+    flex: 1;
+    min-height: calc(100vh - 140px);
+    align-items: start;
+  }
+  #adminTabs.admin-tabs-nav.segmented-control {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    width: 100%;
+    margin: 0;
+    padding: var(--space-2);
+    position: sticky;
+    top: var(--space-4);
+  }
+  #adminTabs.admin-tabs-nav .segment {
+    width: 100%;
+    text-align: left;
+    padding: var(--space-3) var(--space-4);
+    min-width: 0;
+  }
+  #adminMain.admin-layout__main {
+    min-width: 0;
+    overflow: visible;
+  }
+  .admin-panel {
+    padding: 0;
+    padding-bottom: var(--space-8);
+  }
+  .admin-section__title { font-size: var(--font-size-xl); }
+  .admin-stats { grid-template-columns: repeat(3, 1fr); gap: var(--space-4); }
+  .admin-stat-card { padding: var(--space-5); }
+  .admin-stat-card__value { font-size: var(--font-size-4xl); }
+  .admin-stat-card__label { font-size: var(--font-size-base); }
+  .admin-bookings-filters .input { max-width: 180px; min-height: 44px; font-size: var(--font-size-base); }
+  .admin-bookings-filters .btn { min-height: 44px; padding: 10px 20px; font-size: var(--font-size-base); }
+  .admin-bookings-table { font-size: var(--font-size-base); }
+  .admin-bookings-table th, .admin-bookings-table td { padding: var(--space-3) var(--space-4); }
+  .admin-period-tab { padding: var(--space-3) var(--space-4); font-size: var(--font-size-base); min-height: 44px; }
+  .admin-actions .btn, .admin-archive .btn { min-height: 44px; padding: 10px 20px; font-size: var(--font-size-base); }
+  .admin-logs__title { font-size: var(--font-size-lg); }
+  .admin-log-item { font-size: var(--font-size-sm); padding: var(--space-3) 0; }
+  .form-group .input { min-height: 44px; font-size: var(--font-size-base); padding: 10px 14px; }
+  .admin-dispatcher-link-wrap .btn { min-height: 48px; padding: 12px 24px; font-size: var(--font-size-base); }
+}
