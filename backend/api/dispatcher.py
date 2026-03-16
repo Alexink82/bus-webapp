@@ -8,6 +8,7 @@ from datetime import date, datetime, timezone
 
 from database import get_db
 from api.auth_deps import get_verified_telegram_user_id
+from api.websocket import manager as ws_manager
 from models import Booking, Dispatcher
 from core.constants import ROUTES
 from services.roles import get_dispatcher_route_ids
@@ -106,12 +107,16 @@ async def take_booking(
     b.status = "active"
     b.taken_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
     await log_action(db, "INFO", "dispatcher", "take_booking", user_id=dispatcher_id, details={"booking_id": booking_id})
-    # commit выполняется в get_db после return
+    await db.commit()
     if b.contact_tg_id:
         try:
             await notify_booking_status(b.contact_tg_id, booking_id, "active", "ru")
         except Exception as e:
             logger.exception("take_booking: notify_booking_status failed: %s", e)
+    try:
+        await ws_manager.broadcast_booking_status_changed(booking_id, b.route_id, "active")
+    except Exception as e:
+        logger.warning("take_booking: ws broadcast failed: %s", e)
     return {"success": True, "status": "active"}
 
 
@@ -154,12 +159,16 @@ async def set_booking_status(
     if body.status == "paid":
         b.paid_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
     await log_action(db, "INFO", "dispatcher", "set_status", user_id=dispatcher_id, details={"booking_id": booking_id, "status": body.status})
-    # commit выполняется в get_db после return
+    await db.commit()
     if b.contact_tg_id:
         try:
             await notify_booking_status(b.contact_tg_id, booking_id, body.status, "ru")
         except Exception as e:
             logger.exception("set_booking_status: notify_booking_status failed: %s", e)
+    try:
+        await ws_manager.broadcast_booking_status_changed(booking_id, b.route_id, body.status)
+    except Exception as e:
+        logger.warning("set_booking_status: ws broadcast failed: %s", e)
     return {"success": True, "status": body.status, "cancel_reason": getattr(b, "cancel_reason", None)}
 
 

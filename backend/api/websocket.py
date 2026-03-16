@@ -77,6 +77,14 @@ class ConnectionManager:
             if not allowed or route_id in allowed:
                 await self.send_to_dispatcher(did, {"type": "reschedule_request", "data": payload})
 
+    async def broadcast_booking_status_changed(self, booking_id: str, route_id: str, new_status: str):
+        """Уведомить диспетчеров об изменении статуса заявки (take / set status)."""
+        payload = {"booking_id": booking_id, "route_id": route_id, "status": new_status}
+        for did in list(self.active_connections.keys()):
+            allowed = self.dispatcher_routes.get(did, [])
+            if not allowed or route_id in allowed:
+                await self.send_to_dispatcher(did, {"type": "status_changed", "data": payload})
+
 
 manager = ConnectionManager()
 

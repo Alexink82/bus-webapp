@@ -27,48 +27,79 @@
       </div>
     </header>
     <div id="loginWarning" class="warning hidden">Войдите через Telegram (как диспетчер).</div>
-    <main id="dispatcherMain" class="main hidden">
-      <div class="tabs">
-        <button type="button" data-tab="new">🆕 Новые</button>
-        <button type="button" data-tab="active">🔄 В работе</button>
-        <button type="button" data-tab="search">🔍 Поиск</button>
-        <button type="button" data-tab="stats">📊 Статистика</button>
+
+    <div id="dispatcherWrap" class="dispatcher-wrap hidden">
+      <!-- Топ-бар: поиск + счётчик SLA (всегда виден) -->
+      <div class="dispatcher-topbar">
+        <input type="text" id="dispatcherSearch" class="dispatcher-topbar__search" placeholder="Номер заявки или фамилия" aria-label="Поиск">
+        <span class="dispatcher-topbar__sla" id="dispatcherSlaCount" aria-label="Просрочено заявок">—</span>
       </div>
-      <div class="dispatcher-card" style="margin-bottom:12px;">
-        <strong>Фильтры</strong><br>
-        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
-          <input type="text" id="filterRoute" placeholder="ID маршрута" style="max-width:140px;">
-          <input type="date" id="filterDate" style="max-width:180px;">
-          <select id="filterPayment" style="max-width:180px;">
-            <option value="">Оплата: все</option>
-            <option value="paid">Оплачено</option>
-            <option value="pending">Не оплачено</option>
-          </select>
-          <button type="button" id="applyFiltersBtn">Применить</button>
-        </div>
+
+      <div class="dispatcher-container">
+        <!-- Левая колонка: фильтры + статистика смены -->
+        <aside class="dispatcher-sidebar dispatcher-sidebar--left">
+          <div class="dispatcher-card">
+            <strong>Фильтры</strong>
+            <div class="dispatcher-filters">
+              <input type="text" id="filterRoute" placeholder="ID маршрута" class="dispatcher-filters__input">
+              <input type="date" id="filterDate" class="dispatcher-filters__input">
+              <select id="filterPayment" class="dispatcher-filters__select">
+                <option value="">Оплата: все</option>
+                <option value="paid">Оплачено</option>
+                <option value="pending">Не оплачено</option>
+              </select>
+              <button type="button" id="applyFiltersBtn" class="btn btn-primary btn-small">Применить</button>
+            </div>
+          </div>
+          <div class="dispatcher-card dispatcher-stats-card">
+            <strong>Статистика смены</strong>
+            <div id="sidebarStatsContent" class="dispatcher-stats-content">—</div>
+          </div>
+        </aside>
+
+        <!-- Центр: табы + overdue + карточки -->
+        <main class="dispatcher-main">
+          <div class="dispatcher-tabs" role="tablist">
+            <button type="button" class="dispatcher-tabs__btn active" data-tab="new" role="tab" aria-selected="true">🆕 Новые</button>
+            <button type="button" class="dispatcher-tabs__btn" data-tab="active" role="tab" aria-selected="false">🔄 В работе</button>
+          </div>
+          <div id="tabNew" class="dispatcher-tab-panel">
+            <div id="overdueBlock" class="dispatcher-overdue hidden">
+              <h3 class="dispatcher-overdue__title">⚠️ Просроченные &gt; 15 мин</h3>
+              <p class="dispatcher-overdue__count" id="overdueCount"></p>
+              <div id="overdueList" class="dispatcher-cards-grid"></div>
+            </div>
+            <h3 class="dispatcher-section-title" id="newSectionTitle">Новые</h3>
+            <div id="newList" class="dispatcher-cards-grid"></div>
+          </div>
+          <div id="tabActive" class="dispatcher-tab-panel hidden">
+            <div id="activeList" class="dispatcher-cards-grid"></div>
+          </div>
+        </main>
+
+        <!-- Правая колонка: моя активная заявка -->
+        <aside class="dispatcher-sidebar dispatcher-sidebar--right">
+          <div class="dispatcher-active-widget" id="activeWidget">
+            <h3 class="dispatcher-active-widget__title">Моя активная заявка</h3>
+            <div id="activeWidgetContent" class="dispatcher-active-widget__content">
+              <p class="dispatcher-active-widget__empty" id="activeWidgetEmpty">Нет активной заявки. Возьмите заявку из списка.</p>
+              <div id="activeWidgetCard" class="dispatcher-active-widget__card hidden"></div>
+            </div>
+          </div>
+        </aside>
       </div>
-      <div id="tabNew" class="tab-panel">
-        <div id="overdueBlock" class="dispatcher-overdue hidden">
-          <h3 class="dispatcher-overdue__title">⚠️ Просроченные &gt; 15 мин</h3>
-          <p class="dispatcher-overdue__count" id="overdueCount"></p>
-          <div id="overdueList"></div>
-        </div>
-        <h3 class="dispatcher-new__title" id="newSectionTitle">Новые</h3>
-        <div id="newList"></div>
+
+      <!-- Мобильный: кнопка «Фильтры» и модалка активной заявки (показываются только на <1024px) -->
+      <div class="dispatcher-mobile-actions" id="dispatcherMobileActions">
+        <button type="button" id="mobileFiltersBtn" class="btn btn-outline btn-small">Фильтры</button>
+        <button type="button" id="mobileActiveBtn" class="btn btn-primary btn-small">Моя активная заявка</button>
       </div>
-      <div id="tabActive" class="tab-panel hidden">
-        <div id="activeList"></div>
-      </div>
-      <div id="tabSearch" class="tab-panel hidden">
-        <input type="text" id="searchInput" placeholder="Номер заявки или фамилия">
-        <button type="button" id="searchBtn">Искать</button>
-        <div id="searchResults"></div>
-      </div>
-      <div id="tabStats" class="tab-panel hidden">
-        <div id="statsContent"></div>
-      </div>
-    </main>
+    </div>
   </div>
+
+  <!-- Модалка контакта пассажира -->
+  <div id="contactModalRoot" class="app-modal-root" aria-hidden="true"></div>
+
   <script src="js/api.js?v=2"></script>
   <script src="js/icons.js"></script>
   <script src="js/auth.js?v=2"></script>
