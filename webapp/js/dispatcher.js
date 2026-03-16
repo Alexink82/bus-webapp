@@ -99,11 +99,16 @@
           <span class="dispatcher-card__sla-bar" style="width: ${Math.min(100, (sla.minutes / OVERDUE_MINUTES) * 100)}%"></span>
           <span class="dispatcher-card__sla-label">${esc(sla.label)}</span>
         </div>
-        <strong>${esc(b.booking_id)}</strong> ${esc(b.route_name)}<br>
-        ${esc(b.departure_date)} ${esc(b.departure_time)} | ${esc(b.passengers_count)} пасс. | ${esc(b.price_total)} ${esc(b.currency)}
-        <div class="status">${statusBadge}</div>
-        <div class="actions">
-          <button data-action="take" data-id="${b.booking_id}">Взять в работу</button>
+        <div class="dispatcher-card__row">
+          <label class="dispatcher-card__check"><input type="checkbox" class="dispatcher-card__cb" data-booking="${esc(b.booking_id)}" aria-label="Выбрать заявку"></label>
+          <div class="dispatcher-card__body">
+            <strong>${esc(b.booking_id)}</strong> ${esc(b.route_name)}<br>
+            ${esc(b.departure_date)} ${esc(b.departure_time)} | ${esc(b.passengers_count)} пасс. | ${esc(b.price_total)} ${esc(b.currency)}
+            <div class="status">${statusBadge}</div>
+            <div class="actions">
+              <button data-action="take" data-id="${b.booking_id}">Взять в работу</button>
+            </div>
+          </div>
         </div>
       </div>
     `;
@@ -276,7 +281,93 @@
         list.innerHTML = fresh.map(b => renderNewCard(b)).join('') || '<p>Нет новых заявок.</p>';
         bindTakeButtons(list);
       }
-    }).catch(() => { if (list) list.innerHTML = '<p>Нет доступа (вы не диспетчер).</p>'; });
+      updateNewBulkActions();
+      bindNewBulkActionsOnce();
+    }).catch(() => { if (list) list.innerHTML = '<p>Нет доступа (вы не диспетчер).</p>'; updateNewBulkActions(); });
+  }
+
+  function getNewCardCheckboxes() {
+    var newList = document.getElementById('newList');
+    var overdueList = document.getElementById('overdueList');
+    var nodes = [];
+    if (newList) nodes.push.apply(nodes, newList.querySelectorAll('.dispatcher-card__cb'));
+    if (overdueList) nodes.push.apply(nodes, overdueList.querySelectorAll('.dispatcher-card__cb'));
+    return nodes;
+  }
+
+  function getSelectedNewBookingIds() {
+    return getNewCardCheckboxes().filter(function(cb) { return cb.checked; }).map(function(cb) { return cb.dataset.booking; });
+  }
+
+  function updateNewBulkActions() {
+    var bar = document.getElementById('newBulkActions');
+    var countEl = document.getElementById('takeSelectedCount');
+    var btn = document.getElementById('takeSelectedBtn');
+    var selectAll = document.getElementById('selectAllNew');
+    if (!bar || !countEl || !btn) return;
+    var cbs = getNewCardCheckboxes();
+    bar.classList.toggle('hidden', cbs.length === 0);
+    var selected = cbs.filter(function(cb) { return cb.checked; }).length;
+    countEl.textContent = selected;
+    btn.disabled = selected === 0;
+    if (selectAll) {
+      selectAll.checked = cbs.length > 0 && selected === cbs.length;
+      selectAll.indeterminate = selected > 0 && selected < cbs.length;
+    }
+  }
+
+  var newBulkActionsBound = false;
+  function bindNewBulkActionsOnce() {
+    if (newBulkActionsBound) return;
+    newBulkActionsBound = true;
+    var selectAll = document.getElementById('selectAllNew');
+    var takeBtn = document.getElementById('takeSelectedBtn');
+    var newList = document.getElementById('newList');
+    var overdueList = document.getElementById('overdueList');
+    if (selectAll) {
+      selectAll.addEventListener('change', function() {
+        var check = selectAll.checked;
+        getNewCardCheckboxes().forEach(function(cb) { cb.checked = check; });
+        updateNewBulkActions();
+      });
+    }
+    if (takeBtn) {
+      takeBtn.addEventListener('click', function() {
+        var ids = getSelectedNewBookingIds();
+        if (ids.length === 0) return;
+        takeBtn.disabled = true;
+        takeBtn.textContent = 'Ожидание…';
+        var done = 0;
+        function runNext() {
+          if (done >= ids.length) {
+            takeBtn.innerHTML = 'Взять все выбранные (<span id="takeSelectedCount">0</span>)';
+            loadNew();
+            loadActive();
+            loadStats();
+            return;
+          }
+          var id = ids[done];
+          api('/api/dispatcher/bookings/' + encodeURIComponent(id) + '/take', { method: 'POST' })
+            .then(function() { done++; runNext(); })
+            .catch(function(e) {
+              var msg = e && e.message ? e.message : 'Ошибка.';
+              (typeof showAppAlert === 'function' ? showAppAlert : alert)(msg, 'Ошибка');
+              takeBtn.disabled = false;
+              takeBtn.innerHTML = 'Взять все выбранные (<span id="takeSelectedCount">0</span>)';
+              document.getElementById('takeSelectedCount').textContent = getSelectedNewBookingIds().length;
+              loadNew();
+              loadActive();
+              loadStats();
+            });
+        }
+        runNext();
+      });
+    }
+    function delegateCheck(e) {
+      if (e.target && e.target.classList && e.target.classList.contains('dispatcher-card__cb')) updateNewBulkActions();
+    }
+    if (newList) newList.addEventListener('change', delegateCheck);
+    if (overdueList) overdueList.addEventListener('change', delegateCheck);
   }
 
   function loadActive() {
@@ -437,6 +528,17 @@
   loadNew();
   loadActive();
   loadStats();
+
+  // Экспорт заявок за смену (CSV)
+  (function bindExport() {
+    var btn = document.getElementById('dispatcherExportBtn');
+    if (!btn) return;
+    btn.addEventListener('click', function() {
+      var url = (typeof BASE_URL !== 'undefined' ? BASE_URL : '') + '/api/dispatcher/export';
+      // Открываем в новой вкладке/окне, чтобы сработала загрузка файла
+      window.open(url, '_blank');
+    });
+  })();
 
   // Двойной клик по карточке — модалка контакта
   if (dispatcherWrap) {

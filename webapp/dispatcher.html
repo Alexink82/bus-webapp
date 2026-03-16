@@ -55,6 +55,11 @@
             <strong>Статистика смены</strong>
             <div id="sidebarStatsContent" class="dispatcher-stats-content">—</div>
           </div>
+          <div class="dispatcher-card dispatcher-export-card">
+            <strong>Экспорт за смену</strong>
+            <p class="dispatcher-export-card__hint">CSV всех заявок за сегодня по вашим маршрутам.</p>
+            <button type="button" id="dispatcherExportBtn" class="btn btn-outline btn-small">Скачать CSV</button>
+          </div>
         </aside>
 
         <!-- Центр: табы + overdue + карточки -->
@@ -70,6 +75,10 @@
               <div id="overdueList" class="dispatcher-cards-grid"></div>
             </div>
             <h3 class="dispatcher-section-title" id="newSectionTitle">Новые</h3>
+            <div class="dispatcher-bulk-actions" id="newBulkActions">
+              <label class="dispatcher-bulk-actions__check"><input type="checkbox" id="selectAllNew" aria-label="Выбрать все"> Выбрать все</label>
+              <button type="button" id="takeSelectedBtn" class="btn btn-primary btn-small">Взять все выбранные (<span id="takeSelectedCount">0</span>)</button>
+            </div>
             <div id="newList" class="dispatcher-cards-grid"></div>
           </div>
           <div id="tabActive" class="dispatcher-tab-panel hidden">

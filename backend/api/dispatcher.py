@@ -1,19 +1,23 @@
-"""Dispatcher API - bookings, take, status, stats."""
+"""Dispatcher API - bookings, take, status, stats, export."""
+import csv
+import io
 import logging
+from datetime import date, datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import date, datetime, timezone
 
-from database import get_db
 from api.auth_deps import get_verified_telegram_user_id
 from api.websocket import manager as ws_manager
-from models import Booking, Dispatcher
 from core.constants import ROUTES
-from services.roles import get_dispatcher_route_ids
-from services.notification import notify_booking_status
+from database import get_db
 from logging_config import log_action
+from models import Booking, Dispatcher
+from services.notification import notify_booking_status
+from services.roles import get_dispatcher_route_ids
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/dispatcher", tags=["dispatcher"])
@@ -207,3 +211,63 @@ async def dispatcher_stats(
             except Exception:
                 continue
     return {"total": total, "sum": round(s, 2), "by_status": by_status, "overdue_15m": overdue_15m}
+
+
+@router.get("/export")
+async def export_dispatcher_bookings_today(
+    db: AsyncSession = Depends(get_db),
+    dispatcher_id: int = Depends(get_verified_telegram_user_id),
+):
+    """Экспорт заявок диспетчера за сегодня в CSV."""
+    route_ids = await get_dispatcher_route_ids(db, dispatcher_id)
+    if route_ids is None:
+        raise HTTPException(403, detail="not_dispatcher")
+    route_ids = _route_ids_list(route_ids)
+    today_str = date.today().isoformat()
+    result = await db.execute(
+        select(Booking).where(
+            Booking.route_id.in_(route_ids),
+            Booking.dispatcher_id == dispatcher_id,
+            Booking.created_at.startswith(today_str),
+        ).order_by(Booking.created_at)
+    )
+    rows = result.scalars().all()
+    output = io.StringIO()
+    w = csv.writer(output)
+    w.writerow(
+        [
+            "booking_id",
+            "status",
+            "route_name",
+            "from_city",
+            "to_city",
+            "departure_date",
+            "departure_time",
+            "price_total",
+            "currency",
+            "created_at",
+        ]
+    )
+    for r in rows:
+        route_name = ROUTES.get(r.route_id, {}).get("name", r.route_id or "")
+        w.writerow(
+            [
+                r.id,
+                r.status,
+                route_name,
+                r.from_city,
+                r.to_city,
+                r.date or "",
+                r.departure or "",
+                r.price_total,
+                "BYN",
+                r.created_at or "",
+            ]
+        )
+    output.seek(0)
+    filename = f"dispatcher_{dispatcher_id}_{today_str}.csv"
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )

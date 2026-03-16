@@ -150,9 +150,62 @@
 @media (min-width: 1024px) {
   .dispatcher-card--has-sla { padding-top: 24px; }
 }
+/* Строка: чекбокс + тело карточки */
+.dispatcher-card__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 2px;
+}
+.dispatcher-card__check {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  margin: 0;
+}
+.dispatcher-card__check input {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+.dispatcher-card__body {
+  flex: 1;
+  min-width: 0;
+}
 .dispatcher-card strong {
   display: block;
   margin-bottom: 4px;
+}
+
+/* Панель массовых действий (таб «Новые») */
+.dispatcher-bulk-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.dispatcher-bulk-actions.hidden {
+  display: none !important;
+}
+.dispatcher-bulk-actions__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+.dispatcher-bulk-actions__check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+.dispatcher-bulk-actions #takeSelectedBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* Фильтры в левой колонке */
@@ -179,6 +232,16 @@
 .dispatcher-stats-content {
   margin-top: 8px;
   font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+/* Экспорт за смену (левая колонка) */
+.dispatcher-export-card {
+  margin-top: 12px;
+}
+.dispatcher-export-card__hint {
+  margin: 8px 0 12px 0;
+  font-size: 0.85rem;
   color: var(--text-muted);
 }
 
