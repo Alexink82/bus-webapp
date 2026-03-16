@@ -57,13 +57,13 @@
               <span class="profile-stat-card__label" data-i18n="statNextTrip">Следующая поездка</span>
             </div>
           </div>
-          <p class="profile-refresh-wrap"><button type="button" id="refreshBookingsBtn" class="btn btn-outline btn-small" data-i18n="refresh">Обновить</button></p>
-          <div class="segmented-control" role="tablist">
+          <div class="segmented-control profile-bookings-tabs" role="tablist">
             <button class="segment active" data-tab="active" role="tab" aria-selected="true">Активные</button>
             <button class="segment" data-tab="upcoming" role="tab" aria-selected="false">Предстоящие</button>
             <button class="segment" data-tab="completed" role="tab" aria-selected="false">Завершённые</button>
             <button class="segment" data-tab="cancelled" role="tab" aria-selected="false">Отменённые</button>
           </div>
+          <p class="profile-refresh-wrap"><button type="button" id="refreshBookingsBtn" class="btn btn-outline btn-small" data-i18n="refresh">Обновить</button></p>
           <div id="tab-active" class="tab-content active"><div id="bookingsListActive"></div></div>
           <div id="tab-upcoming" class="tab-content"><div id="bookingsListUpcoming"></div></div>
           <div id="tab-completed" class="tab-content"><div id="bookingsListCompleted"></div></div>
@@ -103,9 +103,9 @@
       </div>
     </main>
     <nav class="tab-bar" id="tabBar">
-      <a href="index.html" class="tab">🎫 Бронь</a>
-      <a href="profile.html" class="tab active">👤 Профиль</a>
-      <a href="faq.html" class="tab">❓ FAQ</a>
+      <a href="index.html" class="tab"><span class="tab-bar__icon">🎫</span><span class="tab-bar__label" data-i18n="tabBook">Бронь</span></a>
+      <a href="profile.html" class="tab active"><span class="tab-bar__icon">👤</span><span class="tab-bar__label" data-i18n="tabProfile">Профиль</span></a>
+      <a href="faq.html" class="tab"><span class="tab-bar__icon">❓</span><span class="tab-bar__label" data-i18n="tabFaq">FAQ</span></a>
     </nav>
   </div>
   <script src="js/maintenance.js"></script>

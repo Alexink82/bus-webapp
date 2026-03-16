@@ -1,5 +1,7 @@
 # План оптимизации — согласованная версия (после глубокого анализа проекта)
 
+> **Отложено.** Сначала в работе правки UI/UX (логотип, шапка, нижняя панель, профиль, админка). К оптимизации (Vite, кэш, dashboard и т.д.) вернёмся после.
+
 **Цель:** LCP < 800 мс, повторные открытия < 200 мс при сохранении всего визуального богатства (blur bottom-sheet, анимированные бейджи, чекмарк с draw, haptic, segmented control, role-shell, графики, QR и т.д.).
 
 **Рекомендуемый порядок:** День 1–2 → A1 (Vite), День 3–4 → A2+A3, День 5–7 → B4+B5, дальше C и D.
@@ -131,24 +133,24 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        index: 'webapp/index.html',
-        booking: 'webapp/booking.html',
-        profile: 'webapp/profile.html',
-        admin: 'webapp/admin.html',
-        dispatcher: 'webapp/dispatcher.html',
-        success: 'webapp/success.html',
-        faq: 'webapp/faq.html',
+        index: 'index.html',
+        booking: 'booking.html',
+        profile: 'profile.html',
+        admin: 'admin.html',
+        dispatcher: 'dispatcher.html',
+        success: 'success.html',
+        faq: 'faq.html',
       },
     },
     target: 'es2020',
     minify: 'esbuild',
     cssCodeSplit: true,
   },
-  server: { root: 'webapp', port: 5173, open: '/index.html' },
+  server: { port: 5173, open: '/index.html' },
 });
 ```
 
-При `root: 'webapp'` пути в `input` задаются относительно корня проекта (не от webapp): т.е. `index.html` в webapp задаётся как `resolve(__dirname, 'webapp/index.html')` или в Rollup input как ключи с путями. Стандартный способ для multi-page: перечислить HTML в `input` так, чтобы они лежали в root (webapp), например `input: { index: resolve(__dirname, 'webapp/index.html'), ... }` с `import { resolve } from 'path'`. Либо без resolve просто `input: ['webapp/index.html', 'webapp/booking.html', ...]` — тогда имена чанков будут по имени файла. Итог: root = webapp, тогда input может быть `{ index: 'index.html', booking: 'booking.html', ... }` (относительно webapp).
+При `root: 'webapp'` все пути в `input` задаются относительно webapp, поэтому достаточно имён файлов: `index.html`, `booking.html` и т.д.
 
 **Состав entry-модулей (импорты в каждом):**
 

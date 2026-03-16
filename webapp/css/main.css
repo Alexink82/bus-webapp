@@ -159,9 +159,10 @@ body {
   flex-shrink: 0;
 }
 
+/* Опускаем логотип ниже: не перекрывается камерой/челкой, не сливается со статус-баром */
 .header__logo-bar {
   padding: 12px 16px;
-  padding-top: max(12px, env(safe-area-inset-top));
+  padding-top: max(24px, calc(env(safe-area-inset-top) + 14px));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -177,13 +178,16 @@ body {
 }
 
 .header__row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   min-height: 44px;
   padding: 0 4px;
 }
+.header__row .theme-toggle { grid-column: 1; }
+.header__row .header__title-wrap { grid-column: 2; }
+.header__row .tg-close-btn { grid-column: 3; }
 
 .header__brand {
   flex-shrink: 0;
@@ -213,6 +217,12 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.header__title-wrap .header__date {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 400;
 }
 
 .tg-close-btn {
@@ -374,6 +384,13 @@ body {
   cursor: pointer;
   margin-bottom: 12px;
   -webkit-tap-highlight-color: transparent;
+}
+
+.search-form-subtitle {
+  margin: 0 16px 12px;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  text-align: center;
 }
 
 .search-form {
@@ -721,7 +738,10 @@ body {
 .mrz-hint-text { font-size: 0.85rem; color: var(--text-muted); margin-top: 6px; padding: 8px; background: var(--surface-elevated); border-radius: var(--radius); }
 .profile-edit-phone { margin-bottom: 20px; }
 .profile-edit-phone .settings-input { display: block; width: 100%; max-width: 280px; margin: 6px 0 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font-size: 1rem; }
-.profile-refresh-wrap { margin-bottom: 12px; }
+.profile-refresh-wrap { margin-bottom: 12px; text-align: center; }
+/* Компактные кнопки Активные/Предстоящие/Завершённые/Отменённые — все видны без горизонтального скролла */
+.profile-bookings-tabs.segmented-control { margin-bottom: 12px; }
+.profile-bookings-tabs .segment { padding: 8px 10px; font-size: 0.8rem; min-width: 0; }
 .profile-section { margin-bottom: 24px; }
 .profile-section__title { font-size: 1.1rem; margin-bottom: 8px; }
 .profile-section__hint { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 12px; }
@@ -962,23 +982,25 @@ body {
   display: flex;
   justify-content: space-around;
   align-items: center;
-  padding: 10px max(6px, env(safe-area-inset-left)) max(10px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-right));
+  padding: 10px max(6px, env(safe-area-inset-left)) max(14px, calc(env(safe-area-inset-bottom) + 8px)) max(6px, env(safe-area-inset-right));
   border-top: 1px solid var(--border);
   gap: 6px;
   min-height: 56px;
   transition: background-color 0.25s ease, border-color 0.2s ease;
+  border-radius: 12px;
+  margin: 0 6px 6px;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
 }
 
-/* Шрифты меню: адаптивно под экран телефона (как в типичных мобильных приложениях 14–16px) */
+/* Иконка сверху, подпись снизу — единообразие на всех экранах */
 .tab-bar .tab {
   color: var(--text-muted);
   text-decoration: none;
-  font-size: clamp(0.875rem, 2.5vw + 0.65rem, 1rem);
   font-weight: 500;
   flex: 1;
   min-width: 0;
   text-align: center;
-  padding: 8px 4px;
+  padding: 6px 4px 8px;
   min-height: 48px;
   display: flex;
   flex-direction: column;
@@ -986,8 +1008,18 @@ body {
   justify-content: center;
   gap: 2px;
   overflow: hidden;
+}
+.tab-bar__icon {
+  font-size: 1.25rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.tab-bar__label {
+  font-size: clamp(0.7rem, 2vw + 0.5rem, 0.8rem);
   white-space: nowrap;
+  overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .tab-bar .tab.active {

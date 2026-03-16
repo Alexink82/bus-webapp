@@ -6,9 +6,14 @@
   var apiFn = function() { return typeof window.api === 'function' ? window.api : null; };
 
   function injectRoleShell(placeholder, data) {
+    var path = (window.location.pathname || '').replace(/.*\//, '') || 'index.html';
+    /* В админке верхние кнопки Бронь/Профиль/Админ не показываем — при выходе попадаешь в основное приложение, там уже есть таб-бар */
+    if (path === 'admin.html') {
+      placeholder.innerHTML = '';
+      return;
+    }
     var isDispatcher = data.is_dispatcher === true;
     var isAdmin = data.is_admin === true;
-    var path = (window.location.pathname || '').replace(/.*\//, '') || 'index.html';
     var L = typeof t === 'function' ? { bro: t('tabBooking') || 'Бронь', pro: t('tabProfile') || 'Профиль', disp: t('tabDispatcher') || 'Диспетчер', adm: t('tabAdmin') || 'Админ' } : { bro: 'Бронь', pro: 'Профиль', disp: 'Диспетчер', adm: 'Админ' };
     var links = [
       { href: 'index.html', label: '🎫 ' + L.bro, show: true },
@@ -64,14 +69,16 @@
           var disp = document.createElement('a');
           disp.href = 'dispatcher.html';
           disp.className = 'tab';
-          disp.textContent = '🔄 ' + (typeof t === 'function' ? t('tabDispatcher') : 'Диспетчер');
+          var dispLabel = typeof t === 'function' ? t('tabDispatcher') : 'Диспетчер';
+          disp.innerHTML = '<span class="tab-bar__icon">🔄</span><span class="tab-bar__label">' + dispLabel + '</span>';
           tabBar.insertBefore(disp, faqTab);
         }
         if (isAdmin) {
           var adm = document.createElement('a');
           adm.href = 'admin.html';
           adm.className = 'tab';
-          adm.textContent = '⚙️ ' + (typeof t === 'function' ? t('tabAdmin') : 'Админ');
+          var admLabel = typeof t === 'function' ? t('tabAdmin') : 'Админ';
+          adm.innerHTML = '<span class="tab-bar__icon">⚙️</span><span class="tab-bar__label">' + admLabel + '</span>';
           tabBar.insertBefore(adm, faqTab);
         }
       })

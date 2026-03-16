@@ -1206,10 +1206,10 @@ body {
 .faq-support__link { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--color-accent); font-weight: var(--font-weight-semibold); text-decoration: none; transition: color var(--transition-fast); }
 .faq-support__link:hover { color: var(--color-accent-hover); }
 
-/* Logo bar (shared with main theme, for admin page) */
+/* Logo bar (shared with main theme, for admin page) — опущен ниже камеры/челки */
 .header__logo-bar {
   padding: var(--space-3) var(--space-4);
-  padding-top: max(12px, env(safe-area-inset-top));
+  padding-top: max(24px, calc(env(safe-area-inset-top) + 14px));
   display: flex;
   align-items: center;
   justify-content: center;

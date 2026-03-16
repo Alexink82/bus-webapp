@@ -41,7 +41,7 @@
         <button type="button" id="themeToggle" class="theme-toggle" aria-label="Сменить тему" title="Светлая/тёмная тема">☀️</button>
         <div class="header__title-wrap">
           <h1>Бронирование билетов</h1>
-          <p class="subtitle">Выберите маршрут и дату</p>
+          <p class="header__date" id="headerCurrentDate" aria-hidden="true"></p>
         </div>
         <button type="button" id="tgCloseBtn" class="tg-close-btn" aria-label="Закрыть" title="Закрыть">✕</button>
       </div>
@@ -53,6 +53,7 @@
           <span id="lastSearchLabel" data-i18n="repeatLastSearch">Повторить последний поиск</span>: <span id="lastSearchRoute"></span>
         </button>
       </div>
+      <p class="search-form-subtitle" id="searchFormSubtitle" data-i18n="selectRouteAndDate">Выберите маршрут и дату</p>
       <form id="searchForm" class="search-form">
         <div class="search-field-block" id="fromBlock">
           <button type="button" class="search-field-block__trigger" id="fromTrigger" aria-haspopup="listbox" aria-expanded="false">
@@ -113,9 +114,9 @@
     </main>
 
     <nav class="tab-bar" id="tabBar">
-      <a href="index.html" class="tab active">🎫 Бронь</a>
-      <a href="profile.html" class="tab">👤 Профиль</a>
-      <a href="faq.html" class="tab">❓ FAQ</a>
+      <a href="index.html" class="tab active"><span class="tab-bar__icon">🎫</span><span class="tab-bar__label" data-i18n="tabBook">Бронь</span></a>
+      <a href="profile.html" class="tab"><span class="tab-bar__icon">👤</span><span class="tab-bar__label" data-i18n="tabProfile">Профиль</span></a>
+      <a href="faq.html" class="tab"><span class="tab-bar__icon">❓</span><span class="tab-bar__label" data-i18n="tabFaq">FAQ</span></a>
     </nav>
   </div>
   <script src="js/maintenance.js?v=2"></script>
@@ -130,6 +131,16 @@
   <script src="js/consent.js?v=2"></script>
   <script>
     (function() {
+      var lang = localStorage.getItem('lang') || 'ru';
+      var dateEl = document.getElementById('headerCurrentDate');
+      if (dateEl) {
+        var d = new Date();
+        var dd = String(d.getDate()).padStart(2, '0');
+        var mm = String(d.getMonth() + 1).padStart(2, '0');
+        var yyyy = d.getFullYear();
+        var dayName = new Intl.DateTimeFormat(lang === 'be' ? 'be' : (lang === 'en' ? 'en-GB' : 'ru'), { weekday: 'long' }).format(d);
+        dateEl.textContent = dd + '.' + mm + '.' + yyyy + ', ' + dayName;
+      }
       var closeBtn = document.getElementById('tgCloseBtn');
       if (closeBtn) {
         var inTelegram = window.Telegram && Telegram.WebApp && Telegram.WebApp.initData;
