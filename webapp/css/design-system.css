@@ -1311,6 +1311,11 @@ body {
   min-height: 0;
 }
 @media (min-width: 1024px) {
+  /* Админка на ноутбуке — на всю ширину (на телефонах без изменений) */
+  body.page-admin .app {
+    max-width: 100%;
+    width: 100%;
+  }
   .app {
     display: flex;
     flex-direction: column;

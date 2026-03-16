@@ -54,6 +54,7 @@
     buttons.forEach(function(btn) {
       var b = document.createElement('button');
       b.type = 'button';
+      if (btn.id) b.id = btn.id;
       b.className = btn.primary ? 'btn btn-primary app-modal-btn' : 'btn btn-outline app-modal-btn';
       b.textContent = btn.text;
       b.addEventListener('click', function() {

@@ -75,13 +75,30 @@
   }
 
   const OVERDUE_MINUTES = 15;
+  const SLA_WARNING_MINUTES = 10;
   var skeletonCardHtml = '<div class="skeleton-card-dispatcher"><div class="skeleton skeleton--title"></div><div class="skeleton"></div><div class="skeleton skeleton--short"></div></div>';
   var skeletonListHtml = skeletonCardHtml + skeletonCardHtml + skeletonCardHtml;
 
+  function getSlaState(createdAt) {
+    if (!createdAt) return { minutes: 0, state: 'ok', label: '' };
+    var created = new Date(createdAt).getTime();
+    var now = Date.now();
+    var minutes = Math.floor((now - created) / 60000);
+    var state = minutes <= SLA_WARNING_MINUTES ? 'ok' : (minutes <= OVERDUE_MINUTES ? 'warning' : 'overdue');
+    var label = minutes < 1 ? 'только что' : (minutes === 1 ? '1 мин' : minutes + ' мин');
+    return { minutes: minutes, state: state, label: label };
+  }
+
   function renderNewCard(b) {
     var statusBadge = getBadgeHtml(b.status);
+    var sla = getSlaState(b.created_at);
+    var slaTitle = 'Заявка: ' + sla.label + (sla.state === 'overdue' ? ' (просрочено)' : '');
     return `
-      <div class="dispatcher-card" data-booking="${esc(b.booking_id)}">
+      <div class="dispatcher-card dispatcher-card--has-sla" data-booking="${esc(b.booking_id)}">
+        <div class="dispatcher-card__sla dispatcher-card__sla--${esc(sla.state)}" title="${esc(slaTitle)}" aria-label="${esc(slaTitle)}">
+          <span class="dispatcher-card__sla-bar" style="width: ${Math.min(100, (sla.minutes / OVERDUE_MINUTES) * 100)}%"></span>
+          <span class="dispatcher-card__sla-label">${esc(sla.label)}</span>
+        </div>
         <strong>${esc(b.booking_id)}</strong> ${esc(b.route_name)}<br>
         ${esc(b.departure_date)} ${esc(b.departure_time)} | ${esc(b.passengers_count)} пасс. | ${esc(b.price_total)} ${esc(b.currency)}
         <div class="status">${statusBadge}</div>
@@ -129,6 +146,7 @@
         <div class="status">${statusBadge}</div>
         <div class="actions">
           <button type="button" data-action="contact" data-id="${esc(b.booking_id)}" class="dispatcher-btn-contact">${contactLabel}</button>
+          <button data-id="${b.booking_id}" data-status="payment_link_sent">Ссылка оплаты</button>
           <button data-id="${b.booking_id}" data-status="paid">Оплачено</button>
           <button data-id="${b.booking_id}" data-status="ticket_sent">Билет отправлен</button>
           <button data-id="${b.booking_id}" data-status="done">Завершено</button>
@@ -150,20 +168,70 @@
     });
   }
 
+  function openCancelReasonModal(bookingId, onSuccess) {
+    var textareaId = 'cancelReasonInput';
+    var html = '<div class="dispatcher-cancel-reason"><label for="' + textareaId + '">Причина отмены</label><textarea id="' + textareaId + '" rows="3" placeholder="Укажите причину отмены заявки" class="dispatcher-cancel-reason__input"></textarea></div>';
+    var buttons = [
+      { text: 'Закрыть', primary: false },
+      { text: 'Отменить заявку', primary: true, id: 'confirmCancelBtn' }
+    ];
+    if (typeof showAppModal === 'function') {
+      showAppModal({ title: 'Отмена заявки', html: html, buttons: buttons });
+      var confirmBtn = document.getElementById('confirmCancelBtn');
+      var textarea = document.getElementById(textareaId);
+      if (confirmBtn && textarea) {
+        confirmBtn.addEventListener('click', function() {
+          var reason = (textarea.value || '').trim();
+          if (!reason) {
+            (typeof showAppAlert === 'function' ? showAppAlert : alert)('Укажите причину отмены.', 'Внимание');
+            return;
+          }
+          api('/api/dispatcher/bookings/' + encodeURIComponent(bookingId) + '/status', {
+            method: 'POST',
+            body: JSON.stringify({ status: 'cancelled', reason: reason }),
+            headers: { 'Content-Type': 'application/json' },
+          }).then(function() {
+            var ov = document.querySelector('.app-modal-overlay.app-modal-visible');
+            if (ov) ov.click();
+            if (typeof onSuccess === 'function') onSuccess();
+            loadActive(); loadNew(); loadStats();
+          }).catch(function(e) {
+            var msg = e && e.message ? e.message : 'Ошибка.';
+            (typeof showAppAlert === 'function' ? showAppAlert : alert)(msg, 'Ошибка');
+          });
+        });
+      }
+    } else {
+      var reason = prompt('Укажите причину отмены заявки:');
+      if (!reason || !reason.trim()) return;
+      api('/api/dispatcher/bookings/' + encodeURIComponent(bookingId) + '/status', {
+        method: 'POST',
+        body: JSON.stringify({ status: 'cancelled', reason: reason.trim() }),
+        headers: { 'Content-Type': 'application/json' },
+      }).then(function() {
+        if (typeof onSuccess === 'function') onSuccess();
+        loadActive(); loadNew(); loadStats();
+      }).catch(function(e) {
+        var msg = e && e.message ? e.message : 'Ошибка.';
+        alert(msg);
+      });
+    }
+  }
+
   function bindStatusButtons(container) {
     if (!container) return;
     container.querySelectorAll('.actions button[data-status]').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const payload = { status: btn.dataset.status };
-        if (btn.dataset.status === 'cancelled') {
-          const reason = prompt('Укажите причину отмены заявки:');
-          if (!reason || !reason.trim()) return;
-          payload.reason = reason.trim();
+        const status = btn.dataset.status;
+        const bookingId = btn.dataset.id;
+        if (status === 'cancelled') {
+          openCancelReasonModal(bookingId);
+          return;
         }
-        api('/api/dispatcher/bookings/' + btn.dataset.id + '/status', {
+        api('/api/dispatcher/bookings/' + bookingId + '/status', {
           method: 'POST',
-          body: JSON.stringify(payload),
+          body: JSON.stringify({ status: status }),
           headers: { 'Content-Type': 'application/json' },
         }).then(() => { loadActive(); loadNew(); loadStats(); }).catch(e => { var msg = e && e.message ? e.message : 'Произошла ошибка.'; (typeof showAppAlert === 'function' ? showAppAlert : alert)(msg, 'Ошибка'); });
       });
@@ -252,7 +320,10 @@
       <p>${esc(booking.departure_date)} ${esc(booking.departure_time)} · ${esc(booking.price_total)} ${esc(booking.currency)}</p>
       <div class="actions">
         <button type="button" data-action="contact" data-id="${esc(booking.booking_id)}" class="dispatcher-btn-contact">Связаться</button>
+        <button data-id="${esc(booking.booking_id)}" data-status="payment_link_sent">Ссылка оплаты</button>
+        <button data-id="${esc(booking.booking_id)}" data-status="paid">Оплачено</button>
         <button data-id="${esc(booking.booking_id)}" data-status="ticket_sent">Отправить билет</button>
+        <button data-id="${esc(booking.booking_id)}" data-status="done">Завершено</button>
         <button data-id="${esc(booking.booking_id)}" data-status="cancelled">Отменить</button>
       </div>
     `;

@@ -44,6 +44,15 @@
   font-weight: 600;
 }
 
+/* На ноутбуке/ПК — контейнер на всю ширину (на телефонах без изменений) */
+@media (min-width: 1024px) {
+  body.page-dispatcher .container {
+    max-width: 100%;
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+}
+
 /* Контейнер 3 колонки (desktop) */
 .dispatcher-container {
   display: grid;
@@ -107,6 +116,39 @@
   padding: 16px;
   border-radius: var(--radius);
   border: 1px solid var(--border);
+  position: relative;
+}
+.dispatcher-card__sla {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  border-radius: var(--radius) var(--radius) 0 0;
+  overflow: hidden;
+  background: var(--border);
+}
+.dispatcher-card__sla-bar {
+  display: block;
+  height: 100%;
+  transition: width 0.3s ease, background-color 0.2s;
+}
+.dispatcher-card__sla--ok .dispatcher-card__sla-bar { background: #34c759; }
+.dispatcher-card__sla--warning .dispatcher-card__sla-bar { background: #ffcc00; }
+.dispatcher-card__sla--overdue .dispatcher-card__sla-bar { background: #ff3b30; }
+.dispatcher-card__sla-label {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.dispatcher-card--has-sla { padding-top: 22px; }
+.dispatcher-card--has-sla .dispatcher-card__sla-label { color: var(--text-muted); }
+.dispatcher-card__sla--overdue .dispatcher-card__sla-label { color: #ff3b30; font-weight: 600; }
+@media (min-width: 1024px) {
+  .dispatcher-card--has-sla { padding-top: 24px; }
 }
 .dispatcher-card strong {
   display: block;
@@ -227,6 +269,21 @@
 .dispatcher-contact-modal p { margin: 0 0 8px 0; }
 .dispatcher-contact-modal a { color: var(--accent); }
 .dispatcher-contact-modal ul { margin: 4px 0 0 1em; padding: 0; }
+
+/* Модалка причины отмены */
+.dispatcher-cancel-reason { margin: 0 0 16px 0; }
+.dispatcher-cancel-reason label { display: block; margin-bottom: 8px; font-size: 0.95rem; color: var(--text); }
+.dispatcher-cancel-reason__input {
+  width: 100%;
+  min-height: 80px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 1rem;
+  resize: vertical;
+}
 @media (min-width: 1024px) {
   .dispatcher-card[data-booking],
   .dispatcher-card.booking-card {
