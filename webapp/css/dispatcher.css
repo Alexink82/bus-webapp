@@ -291,6 +291,14 @@
     min-height: 140px;
     font-size: 16px;
   }
+  .dispatcher-card .status,
+  .dispatcher-card .badge {
+    font-size: 15px;
+  }
+  .dispatcher-card .badge .icon {
+    width: 24px;
+    height: 24px;
+  }
   .dispatcher-card .actions button {
     min-height: 52px;
     font-size: 1rem;

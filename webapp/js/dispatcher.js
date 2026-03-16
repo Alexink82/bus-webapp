@@ -438,6 +438,65 @@
   loadActive();
   loadStats();
 
+  // Двойной клик по карточке — модалка контакта
+  if (dispatcherWrap) {
+    dispatcherWrap.addEventListener('dblclick', function(e) {
+      var card = e.target && e.target.closest && e.target.closest('.dispatcher-card[data-booking]');
+      if (card && card.dataset.booking) {
+        e.preventDefault();
+        openContactModal(card.dataset.booking);
+      }
+    });
+  }
+
+  // Горячие клавиши (не срабатывают при фокусе в input/textarea/select)
+  document.addEventListener('keydown', function(e) {
+    var tag = document.activeElement && document.activeElement.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    if (e.ctrlKey || e.metaKey) {
+      if (e.key === 'k') {
+        e.preventDefault();
+        var searchEl = document.getElementById('dispatcherSearch');
+        if (searchEl) { searchEl.focus(); searchEl.select(); }
+        return;
+      }
+      if (e.key === '1') {
+        e.preventDefault();
+        document.querySelector('.dispatcher-tabs__btn[data-tab="new"]') && document.querySelector('.dispatcher-tabs__btn[data-tab="new"]').click();
+        return;
+      }
+      if (e.key === '2') {
+        e.preventDefault();
+        document.querySelector('.dispatcher-tabs__btn[data-tab="active"]') && document.querySelector('.dispatcher-tabs__btn[data-tab="active"]').click();
+        return;
+      }
+    }
+    if (e.key === 'Enter' || e.key === 'v' || e.key === 'V') {
+      var takeBtn = document.querySelector('#newList [data-action="take"], #overdueList [data-action="take"]');
+      if (takeBtn) {
+        e.preventDefault();
+        takeBtn.click();
+      }
+      return;
+    }
+    if (e.key === 's' || e.key === 'S') {
+      var sendBtn = document.querySelector('#activeWidgetCard button[data-status="ticket_sent"]');
+      if (sendBtn) {
+        e.preventDefault();
+        sendBtn.click();
+      }
+      return;
+    }
+    if (e.key === 'c' || e.key === 'C') {
+      var cancelBtn = document.querySelector('#activeWidgetCard button[data-status="cancelled"]');
+      if (cancelBtn) {
+        e.preventDefault();
+        cancelBtn.click();
+      }
+      return;
+    }
+  });
+
   // WebSocket: new_booking + status_changed
   (function connectWs() {
     const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
