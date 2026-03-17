@@ -9,6 +9,34 @@
   const dispatcherWrap = document.getElementById('dispatcherWrap');
   if (dispatcherWrap) dispatcherWrap.classList.remove('hidden');
 
+  let isAdminView = false;
+  let dispatchersListLoaded = false;
+  function setAdminView(enable) {
+    if (isAdminView === enable) return;
+    isAdminView = enable;
+    const banner = document.getElementById('dispatcherAdminBanner');
+    const filterWrap = document.getElementById('filterDispatcherWrap');
+    const exportHint = document.getElementById('dispatcherExportHint');
+    if (banner) banner.classList.toggle('hidden', !enable);
+    if (filterWrap) filterWrap.classList.toggle('hidden', !enable);
+    if (exportHint) exportHint.textContent = enable ? 'CSV всех заявок за сегодня (при фильтре «Диспетчер» — только его заявки).' : 'CSV всех заявок за сегодня по вашим маршрутам.';
+    if (enable && !dispatchersListLoaded) {
+      dispatchersListLoaded = true;
+      api('/api/admin/dispatchers').then(function(data) {
+        const list = (data.dispatchers || []);
+        const sel = document.getElementById('filterDispatcher');
+        if (!sel) return;
+        sel.innerHTML = '<option value="">Все</option>';
+        list.forEach(function(d) {
+          const opt = document.createElement('option');
+          opt.value = String(d.telegram_id);
+          opt.textContent = (d.name || d.phone || 'ID ' + d.telegram_id) || String(d.telegram_id);
+          sel.appendChild(opt);
+        });
+      }).catch(function() {});
+    }
+  }
+
   const headers = { 'X-Telegram-User-Id': String(uid) };
   if (typeof getTelegramInitData === 'function' && getTelegramInitData())
     headers['X-Telegram-Init-Data'] = getTelegramInitData();
@@ -76,11 +104,42 @@
   }
 
   function readFilters() {
-    return {
+    const f = {
       route: (document.getElementById('filterRoute') || {}).value || '',
       date: (document.getElementById('filterDate') || {}).value || '',
-      payment: (document.getElementById('filterPayment') || {}).value || ''
+      payment: (document.getElementById('filterPayment') || {}).value || '',
+      dispatcher_id: ''
     };
+    if (isAdminView) {
+      const d = document.getElementById('filterDispatcher');
+      if (d && d.value) f.dispatcher_id = d.value;
+    }
+    return f;
+  }
+
+  function applySort(items, sortKey) {
+    const key = sortKey || 'time';
+    const copy = items.slice();
+    if (key === 'time') {
+      copy.sort(function(a, b) {
+        const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return tb - ta;
+      });
+    } else if (key === 'route') {
+      copy.sort(function(a, b) {
+        const ra = (a.route_name || '').toLowerCase();
+        const rb = (b.route_name || '').toLowerCase();
+        return ra.localeCompare(rb) || 0;
+      });
+    } else if (key === 'dispatcher') {
+      copy.sort(function(a, b) {
+        const da = a.dispatcher_id != null ? String(a.dispatcher_id) : '';
+        const db = b.dispatcher_id != null ? String(b.dispatcher_id) : '';
+        return da.localeCompare(db) || 0;
+      });
+    }
+    return copy;
   }
 
   const OVERDUE_MINUTES = 15;
@@ -153,9 +212,10 @@
   function renderActiveCard(b) {
     var statusBadge = getBadgeHtml(b.payment_status || b.status);
     var contactLabel = (b.contact_phone || '').trim() ? 'Телефон' : 'Связаться';
+    var dispatcherLine = (isAdminView && b.dispatcher_id) ? '<br><span class="dispatcher-card__dispatcher">Диспетчер: ' + esc(String(b.dispatcher_id)) + '</span>' : '';
     return `
       <div class="dispatcher-card" data-booking="${esc(b.booking_id)}">
-        <strong>${esc(b.booking_id)}</strong> ${esc(b.route_name)}<br>
+        <strong>${esc(b.booking_id)}</strong> ${esc(b.route_name)}${dispatcherLine}<br>
         ${esc(b.departure_date)} ${esc(b.departure_time)} | ${esc(b.price_total)} ${esc(b.currency)}
         <div class="status">${statusBadge}</div>
         <div class="actions">
@@ -260,8 +320,12 @@
     if (f.route) qs.set('route_id', f.route);
     if (f.date) qs.set('departure_date', f.date);
     if (f.payment) qs.set('payment_status', f.payment);
+    if (isAdminView && f.dispatcher_id) qs.set('filter_dispatcher_id', f.dispatcher_id);
     api('/api/dispatcher/bookings?' + qs.toString()).then(data => {
-      const items = data.bookings || [];
+      setAdminView(!!data.is_admin_view);
+      let items = data.bookings || [];
+      const sortEl = document.getElementById('sortNew');
+      items = applySort(items, sortEl ? sortEl.value : 'time');
       const now = Date.now();
       const threshold = OVERDUE_MINUTES * 60 * 1000;
       const overdue = items.filter(b => {
@@ -387,8 +451,12 @@
     if (f.route) qs.set('route_id', f.route);
     if (f.date) qs.set('departure_date', f.date);
     if (f.payment) qs.set('payment_status', f.payment);
+    if (isAdminView && f.dispatcher_id) qs.set('filter_dispatcher_id', f.dispatcher_id);
     api('/api/dispatcher/bookings?' + qs.toString()).then(data => {
-      const items = data.bookings || [];
+      setAdminView(!!data.is_admin_view);
+      let items = data.bookings || [];
+      const sortEl = document.getElementById('sortActive');
+      items = applySort(items, sortEl ? sortEl.value : 'time');
       if (activeList) {
         activeList.innerHTML = items.map(b => renderActiveCard(b)).join('') || '<p>Нет заявок в работе.</p>';
         bindStatusButtons(activeList);
@@ -434,7 +502,12 @@
   }
 
   function loadStats() {
-    api('/api/dispatcher/stats').then(data => {
+    const f = readFilters();
+    const qs = new URLSearchParams();
+    if (isAdminView && f.dispatcher_id) qs.set('filter_dispatcher_id', f.dispatcher_id);
+    const url = '/api/dispatcher/stats' + (qs.toString() ? '?' + qs.toString() : '');
+    api(url).then(data => {
+      setAdminView(!!data.is_admin_view);
       const total = data.total != null ? data.total : 0;
       const sum = data.sum != null ? data.sum : 0;
       const overdue15 = data.overdue_15m != null ? data.overdue_15m : 0;
@@ -460,6 +533,7 @@
     applyFiltersBtn.addEventListener('click', function() {
       loadNew();
       loadActive();
+      loadStats();
     });
   }
 
@@ -543,11 +617,24 @@
     var btn = document.getElementById('dispatcherExportBtn');
     if (!btn) return;
     btn.addEventListener('click', function() {
-      var url = (typeof BASE_URL !== 'undefined' ? BASE_URL : '') + '/api/dispatcher/export';
-      // Открываем в новой вкладке/окне, чтобы сработала загрузка файла
-      window.open(url, '_blank');
+      var base = (typeof BASE_URL !== 'undefined' ? BASE_URL : '');
+      var qs = '';
+      if (isAdminView) {
+        var f = readFilters();
+        if (f.dispatcher_id) qs = '?filter_dispatcher_id=' + encodeURIComponent(f.dispatcher_id);
+      }
+      window.open(base + '/api/dispatcher/export' + qs, '_blank');
     });
   })();
+
+  // Сортировка: при смене перезагружаем список (данные уже есть, можно пересортировать без запроса)
+  function attachSortHandlers() {
+    var sortNew = document.getElementById('sortNew');
+    var sortActive = document.getElementById('sortActive');
+    if (sortNew) sortNew.addEventListener('change', function() { loadNew(); });
+    if (sortActive) sortActive.addEventListener('change', function() { loadActive(); });
+  }
+  attachSortHandlers();
 
   // Двойной клик по карточке — модалка контакта
   if (dispatcherWrap) {

@@ -11,6 +11,45 @@
   display: none !important;
 }
 
+.dispatcher-admin-banner {
+  padding: 10px 16px;
+  background: rgba(0, 120, 255, 0.15);
+  border-bottom: 1px solid rgba(0, 120, 255, 0.3);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+.dispatcher-admin-banner.hidden {
+  display: none !important;
+}
+
+.dispatcher-filters__row {
+  margin-top: 8px;
+}
+.dispatcher-filters__label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.dispatcher-sort-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.dispatcher-sort__label {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+.dispatcher-sort__select {
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
 /* Топ-бар: поиск + SLA (60px) */
 .dispatcher-topbar {
   display: flex;
@@ -206,6 +245,10 @@
 .dispatcher-card strong {
   display: block;
   margin-bottom: 4px;
+}
+.dispatcher-card__dispatcher {
+  font-size: 0.85rem;
+  color: var(--text-muted);
 }
 
 /* Панель массовых действий (таб «Новые») */

@@ -30,6 +30,7 @@
     <div id="loginWarning" class="warning hidden">Войдите через Telegram (как диспетчер).</div>
 
     <div id="dispatcherWrap" class="dispatcher-wrap hidden">
+      <div id="dispatcherAdminBanner" class="dispatcher-admin-banner hidden">Вы вошли как администратор — видны все заявки.</div>
       <!-- Топ-бар: поиск + счётчик SLA (всегда виден) -->
       <div class="dispatcher-topbar">
         <input type="text" id="dispatcherSearch" class="dispatcher-topbar__search" placeholder="Номер заявки или фамилия" aria-label="Поиск">
@@ -50,6 +51,12 @@
                 <option value="paid">Оплачено</option>
                 <option value="pending">Не оплачено</option>
               </select>
+              <div id="filterDispatcherWrap" class="dispatcher-filters__row hidden">
+                <label for="filterDispatcher" class="dispatcher-filters__label">Диспетчер</label>
+                <select id="filterDispatcher" class="dispatcher-filters__select">
+                  <option value="">Все</option>
+                </select>
+              </div>
               <button type="button" id="applyFiltersBtn" class="btn btn-primary btn-small">Применить</button>
             </div>
           </div>
@@ -59,7 +66,7 @@
           </div>
           <div class="dispatcher-card dispatcher-export-card">
             <strong>Экспорт за смену</strong>
-            <p class="dispatcher-export-card__hint">CSV всех заявок за сегодня по вашим маршрутам.</p>
+            <p class="dispatcher-export-card__hint" id="dispatcherExportHint">CSV всех заявок за сегодня по вашим маршрутам.</p>
             <button type="button" id="dispatcherExportBtn" class="btn btn-outline btn-small">Скачать CSV</button>
           </div>
         </aside>
@@ -76,6 +83,14 @@
               <p class="dispatcher-overdue__count" id="overdueCount"></p>
               <div id="overdueList" class="dispatcher-cards-grid"></div>
             </div>
+            <div class="dispatcher-sort-row">
+              <label for="sortNew" class="dispatcher-sort__label">Сортировка:</label>
+              <select id="sortNew" class="dispatcher-sort__select" aria-label="Сортировка списка новых заявок">
+                <option value="time">По времени</option>
+                <option value="route">По маршруту</option>
+                <option value="dispatcher">По диспетчеру</option>
+              </select>
+            </div>
             <h3 class="dispatcher-section-title" id="newSectionTitle">Новые</h3>
             <div class="dispatcher-bulk-actions" id="newBulkActions">
               <label class="dispatcher-bulk-actions__check"><input type="checkbox" id="selectAllNew" aria-label="Выбрать все"> Выбрать все</label>
@@ -84,6 +99,14 @@
             <div id="newList" class="dispatcher-cards-grid"></div>
           </div>
           <div id="tabActive" class="dispatcher-tab-panel hidden">
+            <div class="dispatcher-sort-row">
+              <label for="sortActive" class="dispatcher-sort__label">Сортировка:</label>
+              <select id="sortActive" class="dispatcher-sort__select" aria-label="Сортировка списка в работе">
+                <option value="time">По времени</option>
+                <option value="route">По маршруту</option>
+                <option value="dispatcher">По диспетчеру</option>
+              </select>
+            </div>
             <div id="activeList" class="dispatcher-cards-grid"></div>
           </div>
         </main>
