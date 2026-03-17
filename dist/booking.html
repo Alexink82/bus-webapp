@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1a1a2e">
+  <title>Бронирование</title>
+  <script>
+    (function(){
+      var lang = localStorage.getItem('lang');
+      if (lang === 'ru' || lang === 'en' || lang === 'be') document.documentElement.setAttribute('lang', lang);
+      var t = localStorage.getItem('theme');
+      if (t !== 'light' && t !== 'dark')
+        t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', t);
+      if (localStorage.getItem('reduceMotion') === '1') document.documentElement.classList.add('reduce-motion');
+    })();
+  </script>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script type="module" crossorigin src="/assets/booking-BNb68k9v.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/auth-DU6uhHVi.js">
+  <link rel="modulepreload" crossorigin href="/assets/passport-config-DBLABtX7.js">
+  <link rel="modulepreload" crossorigin href="/assets/app-modal-BWjIbSvX.js">
+  <link rel="modulepreload" crossorigin href="/assets/settings-BYq5oODd.js">
+  <link rel="modulepreload" crossorigin href="/assets/theme-DMhfMcbN.js">
+  <link rel="modulepreload" crossorigin href="/assets/consent-CRTF3YGE.js">
+  <link rel="modulepreload" crossorigin href="/assets/icons-BwUb0pDV.js">
+  <link rel="stylesheet" crossorigin href="/assets/passport-config-xNAwk9GV.css">
+  <link rel="stylesheet" crossorigin href="/assets/booking-3SbXLAVo.css">
+  <link rel="stylesheet" crossorigin href="/assets/telegram-theme-CcW_xsPe-CcW_xsPe.css">
+</head>
+<body class="booking-page">
+  <div class="container">
+    <header class="header">
+      <div class="header__logo-bar">
+        <img src="/assets/logo-DHd3bDT6-DHd3bDT6.png" alt="СТОЛИЦА" class="header__logo" width="160" height="40">
+      </div>
+      <div class="header__row">
+        <button type="button" id="themeToggle" class="theme-toggle" aria-label="Сменить тему" title="Светлая/тёмная тема">☀️</button>
+        <div class="header__title-wrap">
+          <h1 data-i18n="bookingTitle">Бронирование</h1>
+          <p id="routeSummary" class="subtitle"></p>
+        </div>
+      </div>
+    </header>
+
+    <div class="stepper" aria-label="Шаги бронирования">
+      <div class="step active" data-step="1">1. Пассажиры</div>
+      <span class="stepper__connector" aria-hidden="true"></span>
+      <div class="step" data-step="2">2. Оплата</div>
+    </div>
+
+    <main class="main">
+      <div id="step1" class="step">
+        <p class="step-nav"><a href="index.html" id="backToRoutes">← Изменить маршрут</a></p>
+        <h2>Шаг 1. Пассажиры</h2>
+        <div id="passengerCount" class="field-group">
+          <label id="passengerCountLabel">Количество пассажиров</label>
+          <p class="field-hint">Укажите число мест для бронирования (1–10).</p>
+          <div class="count-control">
+            <button type="button" id="passengerMinus" aria-label="Уменьшить">−</button>
+            <span id="passengerNum" aria-live="polite">1</span>
+            <button type="button" id="passengerPlus" aria-label="Увеличить">+</button>
+          </div>
+          <span id="passengerCountError" class="field-error" aria-live="polite"></span>
+        </div>
+        <label class="checkbox-label">
+          <input type="checkbox" id="forAnotherPerson"> Бронь для другого человека
+        </label>
+        <p class="field-hint">Если бронируете не для себя, укажите телефон получателя напоминания.</p>
+        <div id="anotherPhoneBlock" class="hidden field-group">
+          <label>Телефон получателя</label>
+          <div class="phone-field-row">
+            <select id="anotherPhoneCountry" class="phone-country-select" aria-label="Страна">
+              <option value="BY" selected>+375</option>
+              <option value="RU">+7</option>
+              <option value="UA">+380</option>
+              <option value="PL">+48</option>
+              <option value="LT">+370</option>
+              <option value="LV">+371</option>
+              <option value="GE">+995</option>
+              <option value="AM">+374</option>
+              <option value="OTHER">Другая</option>
+            </select>
+            <input type="tel" id="anotherPersonPhone" class="phone-input" placeholder="+375 (29) 123-45-67" maxlength="20">
+          </div>
+          <span id="anotherPersonPhoneError" class="field-error"></span>
+        </div>
+        <p id="fillFromProfileWrap" class="fill-from-profile-wrap hidden"><button type="button" id="fillFromProfile" class="btn btn-secondary" data-i18n="addFromSaved">Добавить из сохранённых</button></p>
+        <div id="passengersList"><p class="booking-loading" id="passengersListLoading">Загрузка маршрутов…</p></div>
+        <div id="discountsBlock" class="discounts-block hidden"></div>
+        <span id="step1Errors" class="field-error block-error" aria-live="polite"></span>
+        <p id="borderDocs" class="border-docs"></p>
+      </div>
+
+      <div id="step2" class="step hidden">
+        <h2>Шаг 2. Контакт и оплата</h2>
+        <div class="field-group phone-field-group">
+          <label for="phone">Контактный телефон <span class="required">*</span></label>
+          <p class="field-hint">Номер для связи и подтверждения брони. Укажите номер, доступный во время поездки. Можно полностью очистить поле и ввести заново.</p>
+          <div class="phone-field-row">
+            <select id="phoneCountry" class="phone-country-select" aria-label="Код страны" name="phoneCountry">
+              <option value="BY" selected>+375</option>
+              <option value="RU">+7</option>
+              <option value="UA">+380</option>
+              <option value="PL">+48</option>
+              <option value="LT">+370</option>
+              <option value="LV">+371</option>
+              <option value="GE">+995</option>
+              <option value="AM">+374</option>
+              <option value="OTHER">Другая</option>
+            </select>
+            <input type="tel" id="phone" name="phone" class="phone-input" placeholder="+375 (29) 123-45-67" required maxlength="20" autocomplete="tel">
+          </div>
+          <span id="phoneError" class="field-error" aria-live="polite"></span>
+        </div>
+        <label class="checkbox-label">
+          <input type="checkbox" id="savePhone"> Сохранить номер в профиль
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" id="savePassengers"> Сохранить данные пассажира в профиль для быстрого ввода (включая телефон)
+        </label>
+        <div class="field-group">
+          <label>Способ оплаты</label>
+          <p class="field-hint">Онлайн — оплата картой; наличные или перезвон — при посадке или по договорённости.</p>
+          <div class="payment-methods">
+            <label class="radio-label"><input type="radio" name="payment" value="webpay" checked> Онлайн (WebPay)</label>
+            <label class="radio-label"><input type="radio" name="payment" value="cash"> Наличными у водителя</label>
+            <label class="radio-label"><input type="radio" name="payment" value="callback"> Перезвоните мне</label>
+          </div>
+        </div>
+        <div id="paymentTimer" class="timer hidden">30:00</div>
+        <p id="priceSummary"></p>
+      </div>
+    </main>
+
+    <div class="fixed-bottom-bar" id="fixedBottomBar">
+      <button type="button" id="backToStep1" class="btn btn-secondary" style="display:none;">← Назад</button>
+      <button type="button" id="toStep2" class="btn btn-primary">Продолжить</button>
+      <button type="button" id="submitBooking" class="btn btn-primary" style="display:none;">Забронировать</button>
+    </div>
+  </div>
+  <script src="https://unpkg.com/imask"></script>
+</body>
+</html>

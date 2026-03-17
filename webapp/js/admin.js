@@ -273,5 +273,14 @@
       .catch(function(e) { (typeof window.showAppAlert === 'function' ? window.showAppAlert : alert)(e.message, 'Ошибка'); });
   });
 
+  var sidebarToggle = document.getElementById('adminSidebarToggle');
+  if (sidebarToggle) {
+    sidebarToggle.addEventListener('click', function() {
+      document.body.classList.toggle('admin-sidebar-collapsed');
+      this.textContent = document.body.classList.contains('admin-sidebar-collapsed') ? '▶' : '◀ Свернуть';
+      this.setAttribute('aria-label', document.body.classList.contains('admin-sidebar-collapsed') ? 'Развернуть меню' : 'Свернуть меню');
+    });
+  }
+
   if (window.Telegram && Telegram.WebApp) Telegram.WebApp.ready();
 })();

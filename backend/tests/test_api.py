@@ -576,12 +576,29 @@ def test_admin_stats_forbidden_for_non_admin(client):
 
 @pytest.mark.skipif(not _has_db_url, reason=_skip_no_db_reason)
 def test_dispatcher_bookings_forbidden_for_non_dispatcher(client):
-    """GET /api/dispatcher/bookings с X-Telegram-User-Id не из DISPATCHER_IDS -> 403 not_dispatcher."""
+    """GET /api/dispatcher/bookings с X-Telegram-User-Id не из DISPATCHER_IDS и не админ -> 403 not_dispatcher."""
     old = _env_for_access_tests()
     try:
         r = client.get("/api/dispatcher/bookings", headers={"X-Telegram-User-Id": "888"})
         assert r.status_code == 403
         assert r.json().get("detail") == "not_dispatcher"
+    finally:
+        _restore_env(old)
+
+
+@pytest.mark.skipif(not _has_db_url, reason=_skip_no_db_reason)
+def test_dispatcher_bookings_and_stats_allowed_for_admin(client):
+    """Админ (ADMIN_IDS) получает 200 на GET /api/dispatcher/bookings и /api/dispatcher/stats, is_admin_view true."""
+    old = _env_for_access_tests()
+    try:
+        r = client.get("/api/dispatcher/bookings", headers={"X-Telegram-User-Id": "999"})
+        assert r.status_code == 200
+        data = r.json()
+        assert "bookings" in data
+        assert data.get("is_admin_view") is True
+        r2 = client.get("/api/dispatcher/stats", headers={"X-Telegram-User-Id": "999"})
+        assert r2.status_code == 200
+        assert r2.json().get("is_admin_view") is True
     finally:
         _restore_env(old)
 

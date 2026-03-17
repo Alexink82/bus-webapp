@@ -66,6 +66,15 @@
     });
   });
 
+  var sidebarToggle = document.getElementById('dispatcherSidebarToggle');
+  if (sidebarToggle) {
+    sidebarToggle.addEventListener('click', function() {
+      document.body.classList.toggle('dispatcher-sidebar-collapsed');
+      this.textContent = document.body.classList.contains('dispatcher-sidebar-collapsed') ? '▶' : '◀ Свернуть';
+      this.setAttribute('aria-label', document.body.classList.contains('dispatcher-sidebar-collapsed') ? 'Развернуть панель' : 'Свернуть панель');
+    });
+  }
+
   function readFilters() {
     return {
       route: (document.getElementById('filterRoute') || {}).value || '',

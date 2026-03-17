@@ -96,6 +96,29 @@
   min-width: 340px;
 }
 
+/* Кнопка свернуть левую панель (ноутбук/десктоп) */
+.dispatcher-sidebar-toggle {
+  display: none;
+  width: 100%;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-align: center;
+}
+.dispatcher-sidebar-toggle:hover { filter: brightness(1.1); }
+@media (min-width: 1024px) {
+  .dispatcher-sidebar-toggle { display: block; }
+  body.dispatcher-sidebar-collapsed .dispatcher-container { grid-template-columns: 48px 1fr 340px; }
+  body.dispatcher-sidebar-collapsed .dispatcher-sidebar--left { min-width: 48px; width: 48px; overflow: hidden; padding-right: 0; }
+  body.dispatcher-sidebar-collapsed .dispatcher-sidebar--left .dispatcher-card { display: none; }
+  body.dispatcher-sidebar-collapsed .dispatcher-sidebar--left .dispatcher-sidebar-toggle { margin-bottom: 0; }
+}
+
 /* Мобильные кнопки: видны только на узком экране */
 .dispatcher-mobile-actions {
   display: flex;
@@ -110,11 +133,17 @@
   }
 }
 
+/* Боковые панели и карточки — прямоугольник со скруглёнными углами (не овал) */
+.dispatcher-sidebar--left,
+.dispatcher-sidebar--right {
+  border-radius: 12px;
+}
+
 /* Карточка общая */
 .dispatcher-card {
   background: var(--surface);
   padding: 16px;
-  border-radius: var(--radius);
+  border-radius: 12px;
   border: 1px solid var(--border);
   position: relative;
 }

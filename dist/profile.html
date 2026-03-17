@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1a1a2e">
+  <title>Профиль</title>
+  <script>(function(){var t=localStorage.getItem('theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);})();</script>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script type="module" crossorigin src="/assets/profile-CaI72b7b.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/auth-DU6uhHVi.js">
+  <link rel="modulepreload" crossorigin href="/assets/passport-config-DBLABtX7.js">
+  <link rel="modulepreload" crossorigin href="/assets/prefetch-C9grhagV.js">
+  <link rel="modulepreload" crossorigin href="/assets/icons-BwUb0pDV.js">
+  <link rel="modulepreload" crossorigin href="/assets/settings-BYq5oODd.js">
+  <link rel="modulepreload" crossorigin href="/assets/theme-DMhfMcbN.js">
+  <link rel="modulepreload" crossorigin href="/assets/segmented-control-DzGR4ZtZ.js">
+  <link rel="modulepreload" crossorigin href="/assets/app-modal-BWjIbSvX.js">
+  <link rel="modulepreload" crossorigin href="/assets/nav-8GxhBQB3.js">
+  <link rel="modulepreload" crossorigin href="/assets/consent-CRTF3YGE.js">
+  <link rel="stylesheet" crossorigin href="/assets/passport-config-xNAwk9GV.css">
+  <link rel="stylesheet" crossorigin href="/assets/telegram-theme-CcW_xsPe-CcW_xsPe.css">
+</head>
+<body>
+  <div id="maintenanceOverlay" class="maintenance-overlay hidden">
+    <div class="maintenance-overlay__inner">
+      <img src="/assets/logo-DHd3bDT6-DHd3bDT6.png" alt="СТОЛИЦА" class="maintenance-overlay__logo" width="160" height="40">
+      <h1>Технические работы</h1>
+      <p>Приносим извинения за неудобства. Мы обновляем сервис.</p>
+      <p>Примерное время возобновления: <span id="maintenanceUntil">—</span></p>
+      <p class="maintenance-overlay__countdown" id="maintenanceCountdown">—</p>
+    </div>
+  </div>
+  <div class="container" id="appContent">
+    <header class="header">
+      <div class="header__logo-bar">
+        <img src="/assets/logo-DHd3bDT6-DHd3bDT6.png" alt="СТОЛИЦА" class="header__logo" width="160" height="40">
+      </div>
+      <div class="header__row">
+        <button type="button" id="themeToggle" class="theme-toggle" aria-label="Сменить тему" title="Светлая/тёмная тема">☀️</button>
+        <div class="header__title-wrap">
+          <h1>Профиль</h1>
+        </div>
+        <button type="button" id="tgCloseBtn" class="tg-close-btn" aria-label="Закрыть" title="Закрыть">✕</button>
+      </div>
+    </header>
+    <main class="main">
+      <div class="segmented-control profile-tabs" role="tablist">
+        <button class="segment active" data-tab="profileBookings" role="tab" aria-selected="true" data-i18n="myBookings">Мои брони</button>
+        <button class="segment" data-tab="profilePassengers" role="tab" aria-selected="false" data-i18n="savedPassengers">Пассажиры</button>
+        <button class="segment" data-tab="profileSettings" role="tab" aria-selected="false" data-i18n="settings">Настройки</button>
+      </div>
+      <div id="tab-profileBookings" class="tab-content active">
+        <section id="bookingsSection">
+          <h2 id="bookingsTitle" class="visually-hidden" data-i18n="myBookings">Мои брони</h2>
+          <div id="profileStatsBlock" class="profile-stats hidden" aria-label="Сводка по поездкам">
+            <div class="profile-stat-card">
+              <span id="profileStatTrips" class="profile-stat-card__value">0</span>
+              <span class="profile-stat-card__label" data-i18n="statTrips">Поездок</span>
+            </div>
+            <div class="profile-stat-card">
+              <span id="profileStatSpent" class="profile-stat-card__value">0 BYN</span>
+              <span class="profile-stat-card__label" data-i18n="statSpent">Потрачено</span>
+            </div>
+            <div class="profile-stat-card">
+              <span id="profileStatNext" class="profile-stat-card__value">—</span>
+              <span class="profile-stat-card__label" data-i18n="statNextTrip">Следующая поездка</span>
+            </div>
+          </div>
+          <div class="segmented-control profile-bookings-tabs" role="tablist">
+            <button class="segment active" data-tab="active" role="tab" aria-selected="true">Активные</button>
+            <button class="segment" data-tab="upcoming" role="tab" aria-selected="false">Предстоящие</button>
+            <button class="segment" data-tab="completed" role="tab" aria-selected="false">Завершённые</button>
+            <button class="segment" data-tab="cancelled" role="tab" aria-selected="false">Отменённые</button>
+          </div>
+          <p class="profile-refresh-wrap"><button type="button" id="refreshBookingsBtn" class="btn btn-outline btn-small" data-i18n="refresh">Обновить</button></p>
+          <div id="tab-active" class="tab-content active"><div id="bookingsListActive"></div></div>
+          <div id="tab-upcoming" class="tab-content"><div id="bookingsListUpcoming"></div></div>
+          <div id="tab-completed" class="tab-content"><div id="bookingsListCompleted"></div></div>
+          <div id="tab-cancelled" class="tab-content"><div id="bookingsListCancelled"></div></div>
+        </section>
+      </div>
+      <div id="tab-profilePassengers" class="tab-content">
+        <section id="passengersSection">
+          <h2 id="passengersTitle" class="visually-hidden" data-i18n="savedPassengers">Сохранённые пассажиры</h2>
+          <div id="passengersList"></div>
+          <button type="button" id="addPassenger" class="btn btn-small" data-i18n="add">Добавить</button>
+        </section>
+      </div>
+      <div id="tab-profileSettings" class="tab-content">
+        <section id="settingsSection" class="settings-section">
+          <h2 id="settingsTitle" class="visually-hidden" data-i18n="settings">Настройки</h2>
+          <div class="settings-group profile-edit-phone">
+            <label for="profilePhone" id="profilePhoneLabel" data-i18n="contactPhone">Телефон</label>
+            <input type="tel" id="profilePhone" class="settings-input" placeholder="+375 29 123 45 67" autocomplete="tel">
+            <button type="button" id="saveProfileBtn" class="btn btn-small btn-primary" data-i18n="save">Сохранить</button>
+            <p id="profileSaveMessage" class="settings-hint hidden"></p>
+          </div>
+          <div class="settings-group">
+            <label for="langSelect" id="langLabel" data-i18n="language">Язык</label>
+            <select id="langSelect" class="settings-select" aria-label="Язык">
+              <option value="ru">Русский</option>
+              <option value="en">English</option>
+              <option value="be">Беларуская</option>
+            </select>
+          </div>
+          <div class="settings-group">
+            <label for="uiModeSelect" id="uiModeLabel">Режим интерфейса</label>
+            <select id="uiModeSelect" class="settings-select" aria-label="Режим интерфейса">
+              <option value="normal">Нормальный</option>
+              <option value="economy">Экономный</option>
+            </select>
+            <p class="settings-hint">Экономный — меньше эффектов, быстрее на слабых устройствах.</p>
+          </div>
+          <label class="settings-checkbox">
+            <input type="checkbox" id="reduceMotionCheck" aria-describedby="reduceMotionHint">
+            <span id="reduceMotionLabel" data-i18n="reduceAnimations">Уменьшить анимации</span>
+          </label>
+          <p id="reduceMotionHint" class="settings-hint" data-i18n="reduceAnimationsHint">Рекомендуется при чувствительности к движению на экране.</p>
+        </section>
+      </div>
+    </main>
+    <nav class="tab-bar" id="tabBar">
+      <a href="index.html" class="tab"><span class="tab-bar__icon">🎫</span><span class="tab-bar__label" data-i18n="tabBook">Бронь</span></a>
+      <a href="profile.html" class="tab active"><span class="tab-bar__icon">👤</span><span class="tab-bar__label" data-i18n="tabProfile">Профиль</span></a>
+      <a href="faq.html" class="tab"><span class="tab-bar__icon">❓</span><span class="tab-bar__label" data-i18n="tabFaq">FAQ</span></a>
+    </nav>
+  </div>
+  <script src="https://unpkg.com/imask"></script>
+</body>
+</html>

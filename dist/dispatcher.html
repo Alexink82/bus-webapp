@@ -7,16 +7,19 @@
   <title>Диспетчер</title>
   <script>(function(){var t=localStorage.getItem('theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);else if(window.matchMedia&&window.matchMedia('(min-width: 1024px)').matches)document.documentElement.setAttribute('data-theme','dark');})();</script>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script type="module" src="./js/dispatcher-entry.js"></script>
-  <link rel="stylesheet" href="css/main.css">
-  <link rel="stylesheet" href="css/telegram-theme.css">
-  <link rel="stylesheet" href="css/dispatcher.css">
+  <script type="module" crossorigin src="/assets/dispatcher-COy7elYJ.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/auth-DU6uhHVi.js">
+  <link rel="modulepreload" crossorigin href="/assets/icons-BwUb0pDV.js">
+  <link rel="modulepreload" crossorigin href="/assets/app-modal-BWjIbSvX.js">
+  <link rel="modulepreload" crossorigin href="/assets/theme-DMhfMcbN.js">
+  <link rel="modulepreload" crossorigin href="/assets/nav-8GxhBQB3.js">
+  <link rel="stylesheet" crossorigin href="/assets/dispatcher-CSWcbk6G.css">
 </head>
 <body class="page-dispatcher">
   <div class="container">
     <header class="header">
       <div class="header__logo-bar">
-        <img src="/assets/logo-DHd3bDT6.png" alt="СТОЛИЦА" class="header__logo" width="160" height="40">
+        <img src="/assets/logo-DHd3bDT6-DHd3bDT6.png" alt="СТОЛИЦА" class="header__logo" width="160" height="40">
       </div>
       <div id="roleShellPlaceholder"></div>
       <div class="header__row">
@@ -38,8 +41,7 @@
 
       <div class="dispatcher-container">
         <!-- Левая колонка: фильтры + статистика смены -->
-        <aside class="dispatcher-sidebar dispatcher-sidebar--left" id="dispatcherLeftSidebar">
-          <button type="button" id="dispatcherSidebarToggle" class="dispatcher-sidebar-toggle" aria-label="Свернуть панель" title="Свернуть панель">◀ Свернуть</button>
+        <aside class="dispatcher-sidebar dispatcher-sidebar--left">
           <div class="dispatcher-card">
             <strong>Фильтры</strong>
             <div class="dispatcher-filters">

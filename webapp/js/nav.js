@@ -7,7 +7,7 @@
 
   function injectRoleShell(placeholder, data) {
     var path = (window.location.pathname || '').replace(/.*\//, '') || 'index.html';
-    /* В админке верхние кнопки Бронь/Профиль/Админ не показываем — при выходе попадаешь в основное приложение, там уже есть таб-бар */
+    /* В админке верхние кнопки не показываем — при выходе попадаешь в основное приложение */
     if (path === 'admin.html') {
       placeholder.innerHTML = '';
       return;
@@ -15,9 +15,11 @@
     var isDispatcher = data.is_dispatcher === true;
     var isAdmin = data.is_admin === true;
     var L = typeof t === 'function' ? { bro: t('tabBooking') || 'Бронь', pro: t('tabProfile') || 'Профиль', disp: t('tabDispatcher') || 'Диспетчер', adm: t('tabAdmin') || 'Админ' } : { bro: 'Бронь', pro: 'Профиль', disp: 'Диспетчер', adm: 'Админ' };
+    /* В диспетчерской только Диспетчер и Админ — Бронь и Профиль доступны на главной после выхода */
+    var onDispatcherPage = path === 'dispatcher.html';
     var links = [
-      { href: 'index.html', label: '🎫 ' + L.bro, show: true },
-      { href: 'profile.html', label: '👤 ' + L.pro, show: true },
+      { href: 'index.html', label: '🎫 ' + L.bro, show: !onDispatcherPage },
+      { href: 'profile.html', label: '👤 ' + L.pro, show: !onDispatcherPage },
       { href: 'dispatcher.html', label: '🔄 ' + L.disp, show: isDispatcher },
       { href: 'admin.html', label: '⚙️ ' + L.adm, show: isAdmin }
     ];

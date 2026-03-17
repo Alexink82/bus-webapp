@@ -1,4 +1,6 @@
-"""Dispatcher API - bookings, take, status, stats, export."""
+"""Dispatcher API - bookings, take, status, stats, export.
+Админ имеет полный доступ на чтение (все заявки, статистика, экспорт); диспетчер — только свои маршруты и взятые заявки.
+"""
 import csv
 import io
 import logging
@@ -17,7 +19,7 @@ from database import get_db
 from logging_config import log_action
 from models import Booking, Dispatcher
 from services.notification import notify_booking_status
-from services.roles import get_dispatcher_route_ids
+from services.roles import get_dispatcher_route_ids, is_admin
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/dispatcher", tags=["dispatcher"])
@@ -36,20 +38,27 @@ async def list_bookings(
     route_id: str | None = None,
     departure_date: str | None = None,
     payment_status: str | None = None,
+    filter_dispatcher_id: int | None = None,
     db: AsyncSession = Depends(get_db),
-    dispatcher_id: int = Depends(get_verified_telegram_user_id),
+    user_id: int = Depends(get_verified_telegram_user_id),
 ):
-    """Список заявок: все маршруты если routes пустой, иначе по маршрутам диспетчера."""
-    route_ids = await get_dispatcher_route_ids(db, dispatcher_id)
-    if route_ids is None:
+    """Список заявок. Диспетчер — только свои маршруты и свои взятые. Админ — все заявки; filter_dispatcher_id сужает до одного диспетчера."""
+    route_ids = await get_dispatcher_route_ids(db, user_id)
+    admin_view = route_ids is None and is_admin(user_id)
+    if route_ids is None and not admin_view:
         raise HTTPException(403, detail="not_dispatcher")
-    route_ids = _route_ids_list(route_ids)
+    if admin_view:
+        route_ids = list(ROUTES.keys())
+    else:
+        route_ids = _route_ids_list(route_ids)
     q = select(Booking).where(Booking.route_id.in_(route_ids))
     if status:
         q = q.where(Booking.status == status)
-        # Во вкладке «В работе» показываем только заявки, взятые текущим диспетчером
         if status == "active":
-            q = q.where(Booking.dispatcher_id == dispatcher_id)
+            if admin_view and filter_dispatcher_id is not None:
+                q = q.where(Booking.dispatcher_id == filter_dispatcher_id)
+            elif not admin_view:
+                q = q.where(Booking.dispatcher_id == user_id)
     if route_id:
         q = q.where(Booking.route_id == route_id)
     if departure_date:
@@ -58,6 +67,8 @@ async def list_bookings(
         q = q.where(Booking.paid_at.is_not(None), Booking.paid_at != "")
     elif payment_status == "pending":
         q = q.where(or_(Booking.paid_at.is_(None), Booking.paid_at == ""))
+    if admin_view and filter_dispatcher_id is not None:
+        q = q.where(Booking.dispatcher_id == filter_dispatcher_id)
     q = q.order_by(Booking.created_at.desc())
     result = await db.execute(q)
     rows = result.scalars().all()
@@ -65,7 +76,7 @@ async def list_bookings(
     for r in rows:
         route_name = ROUTES.get(r.route_id, {}).get("name", r.route_id or "")
         passengers_count = len(r.passengers) if r.passengers else 0
-        payment_status = "paid" if (r.paid_at and r.paid_at.strip()) else "pending"
+        pay_status = "paid" if (r.paid_at and r.paid_at.strip()) else "pending"
         items.append({
             "booking_id": r.id,
             "status": r.status,
@@ -78,11 +89,11 @@ async def list_bookings(
             "passengers_count": passengers_count,
             "price_total": r.price_total,
             "currency": "BYN",
-            "payment_status": payment_status,
+            "payment_status": pay_status,
             "user_id": r.contact_tg_id,
             "created_at": r.created_at,
         })
-    return {"bookings": items}
+    return {"bookings": items, "is_admin_view": admin_view}
 
 
 @router.post("/bookings/{booking_id}/take")
@@ -178,20 +189,27 @@ async def set_booking_status(
 
 @router.get("/stats")
 async def dispatcher_stats(
+    filter_dispatcher_id: int | None = None,
     db: AsyncSession = Depends(get_db),
-    dispatcher_id: int = Depends(get_verified_telegram_user_id),
+    user_id: int = Depends(get_verified_telegram_user_id),
 ):
-    """Статистика диспетчера за сегодня (по дате создания заявки)."""
-    route_ids = await get_dispatcher_route_ids(db, dispatcher_id)
-    if route_ids is None:
+    """Статистика за сегодня. Диспетчер — только свои взятые заявки. Админ — все или по filter_dispatcher_id."""
+    route_ids = await get_dispatcher_route_ids(db, user_id)
+    admin_view = route_ids is None and is_admin(user_id)
+    if route_ids is None and not admin_view:
         raise HTTPException(403, detail="not_dispatcher")
-    route_ids = _route_ids_list(route_ids)
     today_str = date.today().isoformat()
-    q = select(Booking).where(
-        Booking.route_id.in_(route_ids),
-        Booking.dispatcher_id == dispatcher_id,
-        Booking.created_at.startswith(today_str),
-    )
+    if admin_view:
+        q = select(Booking).where(Booking.created_at.startswith(today_str))
+        if filter_dispatcher_id is not None:
+            q = q.where(Booking.dispatcher_id == filter_dispatcher_id)
+    else:
+        route_ids = _route_ids_list(route_ids)
+        q = select(Booking).where(
+            Booking.route_id.in_(route_ids),
+            Booking.dispatcher_id == user_id,
+            Booking.created_at.startswith(today_str),
+        )
     result = await db.execute(q)
     rows = result.scalars().all()
     total = len(rows)
@@ -210,50 +228,58 @@ async def dispatcher_stats(
                     overdue_15m += 1
             except Exception:
                 continue
-    return {"total": total, "sum": round(s, 2), "by_status": by_status, "overdue_15m": overdue_15m}
+    return {"total": total, "sum": round(s, 2), "by_status": by_status, "overdue_15m": overdue_15m, "is_admin_view": admin_view}
 
 
 @router.get("/export")
 async def export_dispatcher_bookings_today(
+    filter_dispatcher_id: int | None = None,
     db: AsyncSession = Depends(get_db),
-    dispatcher_id: int = Depends(get_verified_telegram_user_id),
+    user_id: int = Depends(get_verified_telegram_user_id),
 ):
-    """Экспорт заявок диспетчера за сегодня в CSV."""
-    route_ids = await get_dispatcher_route_ids(db, dispatcher_id)
-    if route_ids is None:
+    """Экспорт заявок за сегодня в CSV. Админ — все или по filter_dispatcher_id."""
+    route_ids = await get_dispatcher_route_ids(db, user_id)
+    admin_view = route_ids is None and is_admin(user_id)
+    if route_ids is None and not admin_view:
         raise HTTPException(403, detail="not_dispatcher")
-    route_ids = _route_ids_list(route_ids)
     today_str = date.today().isoformat()
-    result = await db.execute(
-        select(Booking).where(
+    if admin_view:
+        q = select(Booking).where(Booking.created_at.startswith(today_str))
+        if filter_dispatcher_id is not None:
+            q = q.where(Booking.dispatcher_id == filter_dispatcher_id)
+    else:
+        route_ids = _route_ids_list(route_ids)
+        q = select(Booking).where(
             Booking.route_id.in_(route_ids),
-            Booking.dispatcher_id == dispatcher_id,
+            Booking.dispatcher_id == user_id,
             Booking.created_at.startswith(today_str),
-        ).order_by(Booking.created_at)
-    )
+        )
+    q = q.order_by(Booking.created_at)
+    result = await db.execute(q)
     rows = result.scalars().all()
     output = io.StringIO()
     w = csv.writer(output)
-    w.writerow(
-        [
-            "booking_id",
-            "status",
-            "route_name",
-            "from_city",
-            "to_city",
-            "departure_date",
-            "departure_time",
-            "price_total",
-            "currency",
-            "created_at",
-        ]
-    )
+    headers_row = [
+        "booking_id",
+        "status",
+        "dispatcher_id",
+        "route_name",
+        "from_city",
+        "to_city",
+        "departure_date",
+        "departure_time",
+        "price_total",
+        "currency",
+        "created_at",
+    ]
+    w.writerow(headers_row)
     for r in rows:
         route_name = ROUTES.get(r.route_id, {}).get("name", r.route_id or "")
         w.writerow(
             [
                 r.id,
                 r.status,
+                r.dispatcher_id or "",
                 route_name,
                 r.from_city,
                 r.to_city,
@@ -265,7 +291,8 @@ async def export_dispatcher_bookings_today(
             ]
         )
     output.seek(0)
-    filename = f"dispatcher_{dispatcher_id}_{today_str}.csv"
+    suffix = f"admin_{filter_dispatcher_id or 'all'}" if admin_view else str(user_id)
+    filename = f"dispatcher_{suffix}_{today_str}.csv"
     return StreamingResponse(
         iter([output.getvalue()]),
         media_type="text/csv",

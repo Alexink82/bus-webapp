@@ -1,0 +1,16 @@
+{
+  "name": "bus-webapp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test:build": "vite build && node scripts/verify-build.js",
+    "copy-dist": "node scripts/copy-dist-to-webapp.js"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0"
+  }
+}
