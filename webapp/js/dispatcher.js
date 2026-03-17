@@ -5,6 +5,27 @@
     return;
   }
 
+  const headers = { 'X-Telegram-User-Id': String(uid) };
+  if (typeof getTelegramInitData === 'function' && getTelegramInitData())
+    headers['X-Telegram-Init-Data'] = getTelegramInitData();
+  const baseUrl = typeof BASE_URL !== 'undefined' ? BASE_URL : '';
+  function fetchRoles() {
+    return fetch(baseUrl + '/api/user/roles', { headers: headers }).then(function(r) { return r.json(); });
+  }
+
+  fetchRoles().then(function(roles) {
+    const isDispatcher = roles.is_dispatcher === true;
+    const isAdmin = roles.is_admin === true;
+    if (!isDispatcher && !isAdmin) {
+      window.location.href = 'index.html';
+      return;
+    }
+    runDispatcherPanel();
+  }).catch(function() {
+    runDispatcherPanel();
+  });
+
+  function runDispatcherPanel() {
   document.getElementById('loginWarning').classList.add('hidden');
   const dispatcherWrap = document.getElementById('dispatcherWrap');
   if (dispatcherWrap) dispatcherWrap.classList.remove('hidden');
@@ -36,10 +57,6 @@
       }).catch(function() {});
     }
   }
-
-  const headers = { 'X-Telegram-User-Id': String(uid) };
-  if (typeof getTelegramInitData === 'function' && getTelegramInitData())
-    headers['X-Telegram-Init-Data'] = getTelegramInitData();
 
   function api(path, opts = {}) {
     const url = (typeof BASE_URL !== 'undefined' ? BASE_URL : '') + path;
@@ -732,4 +749,5 @@
       ws.onerror = function() { ws.close(); };
     } catch (e) {}
   })();
+  } // runDispatcherPanel
 })();
