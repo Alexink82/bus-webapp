@@ -7,18 +7,18 @@
   <title>Админ-панель — Bus Booking</title>
   <script>(function(){var t=localStorage.getItem('theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);})();</script>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script type="module" crossorigin src="/assets/admin-eIm7TjM6.js"></script>
-  <link rel="modulepreload" crossorigin href="/assets/auth-DU6uhHVi.js">
+  <script type="module" crossorigin src="/assets/admin-toYumdXb.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/auth-CkyvcK-h.js">
   <link rel="modulepreload" crossorigin href="/assets/segmented-control-DzGR4ZtZ.js">
   <link rel="modulepreload" crossorigin href="/assets/app-modal-BWjIbSvX.js">
-  <link rel="modulepreload" crossorigin href="/assets/nav-8GxhBQB3.js">
-  <link rel="stylesheet" crossorigin href="/assets/admin-Cid2qGrJ.css">
-  <link rel="stylesheet" crossorigin href="/assets/telegram-theme-CcW_xsPe-CcW_xsPe.css">
+  <link rel="modulepreload" crossorigin href="/assets/nav-DSEjnhJQ.js">
+  <link rel="stylesheet" crossorigin href="/assets/auth-AUa4N_F6.css">
+  <link rel="stylesheet" crossorigin href="/assets/admin-Bzcx_N8g.css">
 </head>
 <body class="page-admin">
   <div class="app">
     <div class="header__logo-bar">
-      <img src="/assets/logo-DHd3bDT6-DHd3bDT6.png" alt="СТОЛИЦА" class="header__logo" width="160" height="40">
+      <img src="/assets/logo-DHd3bDT6-DHd3bDT6-DHd3bDT6.png" alt="СТОЛИЦА" class="header__logo" width="160" height="40">
     </div>
     <div id="roleShellPlaceholder"></div>
     <header class="admin-header">
@@ -29,8 +29,13 @@
       </div>
     </header>
     <div id="loginWarning" class="warning hidden">Войдите через Telegram (как администратор).</div>
-    <div class="admin-layout">
+    <div class="admin-layout" id="adminLayout">
     <div id="adminTabs" class="segmented-control admin-tabs-nav hidden" role="tablist">
+      <button type="button" id="adminSidebarToggle" class="admin-sidebar-toggle" aria-label="Свернуть меню" title="Свернуть меню">◀ Свернуть</button>
+      <div class="admin-sidebar-header">
+        <span class="admin-sidebar-header__eyebrow">Панель управления</span>
+        <strong class="admin-sidebar-header__title">Навигация</strong>
+      </div>
       <button type="button" class="segment active" data-tab="statsPanel" role="tab" aria-selected="true">Статистика</button>
       <button type="button" class="segment" data-tab="bookingsPanel" role="tab" aria-selected="false">Все заявки</button>
       <button type="button" class="segment" data-tab="adminsPanel" role="tab" aria-selected="false">Админы</button>

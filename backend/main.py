@@ -242,9 +242,17 @@ async def health():
             )
     return payload
 
-# Mount static webapp (HTML/CSS/JS) — после всех API-маршрутов, иначе /api/health отдаёт статика
-webapp_path = os.path.join(os.path.dirname(__file__), "..", "webapp")
-if os.path.isdir(webapp_path):
-    app.mount("/", StaticFiles(directory=webapp_path, html=True), name="webapp")
+# Mount static frontend after API routes.
+# In production Docker we serve built assets from dist/, and for local fallback
+# we can still serve the source webapp/ directory if dist/ is missing.
+frontend_candidates = [
+    os.path.join(os.path.dirname(__file__), "..", "dist"),
+    os.path.join(os.path.dirname(__file__), "..", "webapp"),
+]
+for frontend_path in frontend_candidates:
+    if os.path.isdir(frontend_path):
+        app.mount("/", StaticFiles(directory=frontend_path, html=True), name="webapp")
+        logger.info("Frontend static mounted from %s", frontend_path)
+        break
 
 

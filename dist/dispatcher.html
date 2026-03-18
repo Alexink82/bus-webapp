@@ -7,19 +7,21 @@
   <title>Диспетчер</title>
   <script>(function(){var t=localStorage.getItem('theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);else if(window.matchMedia&&window.matchMedia('(min-width: 1024px)').matches)document.documentElement.setAttribute('data-theme','dark');})();</script>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script type="module" crossorigin src="/assets/dispatcher-COy7elYJ.js"></script>
-  <link rel="modulepreload" crossorigin href="/assets/auth-DU6uhHVi.js">
+  <script type="module" crossorigin src="/assets/dispatcher-GXhKi-v-.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/auth-CkyvcK-h.js">
   <link rel="modulepreload" crossorigin href="/assets/icons-BwUb0pDV.js">
   <link rel="modulepreload" crossorigin href="/assets/app-modal-BWjIbSvX.js">
-  <link rel="modulepreload" crossorigin href="/assets/theme-DMhfMcbN.js">
-  <link rel="modulepreload" crossorigin href="/assets/nav-8GxhBQB3.js">
-  <link rel="stylesheet" crossorigin href="/assets/dispatcher-CSWcbk6G.css">
+  <link rel="modulepreload" crossorigin href="/assets/theme-0Sm6HUR2.js">
+  <link rel="modulepreload" crossorigin href="/assets/nav-DSEjnhJQ.js">
+  <link rel="stylesheet" crossorigin href="/assets/auth-AUa4N_F6.css">
+  <link rel="stylesheet" crossorigin href="/assets/theme-BOAbSNAg.css">
+  <link rel="stylesheet" crossorigin href="/assets/dispatcher-DrcRIikU.css">
 </head>
 <body class="page-dispatcher">
   <div class="container">
     <header class="header">
       <div class="header__logo-bar">
-        <img src="/assets/logo-DHd3bDT6-DHd3bDT6.png" alt="СТОЛИЦА" class="header__logo" width="160" height="40">
+        <img src="/assets/logo-DHd3bDT6-DHd3bDT6-DHd3bDT6.png" alt="СТОЛИЦА" class="header__logo" width="160" height="40">
       </div>
       <div id="roleShellPlaceholder"></div>
       <div class="header__row">
@@ -33,6 +35,7 @@
     <div id="loginWarning" class="warning hidden">Войдите через Telegram (как диспетчер).</div>
 
     <div id="dispatcherWrap" class="dispatcher-wrap hidden">
+      <div id="dispatcherAdminBanner" class="dispatcher-admin-banner hidden">Вы вошли как администратор — видны все заявки.</div>
       <!-- Топ-бар: поиск + счётчик SLA (всегда виден) -->
       <div class="dispatcher-topbar">
         <input type="text" id="dispatcherSearch" class="dispatcher-topbar__search" placeholder="Номер заявки или фамилия" aria-label="Поиск">
@@ -41,7 +44,8 @@
 
       <div class="dispatcher-container">
         <!-- Левая колонка: фильтры + статистика смены -->
-        <aside class="dispatcher-sidebar dispatcher-sidebar--left">
+        <aside class="dispatcher-sidebar dispatcher-sidebar--left" id="dispatcherLeftSidebar">
+          <button type="button" id="dispatcherSidebarToggle" class="dispatcher-sidebar-toggle" aria-label="Свернуть панель" title="Свернуть панель">◀ Свернуть</button>
           <div class="dispatcher-card">
             <strong>Фильтры</strong>
             <div class="dispatcher-filters">
@@ -52,6 +56,12 @@
                 <option value="paid">Оплачено</option>
                 <option value="pending">Не оплачено</option>
               </select>
+              <div id="filterDispatcherWrap" class="dispatcher-filters__row hidden">
+                <label for="filterDispatcher" class="dispatcher-filters__label">Диспетчер</label>
+                <select id="filterDispatcher" class="dispatcher-filters__select">
+                  <option value="">Все</option>
+                </select>
+              </div>
               <button type="button" id="applyFiltersBtn" class="btn btn-primary btn-small">Применить</button>
             </div>
           </div>
@@ -61,7 +71,7 @@
           </div>
           <div class="dispatcher-card dispatcher-export-card">
             <strong>Экспорт за смену</strong>
-            <p class="dispatcher-export-card__hint">CSV всех заявок за сегодня по вашим маршрутам.</p>
+            <p class="dispatcher-export-card__hint" id="dispatcherExportHint">CSV всех заявок за сегодня по вашим маршрутам.</p>
             <button type="button" id="dispatcherExportBtn" class="btn btn-outline btn-small">Скачать CSV</button>
           </div>
         </aside>
@@ -78,6 +88,14 @@
               <p class="dispatcher-overdue__count" id="overdueCount"></p>
               <div id="overdueList" class="dispatcher-cards-grid"></div>
             </div>
+            <div class="dispatcher-sort-row">
+              <label for="sortNew" class="dispatcher-sort__label">Сортировка:</label>
+              <select id="sortNew" class="dispatcher-sort__select" aria-label="Сортировка списка новых заявок">
+                <option value="time">По времени</option>
+                <option value="route">По маршруту</option>
+                <option value="dispatcher">По диспетчеру</option>
+              </select>
+            </div>
             <h3 class="dispatcher-section-title" id="newSectionTitle">Новые</h3>
             <div class="dispatcher-bulk-actions" id="newBulkActions">
               <label class="dispatcher-bulk-actions__check"><input type="checkbox" id="selectAllNew" aria-label="Выбрать все"> Выбрать все</label>
@@ -86,6 +104,14 @@
             <div id="newList" class="dispatcher-cards-grid"></div>
           </div>
           <div id="tabActive" class="dispatcher-tab-panel hidden">
+            <div class="dispatcher-sort-row">
+              <label for="sortActive" class="dispatcher-sort__label">Сортировка:</label>
+              <select id="sortActive" class="dispatcher-sort__select" aria-label="Сортировка списка в работе">
+                <option value="time">По времени</option>
+                <option value="route">По маршруту</option>
+                <option value="dispatcher">По диспетчеру</option>
+              </select>
+            </div>
             <div id="activeList" class="dispatcher-cards-grid"></div>
           </div>
         </main>

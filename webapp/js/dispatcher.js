@@ -112,11 +112,23 @@
   });
 
   var sidebarToggle = document.getElementById('dispatcherSidebarToggle');
+  var dispatcherSidebarKey = 'dispatcherSidebarCollapsed';
+  function syncDispatcherSidebarToggle() {
+    if (!sidebarToggle) return;
+    var collapsed = document.body.classList.contains('dispatcher-sidebar-collapsed');
+    sidebarToggle.textContent = collapsed ? '▶' : '◀ Свернуть';
+    sidebarToggle.setAttribute('aria-label', collapsed ? 'Развернуть панель' : 'Свернуть панель');
+    sidebarToggle.setAttribute('title', collapsed ? 'Развернуть панель' : 'Свернуть панель');
+  }
   if (sidebarToggle) {
+    if (window.matchMedia && window.matchMedia('(min-width: 900px)').matches && localStorage.getItem(dispatcherSidebarKey) === '1') {
+      document.body.classList.add('dispatcher-sidebar-collapsed');
+    }
+    syncDispatcherSidebarToggle();
     sidebarToggle.addEventListener('click', function() {
       document.body.classList.toggle('dispatcher-sidebar-collapsed');
-      this.textContent = document.body.classList.contains('dispatcher-sidebar-collapsed') ? '▶' : '◀ Свернуть';
-      this.setAttribute('aria-label', document.body.classList.contains('dispatcher-sidebar-collapsed') ? 'Развернуть панель' : 'Свернуть панель');
+      localStorage.setItem(dispatcherSidebarKey, document.body.classList.contains('dispatcher-sidebar-collapsed') ? '1' : '0');
+      syncDispatcherSidebarToggle();
     });
   }
 

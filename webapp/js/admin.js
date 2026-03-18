@@ -274,11 +274,23 @@
   });
 
   var sidebarToggle = document.getElementById('adminSidebarToggle');
+  var adminSidebarKey = 'adminSidebarCollapsed';
+  function syncAdminSidebarToggle() {
+    if (!sidebarToggle) return;
+    var collapsed = document.body.classList.contains('admin-sidebar-collapsed');
+    sidebarToggle.textContent = collapsed ? '▶' : '◀ Свернуть';
+    sidebarToggle.setAttribute('aria-label', collapsed ? 'Развернуть меню' : 'Свернуть меню');
+    sidebarToggle.setAttribute('title', collapsed ? 'Развернуть меню' : 'Свернуть меню');
+  }
   if (sidebarToggle) {
+    if (window.matchMedia && window.matchMedia('(min-width: 900px)').matches && localStorage.getItem(adminSidebarKey) === '1') {
+      document.body.classList.add('admin-sidebar-collapsed');
+    }
+    syncAdminSidebarToggle();
     sidebarToggle.addEventListener('click', function() {
       document.body.classList.toggle('admin-sidebar-collapsed');
-      this.textContent = document.body.classList.contains('admin-sidebar-collapsed') ? '▶' : '◀ Свернуть';
-      this.setAttribute('aria-label', document.body.classList.contains('admin-sidebar-collapsed') ? 'Развернуть меню' : 'Свернуть меню');
+      localStorage.setItem(adminSidebarKey, document.body.classList.contains('admin-sidebar-collapsed') ? '1' : '0');
+      syncAdminSidebarToggle();
     });
   }
 

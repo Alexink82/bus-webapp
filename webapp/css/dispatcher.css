@@ -84,7 +84,7 @@
 }
 
 /* На ноутбуке/ПК — контейнер на всю ширину (на телефонах без изменений) */
-@media (min-width: 1024px) {
+@media (min-width: 900px) {
   body.page-dispatcher .container {
     max-width: 100%;
     padding-left: 24px;
@@ -101,7 +101,7 @@
   min-height: 0;
   flex: 1;
 }
-@media (min-width: 1024px) {
+@media (min-width: 900px) {
   .dispatcher-wrap {
     display: flex;
     flex-direction: column;
@@ -123,7 +123,7 @@
   min-height: 0;
   overflow-y: auto;
 }
-@media (min-width: 1024px) {
+@media (min-width: 900px) {
   .dispatcher-sidebar {
     display: flex;
   }
@@ -150,7 +150,7 @@
   text-align: center;
 }
 .dispatcher-sidebar-toggle:hover { filter: brightness(1.1); }
-@media (min-width: 1024px) {
+@media (min-width: 900px) {
   .dispatcher-sidebar-toggle { display: block; }
   body.dispatcher-sidebar-collapsed .dispatcher-container { grid-template-columns: 48px 1fr 340px; }
   body.dispatcher-sidebar-collapsed .dispatcher-sidebar--left { min-width: 48px; width: 48px; overflow: hidden; padding-right: 0; }
@@ -166,7 +166,7 @@
   background: var(--surface);
   border-top: 1px solid var(--border);
 }
-@media (min-width: 1024px) {
+@media (min-width: 900px) {
   .dispatcher-mobile-actions {
     display: none;
   }
@@ -215,7 +215,7 @@
 .dispatcher-card--has-sla { padding-top: 22px; }
 .dispatcher-card--has-sla .dispatcher-card__sla-label { color: var(--text-muted); }
 .dispatcher-card__sla--overdue .dispatcher-card__sla-label { color: #ff3b30; font-weight: 600; }
-@media (min-width: 1024px) {
+@media (min-width: 900px) {
   .dispatcher-card--has-sla { padding-top: 24px; }
 }
 /* Строка: чекбокс + тело карточки */
@@ -359,7 +359,7 @@
   flex-direction: column;
   gap: 12px;
 }
-@media (min-width: 1024px) {
+@media (min-width: 900px) {
   .dispatcher-cards-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -419,7 +419,7 @@
   font-size: 1rem;
   resize: vertical;
 }
-@media (min-width: 1024px) {
+@media (min-width: 900px) {
   .dispatcher-card[data-booking],
   .dispatcher-card.booking-card {
     padding: 20px;
