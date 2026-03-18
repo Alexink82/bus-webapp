@@ -160,6 +160,37 @@ class Dispatcher(Base):
     is_active = Column(Boolean, default=True)
 
 
+class BrowserLoginTicket(Base):
+    """Одноразовый Telegram -> browser handoff ticket для backoffice."""
+
+    __tablename__ = "browser_login_tickets"
+
+    token_hash = Column(String(64), primary_key=True)
+    telegram_user_id = Column(BigInteger, nullable=False)
+    target = Column(String(20), nullable=False)
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    used_at = Column(DateTime, nullable=True)
+    used_by_ip = Column(String(50), nullable=True)
+    used_user_agent = Column(String(255), nullable=True)
+
+
+class BrowserSession(Base):
+    """Server-side browser session for admin/dispatcher backoffice."""
+
+    __tablename__ = "browser_sessions"
+
+    session_hash = Column(String(64), primary_key=True)
+    telegram_user_id = Column(BigInteger, nullable=False)
+    auth_method = Column(String(30), default="telegram_handoff", nullable=False)
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+    last_seen_at = Column(DateTime, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    revoked_at = Column(DateTime, nullable=True)
+    ip_address = Column(String(50), nullable=True)
+    user_agent = Column(String(255), nullable=True)
+
+
 class Blacklist(Base):
     """Чёрный список."""
 

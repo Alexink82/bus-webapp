@@ -1,4 +1,27 @@
 (function() {
+  try {
+    var standalone = !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+    var inTelegram = !!(window.Telegram && Telegram.WebApp && Telegram.WebApp.initData);
+    var preferredEntry = localStorage.getItem('preferredBackofficeEntry');
+    var paramsEarly = new URLSearchParams(window.location.search || '');
+    var stayHome = paramsEarly.get('stay_home') === '1';
+    if (standalone && !inTelegram && !stayHome && (preferredEntry === 'admin' || preferredEntry === 'dispatcher')) {
+      fetch((typeof window.BASE_URL !== 'undefined' ? window.BASE_URL : window.location.origin) + '/api/auth/session')
+        .then(function(r) { return r.json().catch(function() { return {}; }).then(function(data) { return { ok: r.ok, data: data }; }); })
+        .then(function(result) {
+          var data = result.data || {};
+          if (!result.ok || !data.authenticated || data.auth_mode !== 'browser') return;
+          if (preferredEntry === 'admin' && data.is_admin) {
+            window.location.replace('admin.html');
+            return;
+          }
+          if (preferredEntry === 'dispatcher' && (data.is_dispatcher || data.is_admin)) {
+            window.location.replace('dispatcher.html');
+          }
+        })
+        .catch(function() {});
+    }
+  } catch (e) {}
   if (typeof window.isEconomyMode === 'function' && !window.isEconomyMode()) {
     ['profile.html', 'booking.html'].forEach(function(href) {
       if (!document.querySelector('link[rel="prefetch"][href="' + href + '"]')) {

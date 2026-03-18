@@ -155,6 +155,10 @@ TG WebApp открывается с домена `t.me` (cross-origin). Запр
 | `WEBPAY_CALLBACK_SECRET` | Нет | Секрет для проверки callback WebPay. При заданном значении: принимается заголовок **X-WebPay-Signature** = HMAC-SHA256(raw body запроса, секрет) в hex; допускается также передача секрета в теле (body.secret) для совместимости. |
 | `HEALTH_CHECK_DB` | Нет | `1` или `true` — в `/api/health` проверять доступность БД; при недоступности ответ 503 (для UptimeRobot и т.п.). |
 | `USE_ROUTES_FROM_DB` | Нет | `1` или `true` — маршруты для GET `/api/routes` брать из таблицы **routes** через services/cache.py (TTL 10 мин); иначе из констант (core.constants.ROUTES). |
+| `BROWSER_LOGIN_TICKET_TTL_SECONDS` | Нет | Время жизни одноразового Telegram -> browser ticket для внешнего backoffice (`admin` / `dispatcher`). По умолчанию 60 секунд. |
+| `BROWSER_SESSION_TTL_HOURS` | Нет | Срок жизни browser-session для внешнего backoffice. По умолчанию 12 часов. |
+| `BROWSER_SESSION_IDLE_REFRESH_MINUTES` | Нет | Как часто продлевать активную browser-session при работе в панели. По умолчанию 5 минут. |
+| `BROWSER_SESSION_COOKIE_NAME` | Нет | Имя cookie для browser-session backoffice. По умолчанию `bus_backoffice_session`. |
 
 Дополнительно для режима обслуживания: **MAINTENANCE_UNTIL** — дата/время в ISO (UTC), до которого `/api/health` возвращает 503 (см. раздел «CORS и переменные для продакшена»). Для мониторинга доступности БД: **HEALTH_CHECK_DB=1** — тогда при недоступной БД `/api/health` вернёт 503 и `{"status": "degraded", "db": "unavailable"}`.
 
@@ -168,6 +172,22 @@ TG WebApp открывается с домена `t.me` (cross-origin). Запр
 - **Чужой** — запрос без авторизации или с другим `user_id`. При GET заявки видит только ограниченный набор полей (без списка пассажиров и контакта). Отменить заявку не может (403).
 
 **Как передаётся авторизация:** при заданном **BOT_TOKEN** требуется заголовок **X-Telegram-Init-Data** (подпись проверяется по секрету бота). Без BOT_TOKEN (локальная разработка) достаточно **X-Telegram-User-Id**. Роли определяются при каждом запросе по ADMIN_IDS, DISPATCHER_IDS и таблицам bot_roles / dispatchers.
+
+### Browser / PWA backoffice
+
+Для работы админа и диспетчера на ноутбуке теперь поддерживается отдельный browser-session flow:
+
+- внутри Telegram открыть `admin` или `dispatcher`;
+- нажать `Открыть в браузере`;
+- будет создан одноразовый handoff-ticket и внешний браузер получит защищённую `HttpOnly` cookie-session;
+- дальше панель можно установить как PWA и сворачивать как обычное окно Windows, не закрывая Telegram-чаты.
+
+Важно:
+
+- это касается только backoffice (`admin`, `dispatcher`);
+- пассажирское бронирование остаётся Telegram-first;
+- при истечении browser-session панель отправляет пользователя обратно на безопасный экран входа;
+- активные browser-session можно завершать из самой панели (`Выйти из браузера`, `Выйти везде`).
 
 **Языки и FAQ:** в таблице `faq_items` есть поля `question_ru`, `answer_ru`, `question_en`, `answer_en`. Для `GET /api/faq?lang=ru` отдаются русские тексты; для `lang=be` и `lang=en` — английские (отдельных полей для белорусского в БД нет; при необходимости можно добавить `question_be`, `answer_be` и доработать API).
 

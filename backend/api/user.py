@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import date
 
 from database import get_db
-from api.auth_deps import get_verified_telegram_user_id, get_optional_verified_telegram_user_id
+from api.auth_deps import get_verified_telegram_user_id, get_optional_backoffice_user_id
 from models import UserProfile, SavedPassenger, Booking
 from services.roles import is_admin
 from services.roles import get_dispatcher_route_ids
@@ -122,7 +122,7 @@ async def get_dashboard(
 @router.get("/roles")
 async def get_roles(
     db: AsyncSession = Depends(get_db),
-    user_id: int | None = Depends(get_optional_verified_telegram_user_id),
+    user_id: int | None = Depends(get_optional_backoffice_user_id),
 ):
     """Роли текущего пользователя для отображения вкладок Админ/Диспетчер в навигации."""
     if user_id is None:

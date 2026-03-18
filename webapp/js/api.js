@@ -19,6 +19,9 @@ var ERROR_MESSAGES = {
   invalid_birth_date: 'Неверная дата рождения.',
   init_data_required: 'Требуется вход через Telegram.',
   invalid_init_data: 'Сессия истекла. Перезапустите приложение.',
+  backoffice_auth_required: 'Требуется вход в backoffice. Откройте панель из Telegram или войдите через browser-session.',
+  invalid_browser_login_ticket: 'Ссылка входа устарела. Запросите новую ссылку из Telegram.',
+  invalid_browser_auth_target: 'Неверная цель входа в backoffice.',
   telegram_id_required: 'Требуется идентификация пользователя.',
   invalid_telegram_id: 'Неверный идентификатор пользователя.',
   not_dispatcher: 'Нет доступа (вы не диспетчер).',
@@ -96,7 +99,10 @@ async function api(path, options = {}) {
     let msg = userFriendlyMessage(data.detail) || (data.detail && typeof data.detail === 'object' && data.detail.code ? data.detail.code : null) || (typeof data.detail === 'string' ? data.detail : null) || res.statusText;
     let msgStr = typeof msg === 'string' ? msg : res.statusText;
     if (res.status >= 500) msgStr = 'Временная ошибка сервера. Попробуйте позже.';
-    throw new Error(msgStr);
+    const err = new Error(msgStr);
+    err.status = res.status;
+    err.body = data;
+    throw err;
   }
 
   if (cacheKey) {

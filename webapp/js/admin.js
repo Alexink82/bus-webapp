@@ -1,20 +1,139 @@
 (function() {
-  const uid = typeof window.getTelegramUserId === 'function' ? window.getTelegramUserId() : null;
-  if (!uid) {
-    document.getElementById('loginWarning').classList.remove('hidden');
-    return;
-  }
-  const api = window.api;
-  if (!api) {
+  const rawApi = window.api;
+  if (!rawApi) {
     document.getElementById('loginWarning').textContent = 'Ошибка: не загружен api.js';
     return;
   }
   const base = (typeof window.BASE_URL !== 'undefined' ? window.BASE_URL : '');
+  var loginWarning = document.getElementById('loginWarning');
+  var openInBrowserTrigger = document.getElementById('openAdminInBrowser');
+
+  function showLoginWarning(message) {
+    if (!loginWarning) return;
+    loginWarning.classList.remove('hidden');
+    loginWarning.innerHTML = message || 'Войдите через Telegram как администратор.';
+  }
+
+  function openBackofficeInBrowser(target) {
+    try { localStorage.setItem('preferredBackofficeEntry', target); } catch (e) {}
+    rawApi('/api/auth/browser-ticket', {
+      method: 'POST',
+      body: JSON.stringify({ target: target })
+    }).then(function(data) {
+      var url = base + '/backoffice-login.html?ticket=' + encodeURIComponent(data.ticket) + '&next=' + encodeURIComponent(target);
+      if (window.Telegram && Telegram.WebApp && typeof Telegram.WebApp.openLink === 'function') {
+        Telegram.WebApp.openLink(url);
+        return;
+      }
+      window.open(url, '_blank', 'noopener');
+    }).catch(function(e) {
+      (typeof window.showAppAlert === 'function' ? window.showAppAlert : alert)(e.message || 'Не удалось открыть вход в браузере.', 'Ошибка');
+    });
+  }
+
+  async function resolveIdentity() {
+    var tgUid = typeof window.getTelegramUserId === 'function' ? window.getTelegramUserId() : null;
+    if (tgUid) return { uid: tgUid, authMode: 'telegram' };
+    try {
+      var response = await fetch(base + '/api/auth/session');
+      var data = await response.json().catch(function() { return {}; });
+      if (response.ok && data && data.authenticated && data.telegram_user_id) {
+        return { uid: data.telegram_user_id, authMode: 'browser' };
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  function start(identity) {
+  const uid = identity.uid;
+  const authMode = identity.authMode || 'telegram';
+  try { localStorage.setItem('preferredBackofficeEntry', 'admin'); } catch (e) {}
   let statsFromDate = '', statsToDate = '';
   var adminContext = { permissions: [], permissions_catalog: [], is_super_admin: true, telegram_id: uid };
   var editingAdminId = null;
   var editingDispatcherId = null;
   var routeCatalog = [];
+  var authBadge = document.getElementById('adminAuthModeBadge');
+  var sessionPanel = document.getElementById('adminSessionPanel');
+  var openInBrowserBtn = document.getElementById('openAdminInBrowser');
+  var logoutBtn = document.getElementById('adminLogoutBtn');
+  var logoutAllBtn = document.getElementById('adminLogoutAllBtn');
+
+  function api(path, options) {
+    return rawApi(path, options).catch(function(e) {
+      var detail = e && e.body ? e.body.detail : null;
+      var code = typeof detail === 'string' ? detail : (detail && detail.code ? detail.code : '');
+      if (authMode === 'browser' && ((e && e.status === 401) || code === 'backoffice_auth_required')) {
+        window.location.href = 'backoffice-login.html?next=admin';
+      }
+      throw e;
+    });
+  }
+
+  function fmtDate(value) {
+    if (!value) return '—';
+    try {
+      return new Date(value).toLocaleString('ru-RU');
+    } catch (e) {
+      return value;
+    }
+  }
+
+  function renderSessionPanel() {
+    if (!authBadge) return;
+    authBadge.classList.remove('hidden');
+    authBadge.textContent = authMode === 'browser' ? 'Browser session' : 'Telegram Mini App';
+    if (openInBrowserBtn) openInBrowserBtn.classList.toggle('hidden', authMode === 'browser');
+    if (logoutBtn) logoutBtn.classList.toggle('hidden', authMode !== 'browser');
+
+    api('/api/auth/sessions').then(function(data) {
+      var sessions = data.sessions || [];
+      if (logoutAllBtn) logoutAllBtn.classList.toggle('hidden', !sessions.length);
+      if (!sessionPanel) return;
+      sessionPanel.classList.remove('hidden');
+      var items = sessions.length ? sessions.map(function(item) {
+        var title = item.is_current ? 'Текущее устройство' : 'Активная browser-session';
+        return '<div class="admin-session__item">' +
+          '<strong>' + title + '</strong>' +
+          '<div>Последняя активность: ' + fmtDate(item.last_seen_at) + '</div>' +
+          '<div>Истекает: ' + fmtDate(item.expires_at) + '</div>' +
+          '<div>IP: ' + (item.ip_address || 'не определён') + '</div>' +
+          '<div>UA: ' + esc(item.user_agent || 'не определён') + '</div>' +
+        '</div>';
+      }).join('') : '<div class="admin-session__meta">Активных browser-session пока нет.</div>';
+      sessionPanel.innerHTML =
+        '<div class="admin-session__title">Состояние доступа</div>' +
+        '<div class="admin-session__meta">Текущий режим: <strong>' + (authMode === 'browser' ? 'browser-session' : 'Telegram Mini App') + '</strong>. Telegram-чаты можно держать открытыми отдельно, а browser-session при необходимости завершать вручную. Для ноутбука: в Chrome/Edge откройте меню браузера и выберите "Установить приложение" / "Install app", затем закрепите ярлык на панели задач.</div>' +
+        '<div class="admin-session__list">' + items + '</div>';
+    }).catch(function() {
+      if (logoutAllBtn) logoutAllBtn.classList.add('hidden');
+      if (!sessionPanel) return;
+      sessionPanel.classList.remove('hidden');
+      sessionPanel.innerHTML =
+        '<div class="admin-session__title">Состояние доступа</div>' +
+        '<div class="admin-session__meta">Не удалось загрузить browser-session. Основная работа панели доступна, но управление сессиями временно недоступно.</div>';
+    });
+  }
+
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', function() {
+      api('/api/auth/logout', { method: 'POST' }).then(function() {
+        window.location.href = 'backoffice-login.html?next=admin';
+      }).catch(function(e) {
+        (typeof window.showAppAlert === 'function' ? window.showAppAlert : alert)(e.message || 'Не удалось завершить текущую сессию.', 'Ошибка');
+      });
+    });
+  }
+
+  if (logoutAllBtn) {
+    logoutAllBtn.addEventListener('click', function() {
+      api('/api/auth/logout-all', { method: 'POST' }).then(function() {
+        window.location.href = authMode === 'browser' ? 'backoffice-login.html?next=admin' : 'admin.html';
+      }).catch(function(e) {
+        (typeof window.showAppAlert === 'function' ? window.showAppAlert : alert)(e.message || 'Не удалось завершить все browser-session.', 'Ошибка');
+      });
+    });
+  }
 
   function esc(s) {
     return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -280,9 +399,12 @@
     var from = statsFromDate || periodToDates('month').from_date;
     var to = statsToDate || periodToDates('month').to_date;
     var exportUrl = base + '/api/admin/export?from_date=' + encodeURIComponent(from) + '&to_date=' + encodeURIComponent(to);
-    var exportHeaders = { 'X-Telegram-User-Id': String(uid) };
-    var initData = (typeof window.getTelegramInitData === 'function' ? window.getTelegramInitData() : '');
-    if (initData) exportHeaders['X-Telegram-Init-Data'] = initData;
+    var exportHeaders = {};
+    if (authMode === 'telegram') {
+      exportHeaders['X-Telegram-User-Id'] = String(uid);
+      var initData = (typeof window.getTelegramInitData === 'function' ? window.getTelegramInitData() : '');
+      if (initData) exportHeaders['X-Telegram-Init-Data'] = initData;
+    }
     fetch(exportUrl, { headers: exportHeaders }).then(function(r) {
       if (!r.ok) return r.json().catch(function() { return {}; }).then(function(d) { throw new Error(d.detail || 'Ошибка экспорта'); });
       return r.blob();
@@ -676,6 +798,7 @@
     document.getElementById('loginWarning').classList.add('hidden');
     document.getElementById('adminTabs').classList.remove('hidden');
     document.getElementById('adminMain').classList.remove('hidden');
+    renderSessionPanel();
     applyPermissionsUi();
     loadStats('month');
     loadBookingOpsOverview();
@@ -695,8 +818,22 @@
       });
     }
   }).catch(function() {
-    document.getElementById('loginWarning').classList.remove('hidden');
-    document.getElementById('loginWarning').textContent = 'Нет доступа (не админ).';
+    showLoginWarning('Нет доступа к админ-панели. Откройте её через Telegram под ролью администратора.');
+  });
+  }
+
+  if (openInBrowserTrigger) {
+    openInBrowserTrigger.addEventListener('click', function() {
+      openBackofficeInBrowser('admin');
+    });
+  }
+
+  resolveIdentity().then(function(identity) {
+    if (!identity) {
+      showLoginWarning('Для входа во внешнюю админ-панель сначала откройте админку в Telegram и нажмите "Открыть в браузере".');
+      return;
+    }
+    start(identity);
   });
 
   var sidebarToggle = document.getElementById('adminSidebarToggle');
@@ -709,7 +846,7 @@
     sidebarToggle.setAttribute('title', collapsed ? 'Развернуть меню' : 'Свернуть меню');
   }
   if (sidebarToggle) {
-    if (window.matchMedia && window.matchMedia('(min-width: 900px)').matches && localStorage.getItem(adminSidebarKey) === '1') {
+    if (window.matchMedia && window.matchMedia('(min-width: 768px)').matches && localStorage.getItem(adminSidebarKey) === '1') {
       document.body.classList.add('admin-sidebar-collapsed');
     }
     syncAdminSidebarToggle();

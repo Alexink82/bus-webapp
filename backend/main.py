@@ -54,6 +54,7 @@ from api.user import router as user_router
 from api.payment import router as payment_router
 from api.dispatcher import router as dispatcher_router
 from api.admin import router as admin_router
+from api.browser_auth import router as browser_auth_router
 from api.websocket import router as ws_router
 from api.faq import router as faq_router
 
@@ -197,6 +198,7 @@ app.include_router(user_router)
 app.include_router(payment_router)
 app.include_router(dispatcher_router)
 app.include_router(admin_router)
+app.include_router(browser_auth_router)
 app.include_router(ws_router)
 app.include_router(faq_router)
 

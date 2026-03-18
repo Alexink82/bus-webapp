@@ -1,10 +1,19 @@
+import asyncio
 import hashlib
 import hmac
 import json
 import time
+from types import SimpleNamespace
 from urllib.parse import urlencode
 
-from api.auth_deps import get_optional_verified_telegram_user_id, get_verified_telegram_user_id
+from starlette.requests import Request
+
+from api.auth_deps import (
+    get_backoffice_user_id,
+    get_optional_backoffice_user_id,
+    get_optional_verified_telegram_user_id,
+    get_verified_telegram_user_id,
+)
 from services.telegram_auth import get_user_id_from_init_data, validate_init_data
 
 
@@ -58,3 +67,77 @@ def test_get_optional_verified_telegram_user_id_returns_none_on_mismatch(monkeyp
     init_data = _build_init_data("123456:TEST_TOKEN", 100500)
 
     assert get_optional_verified_telegram_user_id(x_telegram_user_id="42", x_telegram_init_data=init_data) is None
+
+
+def _request_with_cookie(cookie_name: str, cookie_value: str | None = None) -> Request:
+    headers = []
+    if cookie_value is not None:
+        headers.append((b"cookie", f"{cookie_name}={cookie_value}".encode()))
+    scope = {
+        "type": "http",
+        "method": "GET",
+        "path": "/",
+        "headers": headers,
+    }
+    return Request(scope)
+
+
+def test_get_backoffice_user_id_accepts_browser_session(monkeypatch):
+    async def _fake_get_browser_session(db, raw_session_token, touch=True):
+        assert raw_session_token == "cookie-token"
+        return SimpleNamespace(telegram_user_id=700700)
+
+    monkeypatch.setattr("api.auth_deps.get_browser_session", _fake_get_browser_session)
+    request = _request_with_cookie("bus_backoffice_session", "cookie-token")
+
+    uid = asyncio.run(
+        get_backoffice_user_id(
+            request=request,
+            db=None,
+            x_telegram_user_id=None,
+            x_telegram_init_data=None,
+        )
+    )
+
+    assert uid == 700700
+
+
+def test_get_optional_backoffice_user_id_falls_back_to_telegram(monkeypatch):
+    async def _fake_get_browser_session(db, raw_session_token, touch=True):
+        return None
+
+    monkeypatch.setattr("api.auth_deps.get_browser_session", _fake_get_browser_session)
+    monkeypatch.setenv("BOT_TOKEN", "")
+    request = _request_with_cookie("bus_backoffice_session", None)
+
+    uid = asyncio.run(
+        get_optional_backoffice_user_id(
+            request=request,
+            db=None,
+            x_telegram_user_id="424242",
+            x_telegram_init_data=None,
+        )
+    )
+
+    assert uid == 424242
+
+
+def test_get_backoffice_user_id_requires_browser_session_or_telegram(monkeypatch):
+    async def _fake_get_browser_session(db, raw_session_token, touch=True):
+        return None
+
+    monkeypatch.setattr("api.auth_deps.get_browser_session", _fake_get_browser_session)
+    request = _request_with_cookie("bus_backoffice_session", None)
+
+    try:
+        asyncio.run(
+            get_backoffice_user_id(
+                request=request,
+                db=None,
+                x_telegram_user_id=None,
+                x_telegram_init_data=None,
+            )
+        )
+        assert False, "Expected backoffice_auth_required"
+    except Exception as exc:
+        assert getattr(exc, "detail", None) == "backoffice_auth_required"

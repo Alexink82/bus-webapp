@@ -19,11 +19,16 @@
     <header class="admin-header">
       <span class="admin-header__title">⚙️ Админ-панель</span>
       <div class="admin-header__actions">
+        <span id="adminAuthModeBadge" class="admin-header__badge hidden">Telegram</span>
+        <button type="button" id="openAdminInBrowser" class="admin-header__link">Открыть в браузере</button>
+        <button type="button" id="adminLogoutBtn" class="admin-header__link hidden">Выйти из браузера</button>
+        <button type="button" id="adminLogoutAllBtn" class="admin-header__link hidden">Выйти везде</button>
         <a href="dispatcher.html" class="admin-header__link">Панель диспетчера</a>
         <a href="index.html" class="admin-header__exit">Выйти</a>
       </div>
     </header>
-    <div id="loginWarning" class="warning hidden">Войдите через Telegram (как администратор).</div>
+    <div id="loginWarning" class="warning hidden">Войдите через Telegram (как администратор) или через browser-session backoffice.</div>
+    <div id="adminSessionPanel" class="admin-session hidden"></div>
     <div class="admin-layout" id="adminLayout">
     <div id="adminTabs" class="segmented-control admin-tabs-nav hidden" role="tablist">
       <button type="button" id="adminSidebarToggle" class="admin-sidebar-toggle" aria-label="Свернуть меню" title="Свернуть меню">◀ Свернуть</button>

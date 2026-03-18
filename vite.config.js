@@ -16,6 +16,7 @@ export default defineConfig({
         faq: resolve(__dirname, 'webapp/faq.html'),
         admin: resolve(__dirname, 'webapp/admin.html'),
         dispatcher: resolve(__dirname, 'webapp/dispatcher.html'),
+        backofficeLogin: resolve(__dirname, 'webapp/backoffice-login.html'),
       },
       output: {
         entryFileNames: 'assets/[name]-[hash].js',

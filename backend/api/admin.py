@@ -13,7 +13,7 @@ import os
 
 from database import get_db
 from config import get_settings
-from api.auth_deps import get_verified_telegram_user_id
+from api.auth_deps import get_backoffice_user_id
 from logging_config import log_action
 from services.roles import (
     ADMIN_PERMISSION_KEYS,
@@ -40,7 +40,7 @@ ADMIN_PERMISSION_LABELS = {
 }
 
 
-def get_admin_id(uid: int = Depends(get_verified_telegram_user_id)) -> int:
+def get_admin_id(uid: int = Depends(get_backoffice_user_id)) -> int:
     if not is_admin(uid):
         raise HTTPException(403, detail="not_admin")
     return uid

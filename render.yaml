@@ -45,3 +45,15 @@ services:
       - key: RATE_LIMIT
         value: "60"
         sync: false
+      - key: BROWSER_LOGIN_TICKET_TTL_SECONDS
+        description: "One-time Telegram -> browser ticket lifetime in seconds for admin/dispatcher backoffice"
+        value: "60"
+      - key: BROWSER_SESSION_TTL_HOURS
+        description: "Browser session lifetime in hours for admin/dispatcher backoffice"
+        value: "12"
+      - key: BROWSER_SESSION_IDLE_REFRESH_MINUTES
+        description: "How often active browser sessions are refreshed"
+        value: "5"
+      - key: BROWSER_SESSION_COOKIE_NAME
+        description: "Cookie name for browser backoffice session"
+        value: "bus_backoffice_session"

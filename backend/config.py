@@ -67,6 +67,12 @@ class Settings(BaseSettings):
     # Маршруты из БД (таблица routes + services/cache.py). 0/пусто — из core.constants.ROUTES
     use_routes_from_db: bool = False
 
+    # Browser backoffice auth
+    browser_login_ticket_ttl_seconds: int = 60
+    browser_session_ttl_hours: int = 12
+    browser_session_idle_refresh_minutes: int = 5
+    browser_session_cookie_name: str = "bus_backoffice_session"
+
     model_config = SettingsConfigDict(
         env_file=[".env", "../.env"],
         env_file_encoding="utf-8",

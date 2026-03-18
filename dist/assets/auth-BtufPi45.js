@@ -1,0 +1,2 @@
+(function(){if(window.Telegram&&Telegram.WebApp){var a=Telegram.WebApp;if(a.ready(),a.expand(),window.Telegram&&Telegram.WebApp&&Telegram.WebApp.initDataUnsafe&&Telegram.WebApp.initDataUnsafe.user){const e=Telegram.WebApp.initDataUnsafe.user;localStorage.setItem("telegram_user_id",String(e.id)),e.language_code&&localStorage.setItem("lang",e.language_code.slice(0,2))}}})();
+//# sourceMappingURL=auth-BtufPi45.js.map

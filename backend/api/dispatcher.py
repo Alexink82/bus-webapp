@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.auth_deps import get_verified_telegram_user_id
+from api.auth_deps import get_backoffice_user_id
 from api.websocket import manager as ws_manager
 from core.constants import ROUTES
 from database import get_db
@@ -40,7 +40,7 @@ async def list_bookings(
     payment_status: str | None = None,
     filter_dispatcher_id: int | None = None,
     db: AsyncSession = Depends(get_db),
-    user_id: int = Depends(get_verified_telegram_user_id),
+    user_id: int = Depends(get_backoffice_user_id),
 ):
     """Список заявок. Диспетчер — только свои маршруты и свои взятые. Админ — все заявки; filter_dispatcher_id сужает до одного диспетчера."""
     route_ids = await get_dispatcher_route_ids(db, user_id)
@@ -100,7 +100,7 @@ async def list_bookings(
 async def take_booking(
     booking_id: str,
     db: AsyncSession = Depends(get_db),
-    dispatcher_id: int = Depends(get_verified_telegram_user_id),
+    dispatcher_id: int = Depends(get_backoffice_user_id),
 ):
     """Взять заявку в работу."""
     route_ids = await get_dispatcher_route_ids(db, dispatcher_id)
@@ -153,7 +153,7 @@ async def set_booking_status(
     booking_id: str,
     body: SetStatusIn,
     db: AsyncSession = Depends(get_db),
-    dispatcher_id: int = Depends(get_verified_telegram_user_id),
+    dispatcher_id: int = Depends(get_backoffice_user_id),
 ):
     """Изменить статус заявки."""
     route_ids = await get_dispatcher_route_ids(db, dispatcher_id)
@@ -213,7 +213,7 @@ async def set_booking_status(
 async def dispatcher_stats(
     filter_dispatcher_id: int | None = None,
     db: AsyncSession = Depends(get_db),
-    user_id: int = Depends(get_verified_telegram_user_id),
+    user_id: int = Depends(get_backoffice_user_id),
 ):
     """Статистика за сегодня. Диспетчер — только свои взятые заявки. Админ — все или по filter_dispatcher_id."""
     route_ids = await get_dispatcher_route_ids(db, user_id)
@@ -257,7 +257,7 @@ async def dispatcher_stats(
 async def export_dispatcher_bookings_today(
     filter_dispatcher_id: int | None = None,
     db: AsyncSession = Depends(get_db),
-    user_id: int = Depends(get_verified_telegram_user_id),
+    user_id: int = Depends(get_backoffice_user_id),
 ):
     """Экспорт заявок за сегодня в CSV. Админ — все или по filter_dispatcher_id."""
     route_ids = await get_dispatcher_route_ids(db, user_id)

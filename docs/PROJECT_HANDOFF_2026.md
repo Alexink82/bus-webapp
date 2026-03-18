@@ -46,12 +46,21 @@
   - `webapp/` как source;
   - `dist/` как build output;
   - backend/dist-first схема выдачи фронта.
+- Для backoffice добавлен browser/PWA режим:
+  - Telegram -> browser handoff ticket;
+  - server-side browser-session;
+  - logout / logout-all;
+  - session list;
+  - безопасный возврат на login-screen при истечении session;
+  - быстрый desktop quickstart для установки как приложения на ноутбуке.
 - Есть smoke E2E и backend regression coverage для ключевых ролей и booking flow.
 
 ## Что важно для работоспособности сейчас
 
 - Перед деплоем нового permission-слоя нужно применить миграцию:
   - `backend/alembic/versions/006_bot_role_permissions.py`
+- Перед деплоем browser backoffice нужно применить миграцию:
+  - `backend/alembic/versions/007_browser_backoffice_auth.py`
 - После фронтовых изменений нужно публиковать свежий `dist/`.
 - Для production обязательно проверить реальные env:
   - `ADMIN_ID` / `ADMIN_IDS`
@@ -60,6 +69,10 @@
   - `DATABASE_URL`
   - `WEBPAY_CALLBACK_SECRET`
   - `REDIS_URL` при использовании Redis
+  - `BROWSER_LOGIN_TICKET_TTL_SECONDS`
+  - `BROWSER_SESSION_TTL_HOURS`
+  - `BROWSER_SESSION_IDLE_REFRESH_MINUTES`
+  - `BROWSER_SESSION_COOKIE_NAME`
 - Логика авто-распределения заявок специально НЕ внедрялась на этом этапе.
 
 ## Что протестировано
@@ -112,4 +125,6 @@ npm run test:e2e
 - `webapp/js/dispatcher.js`
 - `webapp/js/booking.js`
 - `docs/COMMERCIAL_READY_ROADMAP_2026.md`
+- `docs/BACKOFFICE_BROWSER_AUTH_ROLLOUT.md`
+- `docs/BACKOFFICE_DESKTOP_QUICKSTART.md`
 - `docs/SESSION_CONTEXT.md`

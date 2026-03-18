@@ -4,8 +4,9 @@ import logging
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from config import get_settings
+from services.browser_auth import get_browser_session
 from services.telegram_auth import get_user_id_from_init_data
-from services.roles import get_dispatcher_route_ids
+from services.roles import get_dispatcher_route_ids, is_admin
 from database import AsyncSessionLocal
 from models import Dispatcher
 from sqlalchemy import select
@@ -95,6 +96,32 @@ async def websocket_dispatcher(websocket: WebSocket, dispatcher_id: int):
     route_ids = None
     await websocket.accept()
     settings = get_settings()
+    raw_session = websocket.cookies.get(settings.browser_session_cookie_name)
+    if raw_session:
+        async with AsyncSessionLocal() as db:
+            session = await get_browser_session(db, raw_session)
+            if session and int(session.telegram_user_id) == did:
+                if is_admin(did):
+                    route_ids = []
+                else:
+                    route_ids = await get_dispatcher_route_ids(db, did)
+                await db.commit()
+            else:
+                route_ids = None
+        if route_ids is not None or is_admin(did):
+            await manager.connect(websocket, did, already_accepted=True, route_ids=route_ids or [])
+            try:
+                while True:
+                    data = await websocket.receive_text()
+                    try:
+                        msg = json.loads(data)
+                        if msg.get("type") == "ping":
+                            await websocket.send_json({"type": "pong"})
+                    except json.JSONDecodeError:
+                        pass
+            except WebSocketDisconnect:
+                manager.disconnect(did)
+            return
     if (settings.bot_token or "").strip():
         try:
             raw = await websocket.receive_text()
@@ -118,7 +145,10 @@ async def websocket_dispatcher(websocket: WebSocket, dispatcher_id: int):
                 return
     if (settings.bot_token or "").strip():
         async with AsyncSessionLocal() as db:
-            route_ids = await get_dispatcher_route_ids(db, did)
+            if is_admin(did):
+                route_ids = []
+            else:
+                route_ids = await get_dispatcher_route_ids(db, did)
     if route_ids is None:
         await websocket.close(code=4003)
         return

@@ -22,6 +22,52 @@
   display: none !important;
 }
 
+.dispatcher-session {
+  margin: 16px 16px 0;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.dispatcher-session.hidden {
+  display: none !important;
+}
+.dispatcher-session__title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.dispatcher-session__meta,
+.dispatcher-session__item {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+.dispatcher-session__list {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+.dispatcher-session__item {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.03);
+}
+.dispatcher-auth-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
 .dispatcher-filters__row {
   margin-top: 8px;
 }
@@ -84,7 +130,7 @@
 }
 
 /* На ноутбуке/ПК — контейнер на всю ширину (на телефонах без изменений) */
-@media (min-width: 900px) {
+@media (min-width: 768px) {
   body.page-dispatcher .container {
     max-width: 100%;
     padding-left: 24px;
@@ -101,7 +147,7 @@
   min-height: 0;
   flex: 1;
 }
-@media (min-width: 900px) {
+@media (min-width: 768px) {
   .dispatcher-wrap {
     display: flex;
     flex-direction: column;
@@ -123,7 +169,7 @@
   min-height: 0;
   overflow-y: auto;
 }
-@media (min-width: 900px) {
+@media (min-width: 768px) {
   .dispatcher-sidebar {
     display: flex;
   }
@@ -150,12 +196,22 @@
   text-align: center;
 }
 .dispatcher-sidebar-toggle:hover { filter: brightness(1.1); }
-@media (min-width: 900px) {
+.dispatcher-container,
+.dispatcher-sidebar--left,
+.dispatcher-sidebar-toggle {
+  transition: grid-template-columns 0.22s ease, width 0.22s ease, min-width 0.22s ease, padding 0.22s ease, transform 0.18s ease, opacity 0.18s ease;
+}
+@media (min-width: 768px) {
   .dispatcher-sidebar-toggle { display: block; }
-  body.dispatcher-sidebar-collapsed .dispatcher-container { grid-template-columns: 48px 1fr 340px; }
-  body.dispatcher-sidebar-collapsed .dispatcher-sidebar--left { min-width: 48px; width: 48px; overflow: hidden; padding-right: 0; }
+  body.dispatcher-sidebar-collapsed .dispatcher-container { grid-template-columns: 72px 1fr 340px; }
+  body.dispatcher-sidebar-collapsed .dispatcher-sidebar--left { min-width: 72px; width: 72px; overflow: hidden; padding-right: 0; }
   body.dispatcher-sidebar-collapsed .dispatcher-sidebar--left .dispatcher-card { display: none; }
-  body.dispatcher-sidebar-collapsed .dispatcher-sidebar--left .dispatcher-sidebar-toggle { margin-bottom: 0; }
+  body.dispatcher-sidebar-collapsed .dispatcher-sidebar--left .dispatcher-sidebar-toggle {
+    margin-bottom: 0;
+    min-height: 56px;
+    border-radius: 18px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  }
 }
 
 /* Мобильные кнопки: видны только на узком экране */
@@ -166,7 +222,7 @@
   background: var(--surface);
   border-top: 1px solid var(--border);
 }
-@media (min-width: 900px) {
+@media (min-width: 768px) {
   .dispatcher-mobile-actions {
     display: none;
   }
@@ -215,7 +271,7 @@
 .dispatcher-card--has-sla { padding-top: 22px; }
 .dispatcher-card--has-sla .dispatcher-card__sla-label { color: var(--text-muted); }
 .dispatcher-card__sla--overdue .dispatcher-card__sla-label { color: #ff3b30; font-weight: 600; }
-@media (min-width: 900px) {
+@media (min-width: 768px) {
   .dispatcher-card--has-sla { padding-top: 24px; }
 }
 /* Строка: чекбокс + тело карточки */
@@ -359,7 +415,7 @@
   flex-direction: column;
   gap: 12px;
 }
-@media (min-width: 900px) {
+@media (min-width: 768px) {
   .dispatcher-cards-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -419,7 +475,7 @@
   font-size: 1rem;
   resize: vertical;
 }
-@media (min-width: 900px) {
+@media (min-width: 768px) {
   .dispatcher-card[data-booking],
   .dispatcher-card.booking-card {
     padding: 20px;
