@@ -7,9 +7,9 @@
   <title>Профиль</title>
   <script>(function(){var t=localStorage.getItem('theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);})();</script>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script type="module" crossorigin src="/assets/profile-DaTwUqNG.js"></script>
+  <script type="module" crossorigin src="/assets/profile-Cujv2SRx.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/api-DoHnkU-n.js">
-  <link rel="modulepreload" crossorigin href="/assets/theme-VHzwAVn6.js">
+  <link rel="modulepreload" crossorigin href="/assets/theme-BPsGpnOl.js">
   <link rel="modulepreload" crossorigin href="/assets/passport-config-DBLABtX7.js">
   <link rel="modulepreload" crossorigin href="/assets/auth-BtufPi45.js">
   <link rel="modulepreload" crossorigin href="/assets/prefetch-C9grhagV.js">
@@ -19,7 +19,7 @@
   <link rel="modulepreload" crossorigin href="/assets/app-modal-BWjIbSvX.js">
   <link rel="modulepreload" crossorigin href="/assets/nav-DSEjnhJQ.js">
   <link rel="modulepreload" crossorigin href="/assets/consent-CRTF3YGE.js">
-  <link rel="stylesheet" crossorigin href="/assets/theme-WK6pegOO.css">
+  <link rel="stylesheet" crossorigin href="/assets/theme-CSuvGdgf.css">
   <link rel="stylesheet" crossorigin href="/assets/passport-config-xNAwk9GV.css">
   <link rel="stylesheet" crossorigin href="/assets/auth-AUa4N_F6.css">
 </head>
@@ -77,6 +77,27 @@
               </div>
             </div>
           </section>
+          <section id="profileTravelDashboard" class="profile-dashboard hidden" aria-label="Сводка поездок и привычек">
+            <div class="profile-dashboard__hero">
+              <div class="profile-dashboard__eyebrow">Travel dashboard</div>
+              <h3 class="profile-dashboard__title">Маршруты, напоминания и готовность</h3>
+              <p class="profile-dashboard__hint">Здесь собраны полезные подсказки по вашим поездкам и быстрый повтор привычных маршрутов.</p>
+            </div>
+            <div class="profile-dashboard__grid">
+              <div class="profile-dashboard__card">
+                <div class="profile-dashboard__card-title">Напоминания</div>
+                <div id="profileTravelReminders" class="profile-dashboard__list"></div>
+              </div>
+              <div class="profile-dashboard__card">
+                <div class="profile-dashboard__card-title">Избранные маршруты</div>
+                <div id="profileTravelFavorites" class="profile-dashboard__list"></div>
+              </div>
+              <div class="profile-dashboard__card">
+                <div class="profile-dashboard__card-title">История и готовность</div>
+                <div id="profileTravelInsights" class="profile-dashboard__list"></div>
+              </div>
+            </div>
+          </section>
           <div id="profileStatsBlock" class="profile-stats hidden" aria-label="Сводка по поездкам">
             <div class="profile-stat-card">
               <span id="profileStatTrips" class="profile-stat-card__value">0</span>
@@ -107,6 +128,7 @@
       <div id="tab-profilePassengers" class="tab-content">
         <section id="passengersSection">
           <h2 id="passengersTitle" class="visually-hidden" data-i18n="savedPassengers">Сохранённые пассажиры</h2>
+          <p class="settings-hint">Выберите основного пассажира, чтобы быстрее подставлять данные в новой броне.</p>
           <div id="passengersList"></div>
           <button type="button" id="addPassenger" class="btn btn-small" data-i18n="add">Добавить</button>
         </section>
@@ -114,33 +136,59 @@
       <div id="tab-profileSettings" class="tab-content">
         <section id="settingsSection" class="settings-section">
           <h2 id="settingsTitle" class="visually-hidden" data-i18n="settings">Настройки</h2>
-          <div class="settings-group profile-edit-phone">
-            <label for="profilePhone" id="profilePhoneLabel" data-i18n="contactPhone">Телефон</label>
-            <input type="tel" id="profilePhone" class="settings-input" placeholder="+375 29 123 45 67" autocomplete="tel">
-            <button type="button" id="saveProfileBtn" class="btn btn-small btn-primary" data-i18n="save">Сохранить</button>
-            <p id="profileSaveMessage" class="settings-hint hidden"></p>
+          <div class="settings-card">
+            <h3 class="settings-card__title">Контакты</h3>
+            <div class="settings-group profile-edit-phone">
+              <label for="profilePhone" id="profilePhoneLabel" data-i18n="contactPhone">Телефон</label>
+              <input type="tel" id="profilePhone" class="settings-input" placeholder="+375 29 123 45 67" autocomplete="tel">
+              <button type="button" id="saveProfileBtn" class="btn btn-small btn-primary" data-i18n="save">Сохранить</button>
+              <p id="profileSaveMessage" class="settings-hint hidden"></p>
+            </div>
           </div>
-          <div class="settings-group">
-            <label for="langSelect" id="langLabel" data-i18n="language">Язык</label>
-            <select id="langSelect" class="settings-select" aria-label="Язык">
-              <option value="ru">Русский</option>
-              <option value="en">English</option>
-              <option value="be">Беларуская</option>
-            </select>
+          <div class="settings-card">
+            <h3 class="settings-card__title">Предпочтения</h3>
+            <div class="settings-group">
+              <label for="langSelect" id="langLabel" data-i18n="language">Язык</label>
+              <select id="langSelect" class="settings-select" aria-label="Язык">
+                <option value="ru">Русский</option>
+                <option value="en">English</option>
+                <option value="be">Беларуская</option>
+              </select>
+            </div>
+            <div class="settings-group">
+              <label>Основной пассажир</label>
+              <p id="settingsPreferredPassengerInfo" class="settings-hint">Выберите основного пассажира в соседней вкладке.</p>
+            </div>
           </div>
-          <div class="settings-group">
-            <label for="uiModeSelect" id="uiModeLabel">Режим интерфейса</label>
-            <select id="uiModeSelect" class="settings-select" aria-label="Режим интерфейса">
-              <option value="normal">Нормальный</option>
-              <option value="economy">Экономный</option>
-            </select>
-            <p class="settings-hint">Экономный — меньше эффектов, быстрее на слабых устройствах.</p>
+          <div class="settings-card">
+            <h3 class="settings-card__title">Производительность интерфейса</h3>
+            <div class="settings-group">
+              <label for="uiModeSelect" id="uiModeLabel">Режим интерфейса</label>
+              <select id="uiModeSelect" class="settings-select" aria-label="Режим интерфейса">
+                <option value="normal">Нормальный</option>
+                <option value="economy">Экономный</option>
+              </select>
+              <p class="settings-hint">Экономный — меньше эффектов, быстрее на слабых устройствах.</p>
+            </div>
+            <label class="settings-checkbox">
+              <input type="checkbox" id="reduceMotionCheck" aria-describedby="reduceMotionHint">
+              <span id="reduceMotionLabel" data-i18n="reduceAnimations">Уменьшить анимации</span>
+            </label>
+            <p id="reduceMotionHint" class="settings-hint" data-i18n="reduceAnimationsHint">Рекомендуется при чувствительности к движению на экране.</p>
           </div>
-          <label class="settings-checkbox">
-            <input type="checkbox" id="reduceMotionCheck" aria-describedby="reduceMotionHint">
-            <span id="reduceMotionLabel" data-i18n="reduceAnimations">Уменьшить анимации</span>
-          </label>
-          <p id="reduceMotionHint" class="settings-hint" data-i18n="reduceAnimationsHint">Рекомендуется при чувствительности к движению на экране.</p>
+          <div class="settings-card">
+            <h3 class="settings-card__title">Поддержка и правила</h3>
+            <div class="settings-support-list">
+              <a class="btn btn-outline btn-small" href="https://t.me/bus_news" target="_blank" rel="noopener">Написать в поддержку</a>
+              <a class="btn btn-outline btn-small" href="faq.html">Открыть FAQ</a>
+            </div>
+            <div class="settings-note">
+              <strong>Перенос и отмена:</strong> если до отправления осталось мало времени, заявка может обрабатываться только через диспетчера.
+            </div>
+            <div class="settings-note">
+              <strong>Документы:</strong> перед поездкой проверьте данные пассажиров и номер документа, особенно на международных маршрутах.
+            </div>
+          </div>
         </section>
       </div>
     </main>

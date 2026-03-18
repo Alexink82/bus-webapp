@@ -759,6 +759,33 @@ body {
   font-weight: 600;
   color: var(--text);
 }
+.booking-card__timeline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.booking-card__timeline-step {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-elevated);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.booking-card__timeline-step--done {
+  border-color: rgba(19, 174, 128, 0.22);
+  background: rgba(19, 174, 128, 0.12);
+  color: var(--success);
+}
+.booking-card__timeline-step--current {
+  border-color: rgba(84, 132, 255, 0.28);
+  background: rgba(84, 132, 255, 0.12);
+  color: var(--accent);
+}
 .booking-card__actions {
   display: flex;
   flex-wrap: wrap;
@@ -784,12 +811,32 @@ body {
 .booking-details-modal__qr canvas { display: block; }
 .booking-details-modal__actions { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 10px; }
 .booking-details-modal__actions a { text-decoration: none; }
+.booking-details-modal__timeline-wrap {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.booking-details-modal__timeline-title {
+  margin-bottom: 10px;
+}
 
 /* Карточка пассажира в профиле (как в личном кабинете) */
 .passenger-card { display: flex; flex-direction: column; gap: 12px; border: 1px solid var(--border); box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08); }
 .passenger-card__info { min-width: 0; }
 .passenger-card__name { font-weight: 600; font-size: 1rem; margin-bottom: 4px; }
 .passenger-card__meta { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 2px; }
+.passenger-card__badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(84, 132, 255, 0.12);
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
 .passenger-card__actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 4px; padding-top: 12px; border-top: 1px solid var(--border); }
 .passenger-card__actions .btn-small { margin-top: 0; flex: 1; min-width: 0; }
 .profile-list-more { display: grid; gap: 12px; margin-top: 12px; }
@@ -977,6 +1024,121 @@ body {
 .profile-overview__actions a {
   flex: 1 1 160px;
   text-decoration: none;
+}
+.profile-dashboard {
+  margin-bottom: 16px;
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.08);
+}
+.profile-dashboard.hidden { display: none; }
+.profile-dashboard__hero {
+  display: grid;
+  gap: 6px;
+}
+.profile-dashboard__eyebrow {
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 700;
+}
+.profile-dashboard__title {
+  margin: 0;
+  font-size: 1.14rem;
+  color: var(--text);
+}
+.profile-dashboard__hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+.profile-dashboard__grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.profile-dashboard__card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface-elevated);
+}
+.profile-dashboard__card-title {
+  font-size: 0.96rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.profile-dashboard__list {
+  display: grid;
+  gap: 10px;
+}
+.profile-dashboard__list-item,
+.profile-dashboard__route-card,
+.profile-dashboard__insight {
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+.profile-dashboard__route-card--suggested {
+  border-style: dashed;
+}
+.profile-dashboard__route-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.profile-dashboard__route-meta {
+  color: var(--text-muted);
+  font-size: 0.86rem;
+}
+.profile-dashboard__item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.profile-dashboard__item-actions .btn,
+.profile-dashboard__item-actions a {
+  flex: 1 1 140px;
+  text-decoration: none;
+}
+.profile-dashboard__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.profile-dashboard__chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.profile-dashboard__chip--done {
+  border-color: rgba(19, 174, 128, 0.22);
+  background: rgba(19, 174, 128, 0.12);
+  color: var(--success);
+}
+.profile-dashboard__chip--pending {
+  border-color: rgba(84, 132, 255, 0.18);
+  background: rgba(84, 132, 255, 0.08);
+  color: var(--accent);
 }
 .profile-stats.hidden { display: none; }
 .profile-stat-card {
@@ -1173,6 +1335,27 @@ body {
   font-size: 0.9rem;
   color: var(--text-muted);
   margin-bottom: 8px;
+}
+.weather-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.weather-info__icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+.weather-info__body {
+  display: grid;
+  gap: 2px;
+}
+.weather-info__temp {
+  color: var(--text);
+  font-weight: 700;
+}
+.weather-info__desc {
+  color: var(--text-muted);
+  font-size: 0.88rem;
 }
 
 .actual-info a {
@@ -1459,6 +1642,16 @@ body {
   transition: opacity 0.2s ease;
 }
 .app-modal-overlay.app-modal-visible { opacity: 1; }
+.app-modal-overlay--center {
+  align-items: center;
+  padding: 16px;
+}
+.app-modal-overlay--center .app-modal-content {
+  border-radius: 20px;
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 18px 42px rgba(0,0,0,0.22);
+  animation: modalPopIn 0.22s ease-out;
+}
 .app-modal-content {
   background: var(--surface);
   border-radius: 20px 20px 0 0;
@@ -1495,6 +1688,10 @@ body {
 @keyframes slideUpModal {
   from { transform: translateY(100%); }
   to { transform: translateY(0); }
+}
+@keyframes modalPopIn {
+  from { transform: translateY(12px) scale(0.98); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
 }
 .app-modal-header {
   display: flex;
@@ -1618,12 +1815,38 @@ body {
 .mrz-cancel { background: var(--primary); color: var(--text); border: 1px solid var(--border); }
 .settings-section { margin-bottom: 24px; }
 .settings-section h2 { font-size: 1.1rem; margin-bottom: 12px; }
+.settings-section { display: grid; gap: 14px; }
+.settings-card {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.07);
+}
+.settings-card__title {
+  margin: 0 0 12px;
+  font-size: 1rem;
+}
 .settings-group { margin-bottom: 12px; }
 .settings-group label { display: block; margin-bottom: 4px; color: var(--text-muted); }
 .settings-select { width: 100%; max-width: 320px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); color: var(--text); font-size: 1rem; }
 .settings-checkbox { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; cursor: pointer; }
 .settings-checkbox input { width: auto; }
 .settings-hint { font-size: 0.85rem; color: var(--text-muted); margin-top: 0; margin-bottom: 12px; }
+.settings-support-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.settings-note {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
 
 /* === Professional UI normalization (tap targets 44px, spacing, focus) === */
 :root {
@@ -1725,7 +1948,8 @@ select:focus-visible {
 
 @media (max-width: 560px) {
   .profile-overview__trip-summary,
-  .profile-overview__grid {
+  .profile-overview__grid,
+  .profile-dashboard__grid {
     grid-template-columns: 1fr;
   }
 
@@ -1785,9 +2009,10 @@ select:focus-visible {
 
   body.page-home .main {
     display: grid;
-    grid-template-columns: minmax(0, 1.6fr) minmax(320px, 0.9fr);
+    grid-template-columns: minmax(0, 760px) minmax(300px, 360px);
     gap: 24px;
     align-items: start;
+    justify-content: space-between;
   }
 
   body.page-home #lastSearchBlock,
@@ -1803,6 +2028,8 @@ select:focus-visible {
     grid-row: 1 / span 5;
     position: sticky;
     top: 24px;
+    justify-self: stretch;
+    width: 100%;
   }
 
   body.page-home .search-form-subtitle {

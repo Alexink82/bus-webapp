@@ -193,6 +193,76 @@
   };
 
   var PROFILE_LIST_PAGE_SIZE = 10;
+  var PREFERRED_PASSENGER_KEY = 'profilePreferredPassengerId';
+
+  function getPreferredPassengerId() {
+    try {
+      return localStorage.getItem(PREFERRED_PASSENGER_KEY) || '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function setPreferredPassengerId(id) {
+    try {
+      if (id == null || id === '') localStorage.removeItem(PREFERRED_PASSENGER_KEY);
+      else localStorage.setItem(PREFERRED_PASSENGER_KEY, String(id));
+    } catch (e) {}
+  }
+
+  function getPassengerDisplayName(passenger) {
+    if (!passenger) return 'Не выбран';
+    return [passenger.last_name || '', passenger.first_name || '', passenger.middle_name || '']
+      .filter(Boolean)
+      .join(' ')
+      .trim() || 'Без имени';
+  }
+
+  function updatePreferredPassengerInfo(items) {
+    var infoEl = document.getElementById('settingsPreferredPassengerInfo');
+    if (!infoEl) return;
+    var preferredId = getPreferredPassengerId();
+    var preferred = (items || []).filter(function(p) { return String(p.id) === preferredId; })[0];
+    if (!preferred) {
+      if (preferredId) setPreferredPassengerId('');
+      infoEl.textContent = 'Выберите основного пассажира в соседней вкладке. Его данные будут удобнее подставляться в новой броне.';
+      return;
+    }
+    var dob = preferred.birth_date ? (typeof datePickerIsoToDisplay === 'function' ? (datePickerIsoToDisplay(preferred.birth_date) || preferred.birth_date) : preferred.birth_date) : '';
+    infoEl.textContent = 'Сейчас выбран: ' + getPassengerDisplayName(preferred) + (dob ? ' · ' + dob : '') + '.';
+  }
+
+  function getStatusTimeline(status) {
+    var base = [
+      { key: 'new', label: 'Создана' },
+      { key: 'active', label: 'В работе' },
+      { key: 'paid', label: 'Оплачена' },
+      { key: 'ticket_sent', label: 'Билет отправлен' }
+    ];
+    if (status === 'cancelled') {
+      return [
+        { key: 'new', label: 'Создана' },
+        { key: 'cancelled', label: 'Отменена' }
+      ];
+    }
+    return base;
+  }
+
+  function renderStatusTimelineHtml(status) {
+    var steps = getStatusTimeline(status);
+    var currentIndex = -1;
+    for (var i = 0; i < steps.length; i++) {
+      if (steps[i].key === status || (status === 'payment_link_sent' && steps[i].key === 'paid')) {
+        currentIndex = i;
+        break;
+      }
+    }
+    if (currentIndex === -1 && steps.length) currentIndex = 0;
+    return '<div class="booking-card__timeline" aria-label="История статуса">' + steps.map(function(step, idx) {
+      var state = idx < currentIndex ? 'done' : (idx === currentIndex ? 'current' : 'pending');
+      return '<span class="booking-card__timeline-step booking-card__timeline-step--' + state + '">' + step.label + '</span>';
+    }).join('') + '</div>';
+  }
 
   function profileEmptyStateHtml(kind, title, hint, iconHtml) {
     var icon = iconHtml || '';
@@ -275,6 +345,210 @@
     try {
       localStorage.setItem('lastSearch', JSON.stringify({ from: fromCity, to: toCity, date: dateStr }));
     } catch (e) {}
+  }
+
+  var FAVORITE_ROUTES_KEY = 'profileFavoriteRoutes';
+
+  function openProfileTab(tabName) {
+    var btn = document.querySelector('.profile-tabs .segment[data-tab="' + tabName + '"]');
+    if (btn) btn.click();
+  }
+
+  function getFavoriteRoutes() {
+    try {
+      var raw = localStorage.getItem(FAVORITE_ROUTES_KEY);
+      var parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed.filter(function(item) {
+        return item && (item.from_city || item.to_city || item.route_name);
+      }) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function setFavoriteRoutes(routes) {
+    try {
+      localStorage.setItem(FAVORITE_ROUTES_KEY, JSON.stringify((routes || []).slice(0, 8)));
+    } catch (e) {}
+  }
+
+  function makeRouteKey(route) {
+    return [
+      String(route && route.from_city || '').trim().toLowerCase(),
+      String(route && route.to_city || '').trim().toLowerCase(),
+      String(route && route.route_name || '').trim().toLowerCase()
+    ].join('::');
+  }
+
+  function buildRouteDescriptor(route) {
+    var descriptor = {
+      from_city: route && route.from_city || '',
+      to_city: route && route.to_city || '',
+      route_name: route && route.route_name || [route && route.from_city || '', route && route.to_city || ''].filter(Boolean).join(' - '),
+      departure_date: route && route.departure_date || ''
+    };
+    descriptor.key = makeRouteKey(descriptor);
+    return descriptor;
+  }
+
+  function isFavoriteRoute(route) {
+    var key = makeRouteKey(route);
+    return getFavoriteRoutes().some(function(item) { return makeRouteKey(item) === key; });
+  }
+
+  function toggleFavoriteRoute(route) {
+    var descriptor = buildRouteDescriptor(route);
+    var favorites = getFavoriteRoutes();
+    var idx = favorites.findIndex(function(item) { return makeRouteKey(item) === descriptor.key; });
+    if (idx !== -1) {
+      favorites.splice(idx, 1);
+      setFavoriteRoutes(favorites);
+      return false;
+    }
+    favorites.unshift(descriptor);
+    setFavoriteRoutes(favorites);
+    return true;
+  }
+
+  function repeatRouteSearch(route) {
+    var descriptor = buildRouteDescriptor(route);
+    saveLastSearchCompat(descriptor.from_city || '', descriptor.to_city || '', descriptor.departure_date || '');
+    window.location.href = 'index.html?from=' + encodeURIComponent(descriptor.from_city || '') + '&to=' + encodeURIComponent(descriptor.to_city || '');
+  }
+
+  function getRouteSuggestions(items) {
+    var map = {};
+    (items || []).forEach(function(item) {
+      if (!item || !item.from_city || !item.to_city) return;
+      var descriptor = buildRouteDescriptor(item);
+      if (!map[descriptor.key]) map[descriptor.key] = { route: descriptor, count: 0, latest_date: item.departure_date || '' };
+      map[descriptor.key].count += 1;
+      if ((item.departure_date || '') > (map[descriptor.key].latest_date || '')) map[descriptor.key].latest_date = item.departure_date || '';
+    });
+    return Object.keys(map).map(function(key) {
+      return { key: key, route: map[key].route, count: map[key].count, latest_date: map[key].latest_date };
+    }).sort(function(a, b) {
+      if (b.count !== a.count) return b.count - a.count;
+      return (b.latest_date || '').localeCompare(a.latest_date || '');
+    });
+  }
+
+  function renderTravelDashboard(items, passengers, profile) {
+    var panel = document.getElementById('profileTravelDashboard');
+    var remindersEl = document.getElementById('profileTravelReminders');
+    var favoritesEl = document.getElementById('profileTravelFavorites');
+    var insightsEl = document.getElementById('profileTravelInsights');
+    if (!panel || !remindersEl || !favoritesEl || !insightsEl) return;
+    var esc = function(s) { if (s == null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
+
+    panel.classList.remove('hidden');
+    var nearest = pickNearestTrip(items || []);
+    var favoriteRoutes = getFavoriteRoutes();
+    var suggestions = getRouteSuggestions(items || []);
+    var preferredPassengerExists = !!((passengers || []).filter(function(p) { return String(p.id) === getPreferredPassengerId(); })[0]);
+    var reminders = [];
+
+    if (!(profile && profile.phone)) {
+      reminders.push('<div class="profile-dashboard__list-item"><strong>Контакт не заполнен:</strong> добавьте телефон, чтобы диспетчеру было проще связаться с вами.<div class="profile-dashboard__item-actions"><button type="button" class="btn btn-outline btn-small" data-dashboard-open-tab="profileSettings">Открыть настройки</button></div></div>');
+    }
+    if (!(passengers || []).length) {
+      reminders.push('<div class="profile-dashboard__list-item"><strong>Нет сохранённых пассажиров:</strong> добавьте хотя бы одного пассажира перед следующей бронью.<div class="profile-dashboard__item-actions"><button type="button" class="btn btn-outline btn-small" data-dashboard-open-tab="profilePassengers">Открыть пассажиров</button></div></div>');
+    }
+    if (nearest && nearest.status === 'payment_link_sent') {
+      reminders.push('<div class="profile-dashboard__list-item"><strong>Ожидается оплата:</strong> заявка ' + nearest.booking_id + ' ждёт завершения оплаты.<div class="profile-dashboard__item-actions"><a class="btn btn-outline btn-small" href="success.html?booking_id=' + encodeURIComponent(nearest.booking_id) + '">Открыть билет</a></div></div>');
+    }
+    if (nearest) {
+      var mins = minutesUntilDeparture(nearest.departure_date, nearest.departure_time);
+      if (mins != null && mins >= 0 && mins <= 24 * 60) {
+        reminders.push('<div class="profile-dashboard__list-item"><strong>Поездка скоро:</strong> до отправления осталось ' + formatMinutesLabel(mins).replace(/^Через\s+/i, '') + '. Проверьте документы и страницу заявки.<div class="profile-dashboard__item-actions"><button type="button" class="btn btn-outline btn-small" id="profileTravelNearestDetails">Подробнее</button></div></div>');
+      }
+    }
+    if (!favoriteRoutes.length && suggestions.length) {
+      reminders.push('<div class="profile-dashboard__list-item"><strong>Сохраните частый маршрут:</strong> ' + esc(suggestions[0].route.route_name || [suggestions[0].route.from_city, suggestions[0].route.to_city].join(' - ')) + ' можно добавить в избранное для быстрого повтора.<div class="profile-dashboard__item-actions"><button type="button" class="btn btn-outline btn-small profile-favorite-route-btn" data-route-key="' + esc(suggestions[0].key) + '" data-route-name="' + esc(suggestions[0].route.route_name || '') + '" data-from="' + esc(suggestions[0].route.from_city || '') + '" data-to="' + esc(suggestions[0].route.to_city || '') + '">Сохранить маршрут</button></div></div>');
+    }
+    if (!reminders.length) {
+      reminders.push('<div class="profile-dashboard__list-item"><strong>Всё под контролем:</strong> профиль заполнен, пассажиры сохранены, можно быстро повторять привычные маршруты.</div>');
+    }
+    remindersEl.innerHTML = reminders.join('');
+
+    var favoriteCards = favoriteRoutes.map(function(route) {
+      var label = route.route_name || [route.from_city, route.to_city].filter(Boolean).join(' - ');
+      return '<div class="profile-dashboard__route-card">' +
+        '<div class="profile-dashboard__route-name">' + esc(label) + '</div>' +
+        '<div class="profile-dashboard__route-meta">' + esc([route.from_city, route.to_city].filter(Boolean).join(' → ')) + '</div>' +
+        '<div class="profile-dashboard__item-actions">' +
+          '<button type="button" class="btn btn-primary btn-small profile-repeat-route-btn" data-route-name="' + esc(route.route_name || '') + '" data-from="' + esc(route.from_city || '') + '" data-to="' + esc(route.to_city || '') + '">Повторить</button>' +
+          '<button type="button" class="btn btn-outline btn-small profile-favorite-route-btn" data-route-key="' + esc(route.key) + '" data-route-name="' + esc(route.route_name || '') + '" data-from="' + esc(route.from_city || '') + '" data-to="' + esc(route.to_city || '') + '">Убрать</button>' +
+        '</div>' +
+      '</div>';
+    });
+    var suggestionCards = suggestions.filter(function(item) {
+      return !favoriteRoutes.some(function(route) { return makeRouteKey(route) === item.key; });
+    }).slice(0, Math.max(0, 2 - favoriteCards.length)).map(function(item) {
+      var route = item.route;
+      return '<div class="profile-dashboard__route-card profile-dashboard__route-card--suggested">' +
+        '<div class="profile-dashboard__route-name">' + esc(route.route_name || [route.from_city, route.to_city].filter(Boolean).join(' - ')) + '</div>' +
+        '<div class="profile-dashboard__route-meta">Бронировали ' + esc(item.count) + ' раз</div>' +
+        '<div class="profile-dashboard__item-actions">' +
+          '<button type="button" class="btn btn-outline btn-small profile-repeat-route-btn" data-route-name="' + esc(route.route_name || '') + '" data-from="' + esc(route.from_city || '') + '" data-to="' + esc(route.to_city || '') + '">Открыть поиск</button>' +
+          '<button type="button" class="btn btn-outline btn-small profile-favorite-route-btn" data-route-key="' + esc(item.key) + '" data-route-name="' + esc(route.route_name || '') + '" data-from="' + esc(route.from_city || '') + '" data-to="' + esc(route.to_city || '') + '">В избранное</button>' +
+        '</div>' +
+      '</div>';
+    });
+    favoritesEl.innerHTML = (favoriteCards.concat(suggestionCards)).join('') || '<div class="profile-dashboard__list-item">Пока нет избранных маршрутов. Когда будете чаще ездить по одному направлению, сохраните его здесь.</div>';
+
+    var completed = (items || []).filter(function(item) { return item.status === 'done'; });
+    var topRoute = suggestions[0] || null;
+    var readinessSteps = [
+      { label: 'Контакт сохранён', done: !!(profile && profile.phone) },
+      { label: 'Есть пассажиры', done: !!((passengers || []).length) },
+      { label: 'Основной пассажир выбран', done: preferredPassengerExists },
+      { label: 'Есть избранный маршрут', done: !!favoriteRoutes.length }
+    ];
+    var readinessDone = readinessSteps.filter(function(step) { return step.done; }).length;
+    var readinessPercent = Math.round((readinessDone / readinessSteps.length) * 100);
+    insightsEl.innerHTML =
+      '<div class="profile-dashboard__insight"><strong>Готовность к следующей поездке:</strong> ' + readinessPercent + '%</div>' +
+      '<div class="profile-dashboard__chips">' + readinessSteps.map(function(step) {
+        return '<span class="profile-dashboard__chip ' + (step.done ? 'profile-dashboard__chip--done' : 'profile-dashboard__chip--pending') + '">' + esc(step.label) + '</span>';
+      }).join('') + '</div>' +
+      '<div class="profile-dashboard__list-item"><strong>Завершённых поездок:</strong> ' + esc(completed.length) + '</div>' +
+      '<div class="profile-dashboard__list-item"><strong>Чаще всего бронируете:</strong> ' + esc(topRoute ? (topRoute.route.route_name || [topRoute.route.from_city, topRoute.route.to_city].filter(Boolean).join(' - ')) : 'ещё формируется') + '</div>' +
+      '<div class="profile-dashboard__list-item"><strong>Следующий быстрый шаг:</strong> ' + (nearest ? 'держите под рукой билет и страницу заявки.' : 'сохраните любимый маршрут для повторной брони.') + '</div>';
+
+    remindersEl.querySelectorAll('[data-dashboard-open-tab]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        openProfileTab(btn.getAttribute('data-dashboard-open-tab'));
+      });
+    });
+    favoritesEl.querySelectorAll('.profile-repeat-route-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        repeatRouteSearch({
+          route_name: btn.getAttribute('data-route-name') || '',
+          from_city: btn.getAttribute('data-from') || '',
+          to_city: btn.getAttribute('data-to') || ''
+        });
+      });
+    });
+    [remindersEl, favoritesEl].forEach(function(container) {
+      container.querySelectorAll('.profile-favorite-route-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var becameFavorite = toggleFavoriteRoute({
+            route_name: btn.getAttribute('data-route-name') || '',
+            from_city: btn.getAttribute('data-from') || '',
+            to_city: btn.getAttribute('data-to') || ''
+          });
+          if (typeof showAppAlert === 'function') showAppAlert(becameFavorite ? 'Маршрут добавлен в избранное.' : 'Маршрут убран из избранного.', 'Профиль');
+          loadDashboard();
+        });
+      });
+    });
+    var nearestDetailsBtn = document.getElementById('profileTravelNearestDetails');
+    if (nearestDetailsBtn && nearest) {
+      nearestDetailsBtn.addEventListener('click', function() {
+        showBookingDetailsModal(nearest);
+      });
+    }
   }
 
   function renderProfileOverview(items, passengers) {
@@ -369,6 +643,8 @@
       var badgeHtml = '<span class="' + esc(badge.class) + '">' + (badge.class.indexOf('success') !== -1 ? iconCheck : '') + '<span>' + esc(badge.label) + '</span></span>';
       var cancelBtn = (b.status !== 'cancelled' && b.status !== 'done' && b.status !== 'ticket_sent') ? ' <button type="button" class="btn btn-outline btn-small cancel-booking" data-id="' + esc(b.booking_id) + '">' + iconCross + ' Отменить</button>' : '';
       var detailsBtn = '<button type="button" class="btn btn-outline btn-small booking-details" data-id="' + esc(b.booking_id) + '">Подробнее</button>';
+      var favoriteActive = isFavoriteRoute(b);
+      var favoriteBtn = '<button type="button" class="btn ' + (favoriteActive ? 'btn-primary' : 'btn-outline') + ' btn-small booking-favorite-toggle" data-route-name="' + esc(b.route_name || '') + '" data-from="' + esc(b.from_city || '') + '" data-to="' + esc(b.to_city || '') + '">' + (favoriteActive ? 'В избранном' : 'В избранное') + '</button>';
       var fromTo = [b.from_city, b.to_city].filter(Boolean).map(esc).join(' → ');
       return '<div class="trip-card booking-card">' +
         '<div class="booking-card__top">' +
@@ -384,7 +660,8 @@
           '<div class="booking-card__summary-item"><span class="booking-card__summary-label">Стоимость</span><span class="booking-card__summary-value">' + esc((b.price_total != null ? b.price_total : '—') + ' ' + (b.currency || 'BYN')) + '</span></div>' +
           '<div class="booking-card__summary-item"><span class="booking-card__summary-label">Пассажиры</span><span class="booking-card__summary-value">' + esc(b.passengers_count != null ? b.passengers_count : '—') + '</span></div>' +
         '</div>' +
-        '<div class="booking-card__actions">' + detailsBtn + cancelBtn + '</div></div>';
+        renderStatusTimelineHtml(b.status) +
+        '<div class="booking-card__actions">' + detailsBtn + favoriteBtn + cancelBtn + '</div></div>';
     }
     if (!items.length) { list.innerHTML = bookingsEmptyStateHtml(containerId); return; }
     var visibleCount = Math.min(PROFILE_LIST_PAGE_SIZE, items.length);
@@ -428,6 +705,17 @@
             var text = typeof errorToMessage === 'function' ? errorToMessage(e) : (e && e.message ? e.message : 'Ошибка');
             (typeof showAppAlert === 'function' ? showAppAlert(text, 'Ошибка') : alert(text));
           });
+      });
+    });
+    list.querySelectorAll('.booking-favorite-toggle').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var becameFavorite = toggleFavoriteRoute({
+          route_name: btn.getAttribute('data-route-name') || '',
+          from_city: btn.getAttribute('data-from') || '',
+          to_city: btn.getAttribute('data-to') || ''
+        });
+        if (typeof showAppAlert === 'function') showAppAlert(becameFavorite ? 'Маршрут добавлен в избранное.' : 'Маршрут убран из избранного.', 'Профиль');
+        loadDashboard();
       });
     });
   }
@@ -594,6 +882,7 @@
       (booking.contact_phone ? '<p><strong>Контактный телефон:</strong> ' + esc(booking.contact_phone) + '</p>' : '') +
       '<p><strong>Стоимость:</strong> ' + esc(booking.price_total) + ' ' + esc(booking.currency || 'BYN') + '</p>' +
       '<p><strong>Статус:</strong> ' + statusBadgeHtml + '</p>' +
+      '<div class="booking-details-modal__timeline-wrap"><p class="booking-details-modal__timeline-title"><strong>Прогресс заявки</strong></p>' + renderStatusTimelineHtml(booking.status) + '</div>' +
       '<div class="booking-details-modal__actions">' +
       '<button type="button" class="btn btn-primary reschedule-date-btn">' + esc(rescheduleText) + '</button> ' +
       '<a href="success.html?booking_id=' + encodeURIComponent(booking.booking_id) + '" class="btn btn-outline">Страница заявки</a></div></div>';
@@ -645,26 +934,37 @@
     if (!list) return;
     var esc = function(s) { if (s == null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
     var iconPassenger = (typeof APP_ICONS !== 'undefined' && APP_ICONS.passenger) ? APP_ICONS.passenger : '';
+    var preferredId = getPreferredPassengerId();
+    var sortedItems = (items || []).slice().sort(function(a, b) {
+      if (String(a.id) === preferredId) return -1;
+      if (String(b.id) === preferredId) return 1;
+      return 0;
+    });
     function cardHtml(p) {
+      var isPreferred = String(p.id) === preferredId;
       var nameLine = esc(p.last_name) + ' ' + esc(p.first_name) + (p.middle_name ? ' ' + esc(p.middle_name) : '');
       var dobLine = typeof datePickerIsoToDisplay === 'function' ? (datePickerIsoToDisplay(p.birth_date) || p.birth_date) : p.birth_date;
       var docLine = p.passport ? ('Документ: ' + esc(p.passport)) : '';
       return '<div class="passenger-card trip-card" data-id="' + esc(p.id) + '">' +
         '<div class="passenger-card__info">' +
-        '<div class="passenger-card__name">' + iconPassenger + ' ' + nameLine + '</div>' +
+        '<div class="passenger-card__name">' + iconPassenger + ' ' + nameLine + (isPreferred ? ' <span class="passenger-card__badge">Основной</span>' : '') + '</div>' +
         (dobLine ? '<div class="passenger-card__meta">' + esc(dobLine) + '</div>' : '') +
         (docLine ? '<div class="passenger-card__meta">' + docLine + '</div>' : '') +
         '</div>' +
         '<div class="passenger-card__actions">' +
+        (isPreferred
+          ? '<button type="button" class="btn btn-small btn-primary start-booking-with-passenger" data-id="' + esc(p.id) + '">Новая бронь</button>'
+          : '<button type="button" class="btn btn-small btn-outline make-passenger-primary" data-id="' + esc(p.id) + '">Сделать основным</button>') +
         '<button type="button" class="btn btn-small btn-outline edit-passenger" data-id="' + esc(p.id) + '">Редактировать</button>' +
         '<button type="button" class="btn btn-small btn-outline delete-passenger" data-id="' + esc(p.id) + '">Удалить</button>' +
         '</div></div>';
     }
-    if (!items.length) { list.innerHTML = passengersEmptyStateHtml(); return; }
-    var visibleCount = Math.min(PROFILE_LIST_PAGE_SIZE, items.length);
-    var visibleHtml = items.slice(0, visibleCount).map(cardHtml).join('');
-    var moreCount = items.length - visibleCount;
-    var moreHtml = moreCount > 0 ? items.slice(visibleCount).map(cardHtml).join('') : '';
+    updatePreferredPassengerInfo(sortedItems);
+    if (!sortedItems.length) { list.innerHTML = passengersEmptyStateHtml(); return; }
+    var visibleCount = Math.min(PROFILE_LIST_PAGE_SIZE, sortedItems.length);
+    var visibleHtml = sortedItems.slice(0, visibleCount).map(cardHtml).join('');
+    var moreCount = sortedItems.length - visibleCount;
+    var moreHtml = moreCount > 0 ? sortedItems.slice(visibleCount).map(cardHtml).join('') : '';
     list.innerHTML = visibleHtml + (moreCount > 0 ? '<div class="profile-list-more hidden" aria-hidden="true">' + moreHtml + '</div><button type="button" class="btn btn-outline btn-small profile-show-more">Показать ещё (' + moreCount + ')</button>' : '');
     var showMoreBtn = list.querySelector('.profile-show-more');
     if (showMoreBtn) {
@@ -674,13 +974,30 @@
         showMoreBtn.remove();
       });
     }
+    list.querySelectorAll('.make-passenger-primary').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        setPreferredPassengerId(btn.getAttribute('data-id'));
+        renderPassengersList(sortedItems, onSuccess);
+        (typeof showAppAlert === 'function' ? showAppAlert('Основной пассажир сохранён. При новой брони его будет удобнее подставить.', 'Пассажиры') : alert('Основной пассажир сохранён.'));
+      });
+    });
+    list.querySelectorAll('.start-booking-with-passenger').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        setPreferredPassengerId(btn.getAttribute('data-id'));
+        window.location.href = 'index.html';
+      });
+    });
       list.querySelectorAll('.delete-passenger').forEach(function(btn) {
         btn.addEventListener('click', function() {
           (typeof showAppConfirm === 'function' ? showAppConfirm('Удалить пассажира из списка?', 'Удаление') : Promise.resolve(confirm('Удалить?')))
             .then(function(ok) {
               if (!ok) return;
+              var removedId = btn.getAttribute('data-id');
               apiFn('/api/user/passengers/' + btn.getAttribute('data-id'), { method: 'DELETE' })
-                .then(onSuccess)
+                .then(function() {
+                  if (getPreferredPassengerId() === removedId) setPreferredPassengerId('');
+                  onSuccess();
+                })
                 .catch(function(e) {
                   var text = typeof errorToMessage === 'function' ? errorToMessage(e) : (e && e.message ? e.message : 'Ошибка');
                   (typeof showAppAlert === 'function' ? showAppAlert(text, 'Ошибка') : alert(text));
@@ -691,7 +1008,7 @@
       list.querySelectorAll('.edit-passenger').forEach(function(btn) {
         btn.addEventListener('click', function() {
           var id = btn.getAttribute('data-id');
-          var item = items.filter(function(p) { return String(p.id) === id; })[0];
+          var item = sortedItems.filter(function(p) { return String(p.id) === id; })[0];
           if (item) {
             var pass = (item.passport || '').replace(/\s/g, '');
             var countryCode = pass.replace(/\D/g, '').length === 10 ? 'RU' : (pass.length >= 9 && /^[A-Z]{2}\d{7}$/i.test(pass.replace(/[^A-Z0-9]/g, '')) ? 'BY' : 'OTHER');
@@ -706,7 +1023,10 @@
     showPassengersSkeleton();
     apiFn('/api/user/passengers').then(function(data) {
       renderPassengersList(data.passengers || [], loadPassengers);
-    }).catch(function() { if (list) list.innerHTML = profileEmptyStateHtml('passengers-error', 'Не удалось загрузить пассажиров', 'Попробуйте обновить раздел ещё раз.'); });
+    }).catch(function() {
+      updatePreferredPassengerInfo([]);
+      if (list) list.innerHTML = profileEmptyStateHtml('passengers-error', 'Не удалось загрузить пассажиров', 'Попробуйте обновить раздел ещё раз.');
+    });
   }
 
   function loadDashboard() {
@@ -724,6 +1044,7 @@
       var cancelled = items.filter(function(b) { return b.status === 'cancelled'; });
       updateProfileStats(items);
       renderProfileOverview(items, data.passengers || []);
+      renderTravelDashboard(items, data.passengers || [], data.profile || {});
       renderBookingCards(active, 'bookingsListActive');
       renderBookingCards(upcoming, 'bookingsListUpcoming');
       renderBookingCards(completed, 'bookingsListCompleted');
@@ -733,7 +1054,9 @@
       if (profilePhoneEl && data.profile && data.profile.phone) profilePhoneEl.value = data.profile.phone || '';
     }).catch(function() {
       var panel = document.getElementById('profileOverviewPanel');
+      var dashboardPanel = document.getElementById('profileTravelDashboard');
       if (panel) panel.classList.add('hidden');
+      if (dashboardPanel) dashboardPanel.classList.add('hidden');
       ['bookingsListActive', 'bookingsListUpcoming', 'bookingsListCompleted', 'bookingsListCancelled'].forEach(function(id) {
         var el = document.getElementById(id);
         if (el) el.innerHTML = profileEmptyStateHtml('bookings-error', 'Не удалось загрузить заявки', 'Обновите раздел или проверьте соединение.');

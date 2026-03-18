@@ -542,12 +542,45 @@
     }
   })();
 
+  function getWeatherEmoji(description) {
+    var text = String(description || '').toLowerCase();
+    if (!text) return '🌤️';
+    if (text.indexOf('гроза') !== -1 || text.indexOf('thunder') !== -1) return '⛈️';
+    if (text.indexOf('снег') !== -1 || text.indexOf('snow') !== -1) return '❄️';
+    if (text.indexOf('дожд') !== -1 || text.indexOf('rain') !== -1 || text.indexOf('лив') !== -1) return '🌧️';
+    if (text.indexOf('туман') !== -1 || text.indexOf('fog') !== -1 || text.indexOf('mist') !== -1) return '🌫️';
+    if (text.indexOf('облач') !== -1 || text.indexOf('пасмур') !== -1 || text.indexOf('cloud') !== -1) return '☁️';
+    if (text.indexOf('ясно') !== -1 || text.indexOf('clear') !== -1 || text.indexOf('солне') !== -1) return '☀️';
+    return '🌤️';
+  }
+
+  function renderWeatherInfo(weather) {
+    var weatherEl = document.getElementById('weatherInfo');
+    if (!weatherEl) return;
+    if (!weather) {
+      weatherEl.textContent = '—';
+      return;
+    }
+    var city = weather.city || 'Минск';
+    var temp = weather.temp != null ? weather.temp : '—';
+    var description = weather.description_ru || weather.description_en || 'Нет данных';
+    var emoji = getWeatherEmoji(description);
+    weatherEl.innerHTML =
+      '<div class="weather-info">' +
+        '<span class="weather-info__icon" aria-hidden="true">' + emoji + '</span>' +
+        '<div class="weather-info__body">' +
+          '<div class="weather-info__temp">' + city + ': ' + temp + '°C</div>' +
+          '<div class="weather-info__desc">' + description + '</div>' +
+        '</div>' +
+      '</div>';
+  }
+
   fetch(window.BASE_URL + '/api/news').then(r => r.json()).then(data => {
     if (data.border) document.getElementById('borderInfo').textContent = data.border.message_ru || '—';
-    if (data.weather) document.getElementById('weatherInfo').textContent = data.weather.city + ': ' + data.weather.temp + '°C, ' + (data.weather.description_ru || '');
+    renderWeatherInfo(data.weather || null);
   }).catch(() => {
     document.getElementById('borderInfo').textContent = '—';
-    document.getElementById('weatherInfo').textContent = '—';
+    renderWeatherInfo(null);
   });
 
   setMinDate();

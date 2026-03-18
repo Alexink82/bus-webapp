@@ -7,14 +7,14 @@
   <title>Админ-панель — Bus Booking</title>
   <script>(function(){var t=localStorage.getItem('theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);})();</script>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script type="module" crossorigin src="/assets/admin-COH2F6KL.js"></script>
+  <script type="module" crossorigin src="/assets/admin-JkhnidGT.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/api-DoHnkU-n.js">
   <link rel="modulepreload" crossorigin href="/assets/auth-BtufPi45.js">
   <link rel="modulepreload" crossorigin href="/assets/segmented-control-DzGR4ZtZ.js">
   <link rel="modulepreload" crossorigin href="/assets/app-modal-BWjIbSvX.js">
   <link rel="modulepreload" crossorigin href="/assets/nav-DSEjnhJQ.js">
   <link rel="stylesheet" crossorigin href="/assets/auth-AUa4N_F6.css">
-  <link rel="stylesheet" crossorigin href="/assets/design-system-q3gYzVXb.css">
+  <link rel="stylesheet" crossorigin href="/assets/design-system-kOxFI3jQ.css">
 </head>
 <body class="page-admin">
   <div class="app">
@@ -44,24 +44,20 @@
         <span class="admin-sidebar-header__eyebrow">Панель управления</span>
         <strong class="admin-sidebar-header__title">Навигация</strong>
       </div>
-      <button type="button" class="segment active" data-tab="statsPanel" role="tab" aria-selected="true">Статистика</button>
+      <button type="button" class="segment active" data-tab="overviewPanel" role="tab" aria-selected="true">Обзор</button>
+      <button type="button" class="segment" data-tab="analyticsPanel" role="tab" aria-selected="false">Аналитика</button>
       <button type="button" class="segment" data-tab="bookingsPanel" role="tab" aria-selected="false">Все заявки</button>
       <button type="button" class="segment" data-tab="adminsPanel" role="tab" aria-selected="false">Админы</button>
-      <button type="button" class="segment" data-tab="logsPanel" role="tab" aria-selected="false">Логи</button>
-      <button type="button" class="segment" data-tab="roleAuditPanel" role="tab" aria-selected="false">Роли</button>
       <button type="button" class="segment" data-tab="dispatchersPanel" role="tab" aria-selected="false">Диспетчеры</button>
+      <button type="button" class="segment" data-tab="auditPanel" role="tab" aria-selected="false">Аудит</button>
+      <button type="button" class="segment" data-tab="logsPanel" role="tab" aria-selected="false">Логи</button>
+      <button type="button" class="segment" data-tab="monitoringPanel" role="tab" aria-selected="false">Мониторинг</button>
     </div>
     <main id="adminMain" class="page admin-layout__main hidden">
       <div class="admin-panel">
-        <div id="tab-statsPanel" class="tab-content active">
-        <section id="statsPanel">
-          <h2 class="admin-section__title">Статистика</h2>
-          <div class="admin-subtabs" id="adminStatsSubtabs">
-            <button type="button" class="admin-subtab admin-subtab--active" data-stats-view="overview">Обзор</button>
-            <button type="button" class="admin-subtab" data-stats-view="monitoring">Мониторинг</button>
-            <button type="button" class="admin-subtab" data-stats-view="analytics">Аналитика</button>
-          </div>
-          <div id="adminStatsView-overview" class="admin-stats-view admin-stats-view--active">
+        <div id="tab-overviewPanel" class="tab-content active">
+        <section id="overviewPanel">
+          <h2 class="admin-section__title">Обзор</h2>
             <div class="admin-period-tabs">
               <button type="button" class="admin-period-tab admin-period-tab--active" data-period="day">День</button>
               <button type="button" class="admin-period-tab" data-period="week">Неделя</button>
@@ -92,23 +88,17 @@
                 <button type="button" id="runArchiveBtn" class="btn btn--secondary btn--small ml-2">Выполнить архивацию</button>
               </div>
             </div>
+        </section>
+        </div>
+        <div id="tab-analyticsPanel" class="tab-content">
+        <section id="analyticsPanel">
+          <h2 class="admin-section__title">Аналитика</h2>
+          <div class="admin-period-tabs">
+            <button type="button" class="admin-period-tab admin-period-tab--active" data-period="day">День</button>
+            <button type="button" class="admin-period-tab" data-period="week">Неделя</button>
+            <button type="button" class="admin-period-tab" data-period="month">Месяц</button>
           </div>
-          <div id="adminStatsView-monitoring" class="admin-stats-view">
-            <div class="admin-logs mb-6">
-              <div class="admin-logs__title">System Health</div>
-              <div id="systemHealthContent">Откройте вкладку, чтобы загрузить мониторинг.</div>
-            </div>
-            <div class="admin-logs mb-6">
-              <div class="admin-logs__title">Privacy & Retention</div>
-              <div id="privacyStatusContent">Откройте вкладку, чтобы загрузить privacy status.</div>
-              <div class="mt-4" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                <input type="number" id="privacyRedactDays" class="input" value="365" min="30" max="3650" style="width:100px;">
-                <span>дней</span>
-                <button type="button" id="runPrivacyRedactionBtn" class="btn btn--outline">Очистить старые паспорта</button>
-              </div>
-            </div>
-          </div>
-          <div id="adminStatsView-analytics" class="admin-stats-view">
+          <div id="analyticsPeriod" class="admin-period"></div>
             <div class="admin-stats-charts">
               <div class="admin-chart-wrap">
                 <canvas id="statsChartBookings" height="200" aria-label="График заявок по дням"></canvas>
@@ -119,7 +109,6 @@
                 <p class="admin-chart-label">Заявок по маршрутам</p>
               </div>
             </div>
-          </div>
         </section>
         </div>
         <div id="tab-bookingsPanel" class="tab-content">
@@ -180,9 +169,9 @@
           </div>
         </section>
         </div>
-        <div id="tab-roleAuditPanel" class="tab-content">
-        <section id="roleAuditPanel">
-          <h2 class="admin-section__title">История изменений ролей</h2>
+        <div id="tab-auditPanel" class="tab-content">
+        <section id="auditPanel">
+          <h2 class="admin-section__title">Аудит</h2>
           <p class="text-secondary text-small mb-4">Кто и когда добавлял/удалял администраторов и диспетчеров.</p>
           <div class="admin-logs">
             <div class="admin-logs__title">Изменения ролей</div>
@@ -225,6 +214,24 @@
           <div class="admin-logs">
             <div class="admin-logs__title">Список диспетчеров</div>
             <div id="dispatchersList"></div>
+          </div>
+        </section>
+        </div>
+        <div id="tab-monitoringPanel" class="tab-content">
+        <section id="monitoringPanel">
+          <h2 class="admin-section__title">Мониторинг</h2>
+          <div class="admin-logs mb-6">
+            <div class="admin-logs__title">System Health</div>
+            <div id="systemHealthContent">Откройте вкладку, чтобы загрузить мониторинг.</div>
+          </div>
+          <div class="admin-logs mb-6">
+            <div class="admin-logs__title">Privacy & Retention</div>
+            <div id="privacyStatusContent">Откройте вкладку, чтобы загрузить privacy status.</div>
+            <div class="mt-4" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <input type="number" id="privacyRedactDays" class="input" value="365" min="30" max="3650" style="width:100px;">
+              <span>дней</span>
+              <button type="button" id="runPrivacyRedactionBtn" class="btn btn--outline">Очистить старые паспорта</button>
+            </div>
           </div>
         </section>
         </div>

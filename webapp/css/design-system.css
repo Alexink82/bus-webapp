@@ -1303,6 +1303,8 @@ body {
   color: var(--color-accent);
   border-color: rgba(232, 93, 76, 0.28);
 }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
 .admin-sidebar-header {
   width: 100%;
   display: flex;
@@ -1541,6 +1543,7 @@ body {
     background: linear-gradient(180deg, var(--color-surface-elevated) 0%, var(--color-surface) 100%);
     border: 1px solid var(--color-border);
     box-shadow: var(--shadow-card);
+    align-content: start;
   }
   #adminTabs.admin-tabs-nav .segment {
     width: 100%;

@@ -54,8 +54,7 @@
   var editingAdminId = null;
   var editingDispatcherId = null;
   var routeCatalog = [];
-  var activeAdminTab = 'statsPanel';
-  var activeStatsView = 'overview';
+  var activeAdminTab = 'overviewPanel';
   var adminLoadState = {
     stats: false,
     bookingOps: false,
@@ -236,9 +235,10 @@
     var canExport = hasPermission('export_data');
     var canManagePrivacy = hasPermission('manage_privacy');
     toggleTab('logsPanel', canViewLogs);
-    toggleTab('roleAuditPanel', canViewLogs);
+    toggleTab('auditPanel', canViewLogs);
     toggleTab('adminsPanel', canManageRoles);
     toggleTab('dispatchersPanel', canManageRoles);
+    toggleTab('monitoringPanel', canViewLogs || canManagePrivacy);
     var exportBtn = document.getElementById('exportCsv');
     if (exportBtn) exportBtn.classList.toggle('hidden', !canExport);
     var archiveBtn = document.getElementById('runArchiveBtn');
@@ -331,9 +331,11 @@
       statsFromDate = data.from_date;
       statsToDate = data.to_date;
       document.getElementById('statsPeriod').innerHTML = 'Период: <strong>' + data.from_date + '</strong> — <strong>' + data.to_date + '</strong>';
+      var analyticsPeriodEl = document.getElementById('analyticsPeriod');
+      if (analyticsPeriodEl) analyticsPeriodEl.innerHTML = 'Период: <strong>' + data.from_date + '</strong> — <strong>' + data.to_date + '</strong>';
       document.getElementById('statsBookings').textContent = data.total_bookings != null ? data.total_bookings : '—';
       document.getElementById('statsSum').textContent = data.total_sum != null ? data.total_sum : '—';
-      if (activeStatsView === 'analytics') drawStatsCharts(data);
+      if (activeAdminTab === 'analyticsPanel') drawStatsCharts(data);
     }).catch(function() { document.getElementById('loginWarning').classList.remove('hidden'); document.getElementById('loginWarning').textContent = 'Нет доступа (не админ).'; });
   }
 
@@ -429,37 +431,32 @@
     loadStats(period || currentStatsPeriod());
   }
 
-  function ensureStatsOverviewLoaded(force) {
+  function ensureOverviewLoaded(force) {
     ensureStatsLoaded(currentStatsPeriod(), force);
     if (!adminLoadState.bookingOps || force) loadBookingOpsOverview();
   }
 
-  function ensureStatsMonitoringLoaded(force) {
+  function ensureMonitoringLoaded(force) {
     if (hasPermission('view_logs') && (!adminLoadState.systemHealth || force)) loadSystemHealth();
     if (hasPermission('manage_privacy') && (!adminLoadState.privacy || force)) loadPrivacyStatus();
   }
 
-  function switchStatsView(viewName) {
-    activeStatsView = viewName || 'overview';
-    document.querySelectorAll('[data-stats-view]').forEach(function(btn) {
-      btn.classList.toggle('admin-subtab--active', btn.getAttribute('data-stats-view') === activeStatsView);
-    });
-    document.querySelectorAll('.admin-stats-view').forEach(function(panel) {
-      panel.classList.toggle('admin-stats-view--active', panel.id === 'adminStatsView-' + activeStatsView);
-    });
-    if (activeStatsView === 'overview') ensureStatsOverviewLoaded(false);
-    if (activeStatsView === 'monitoring') ensureStatsMonitoringLoaded(false);
-    if (activeStatsView === 'analytics') {
-      ensureStatsLoaded(currentStatsPeriod(), false);
-      if (latestStatsData) drawStatsCharts(latestStatsData);
-    }
+  function ensureAnalyticsLoaded(force) {
+    ensureStatsLoaded(currentStatsPeriod(), force);
+    if (latestStatsData) drawStatsCharts(latestStatsData);
   }
 
   function ensureAdminTabLoaded(tabName, force) {
-    if (tabName === 'statsPanel') {
-      if (activeStatsView === 'monitoring') ensureStatsMonitoringLoaded(force);
-      else if (activeStatsView === 'analytics') ensureStatsLoaded(currentStatsPeriod(), force);
-      else ensureStatsOverviewLoaded(force);
+    if (tabName === 'overviewPanel') {
+      ensureOverviewLoaded(force);
+      return;
+    }
+    if (tabName === 'analyticsPanel') {
+      ensureAnalyticsLoaded(force);
+      return;
+    }
+    if (tabName === 'monitoringPanel') {
+      ensureMonitoringLoaded(force);
       return;
     }
     if (tabName === 'bookingsPanel' && (!adminLoadState.bookings || force)) {
@@ -470,7 +467,7 @@
       loadLogs();
       return;
     }
-    if (tabName === 'roleAuditPanel' && hasPermission('view_logs') && (!adminLoadState.roleAudit || !adminLoadState.operationsAudit || force)) {
+    if (tabName === 'auditPanel' && hasPermission('view_logs') && (!adminLoadState.roleAudit || !adminLoadState.operationsAudit || force)) {
       loadRoleAudit();
       loadOperationsAudit();
       return;
@@ -489,16 +486,12 @@
   document.querySelectorAll('.admin-period-tab').forEach(function(btn) {
     btn.addEventListener('click', function() {
       var period = this.getAttribute('data-period');
-      document.querySelectorAll('.admin-period-tab').forEach(function(b) { b.classList.remove('admin-period-tab--active'); });
-      this.classList.add('admin-period-tab--active');
+      document.querySelectorAll('.admin-period-tab').forEach(function(b) {
+        b.classList.toggle('admin-period-tab--active', b.getAttribute('data-period') === period);
+      });
       ensureStatsLoaded(period, true);
-      if (activeStatsView === 'overview') loadBookingOpsOverview();
-    });
-  });
-
-  document.querySelectorAll('[data-stats-view]').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      switchStatsView(btn.getAttribute('data-stats-view'));
+      if (activeAdminTab === 'overviewPanel') loadBookingOpsOverview();
+      if (activeAdminTab === 'analyticsPanel' && latestStatsData) drawStatsCharts(latestStatsData);
     });
   });
 
@@ -705,7 +698,7 @@
   document.getElementById('bookingsApplyFilters').addEventListener('click', function() { bookingsOffset = 0; loadAdminBookings(); });
   document.querySelectorAll('.segmented-control .segment').forEach(function(btn) {
     btn.addEventListener('click', function() {
-      activeAdminTab = this.getAttribute('data-tab') || 'statsPanel';
+      activeAdminTab = this.getAttribute('data-tab') || 'overviewPanel';
       ensureAdminTabLoaded(activeAdminTab, false);
     });
   });
@@ -909,7 +902,7 @@
     document.getElementById('adminMain').classList.remove('hidden');
     renderSessionPanel();
     applyPermissionsUi();
-    switchStatsView(activeStatsView);
+    ensureAdminTabLoaded(activeAdminTab, false);
   }).catch(function() {
     showLoginWarning('Нет доступа к админ-панели. Откройте её через Telegram под ролью администратора.');
   });

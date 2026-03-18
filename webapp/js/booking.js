@@ -43,6 +43,9 @@
   let route = null;
   let passengerCount = 1;
   const passengers = [];
+  var cachedProfilePhone = '';
+  var profilePhoneLoaded = false;
+  var profilePhonePromise = null;
 
   var routeSummaryEl = document.getElementById('routeSummary');
   if (routeSummaryEl) routeSummaryEl.textContent = fromCity + ' \u2192 ' + toCity + ', ' + dateStr + ' ' + timeStr;
@@ -88,8 +91,10 @@
       if (route.border_docs_text) borderEl.textContent = 'Документы для границы: ' + route.border_docs_text;
       else borderEl.textContent = '';
       updateDiscountsBlock();
+      syncProfileSaveOptions();
       renderPassengers();
       loadSavedPassengersForFill();
+      ensureProfilePhoneLoaded();
       if (typeof updateBookingUIForStep === 'function') updateBookingUIForStep(1);
     } catch (e) {
       showRoutesError('Ошибка при отображении формы. Попробуйте обновить страницу или выбрать маршрут заново.');
@@ -172,23 +177,124 @@
   }
 
   var savedPassengersForFill = [];
+  var PREFERRED_PASSENGER_KEY = 'profilePreferredPassengerId';
+
+  function getPreferredPassengerId() {
+    try {
+      return localStorage.getItem(PREFERRED_PASSENGER_KEY) || '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function sortSavedPassengersByPreference(items) {
+    var preferredId = getPreferredPassengerId();
+    if (!preferredId) return items.slice();
+    return items.slice().sort(function(a, b) {
+      if (String(a.id) === preferredId) return -1;
+      if (String(b.id) === preferredId) return 1;
+      return 0;
+    });
+  }
+
+  function applySavedPassengerToSlot(slotIndex, passenger) {
+    if (!passenger) return;
+    var pass = (passenger.passport || '').replace(/\s/g, '');
+    var digitsOnly = pass.replace(/\D/g, '');
+    var countryCode = digitsOnly.length === 10 ? 'RU' : (pass.length >= 9 && /^[A-Za-z]{2}\d{7}$/.test(pass.replace(/[^A-Za-z0-9]/g, '')) ? 'BY' : 'OTHER');
+    passengers[slotIndex] = {
+      last_name: passenger.last_name || '',
+      first_name: passenger.first_name || '',
+      middle_name: passenger.middle_name || '',
+      birth_date: passenger.birth_date || '',
+      passport: passenger.passport || '',
+      passport_country: countryCode,
+      citizenship: countryCode
+    };
+  }
+
+  function detectPhoneCountryCode(phoneValue) {
+    var digits = (phoneValue || '').replace(/\D/g, '');
+    var countries = typeof PHONE_COUNTRIES !== 'undefined' ? PHONE_COUNTRIES.slice() : [];
+    countries = countries.filter(function(item) { return item.code !== 'OTHER' && item.prefix; }).sort(function(a, b) {
+      return (b.prefix || '').length - (a.prefix || '').length;
+    });
+    for (var i = 0; i < countries.length; i++) {
+      if (digits.indexOf(countries[i].prefix) === 0) return countries[i].code;
+    }
+    return 'BY';
+  }
+
+  function applyProfilePhoneToFields(phoneValue) {
+    if (!phoneValue) return;
+    var phoneInp = getEl('phone');
+    var phoneCountry = getEl('phoneCountry');
+    if (!phoneInp || !phoneCountry || phoneInp.value.trim()) return;
+    var countryCode = detectPhoneCountryCode(phoneValue);
+    phoneCountry.value = countryCode;
+    if (typeof getPhonePlaceholderLocal === 'function') phoneInp.placeholder = getPhonePlaceholderLocal(countryCode);
+    phoneInp.value = typeof formatPhoneInputLocal === 'function' ? formatPhoneInputLocal(phoneValue, countryCode) : phoneValue;
+  }
+
+  function ensureProfilePhoneLoaded() {
+    if (profilePhoneLoaded) return Promise.resolve(cachedProfilePhone);
+    if (profilePhonePromise) return profilePhonePromise;
+    var apiFn = typeof api === 'function' ? api : null;
+    if (!apiFn || (typeof getTelegramUserId === 'function' && !getTelegramUserId())) {
+      profilePhoneLoaded = true;
+      return Promise.resolve('');
+    }
+    profilePhonePromise = apiFn('/api/user/profile').then(function(data) {
+      cachedProfilePhone = data && data.phone ? String(data.phone).trim() : '';
+      profilePhoneLoaded = true;
+      applyProfilePhoneToFields(cachedProfilePhone);
+      return cachedProfilePhone;
+    }).catch(function() {
+      profilePhoneLoaded = true;
+      return '';
+    }).finally(function() {
+      profilePhonePromise = null;
+    });
+    return profilePhonePromise;
+  }
+
+  function syncProfileSaveOptions() {
+    var savePhoneWrap = getEl('savePhoneWrap');
+    var savePassengersWrap = getEl('savePassengersWrap');
+    var savePhone = getEl('savePhone');
+    var savePassengers = getEl('savePassengers');
+    var isInternational = route && route.type === 'international';
+    if (savePhoneWrap) savePhoneWrap.classList.toggle('hidden', !!isInternational);
+    if (savePassengersWrap) savePassengersWrap.classList.toggle('hidden', !isInternational);
+    if (isInternational && savePhone) savePhone.checked = false;
+    if (!isInternational && savePassengers) savePassengers.checked = false;
+  }
+
+  function updateFillFromProfileButton() {
+    var fillBtn = document.getElementById('fillFromProfile');
+    if (!fillBtn) return;
+    var preferredId = getPreferredPassengerId();
+    var hasPreferred = savedPassengersForFill.some(function(p) { return String(p.id) === preferredId; });
+    if (hasPreferred && passengerCount === 1) {
+      fillBtn.textContent = 'Подставить основного';
+      return;
+    }
+    fillBtn.textContent = (typeof t === 'function' ? t('addFromSaved') : 'Вставить из сохранённых');
+  }
 
   function loadSavedPassengersForFill() {
     var apiFn = typeof api === 'function' ? api : null;
     if (!apiFn || (typeof getTelegramUserId === 'function' && !getTelegramUserId())) return;
     apiFn('/api/user/passengers').then(function(data) {
-      savedPassengersForFill = (data.passengers || []).filter(function(p) {
+      savedPassengersForFill = sortSavedPassengersByPreference((data.passengers || []).filter(function(p) {
         var pass = (p.passport || '').replace(/\s/g, '').replace(/[^A-Z0-9]/gi, '');
         return (p.last_name || '').trim() && (p.first_name || '').trim() && (p.birth_date || '').trim() &&
           (!route || route.type !== 'international' || pass.length >= 6);
-      });
+      }));
       var wrap = document.getElementById('fillFromProfileWrap');
       if (wrap) {
         wrap.classList.toggle('hidden', !savedPassengersForFill.length);
-        if (savedPassengersForFill.length) {
-          var fillBtn = document.getElementById('fillFromProfile');
-          if (fillBtn) fillBtn.textContent = (typeof t === 'function' ? t('addFromSaved') : 'Вставить из сохранённых');
-        }
+        if (savedPassengersForFill.length) updateFillFromProfileButton();
       }
     }).catch(function() {});
   }
@@ -198,19 +304,33 @@
       if (typeof showAppAlert === 'function') showAppAlert('В профиле нет сохранённых данных пассажира или они неполные.', 'Профиль');
       return;
     }
+    var preferredId = getPreferredPassengerId();
+    var preferredIndex = savedPassengersForFill.findIndex(function(p) { return String(p.id) === preferredId; });
     var root = document.getElementById('app-modal-root') || (function() { var r = document.createElement('div'); r.id = 'app-modal-root'; r.className = 'app-modal-root'; document.body.appendChild(r); return r; })();
     var overlay = document.createElement('div');
     overlay.className = 'app-modal-overlay';
+    overlay.classList.add('app-modal-overlay--center');
     overlay.setAttribute('role', 'dialog');
     overlay.setAttribute('aria-modal', 'true');
     var opts = savedPassengersForFill.map(function(p, idx) {
       var label = (p.last_name || '') + ' ' + (p.first_name || '') + (p.birth_date ? ' | ' + (typeof datePickerIsoToDisplay === 'function' ? datePickerIsoToDisplay(p.birth_date) : p.birth_date) : '');
       return '<option value="' + idx + '">' + label.replace(/</g, '&lt;') + '</option>';
     }).join('');
+    var optsWithoutPreferred = savedPassengersForFill.map(function(p, idx) {
+      if (idx === preferredIndex) return '';
+      var label = (p.last_name || '') + ' ' + (p.first_name || '') + (p.birth_date ? ' | ' + (typeof datePickerIsoToDisplay === 'function' ? datePickerIsoToDisplay(p.birth_date) : p.birth_date) : '');
+      return '<option value="' + idx + '">' + label.replace(/</g, '&lt;') + '</option>';
+    }).join('');
     var rows = '';
     for (var slot = 0; slot < passengerCount; slot++) {
+      var leadOption = '<option value="">— Не подставлять</option>';
+      var slotOptions = opts;
+      if (slot === 0 && preferredIndex !== -1) {
+        leadOption = '<option value="' + preferredIndex + '" selected>Первый главный пассажир</option>';
+        slotOptions = optsWithoutPreferred;
+      }
       rows += '<div class="field-group"><label>Пассажир ' + (slot + 1) + '</label><select id="fillSlot' + slot + '" class="fill-slot-select" aria-label="Выберите пассажира">' +
-        '<option value="">— Не подставлять</option>' + opts + '</select></div>';
+        leadOption + slotOptions + '</select></div>';
     }
     var html = '<div class="app-modal-header"><h2 class="app-modal-title">Вставить данные пассажира</h2><button type="button" class="app-modal-close fill-profile-close" aria-label="Закрыть">&times;</button></div>' +
       '<div class="app-modal-body"><p class="field-hint">Выберите, чьи данные подставить в каждую позицию.</p>' + rows + '</div>' +
@@ -224,17 +344,17 @@
     overlay.addEventListener('click', function(e) { if (e.target === overlay) closeFillModal(); });
     content.querySelector('.fill-profile-close').addEventListener('click', closeFillModal);
     content.querySelector('.fill-profile-cancel').addEventListener('click', closeFillModal);
+    if (preferredIndex !== -1) {
+      var preferredSelect = content.querySelector('#fillSlot0');
+      if (preferredSelect) preferredSelect.value = String(preferredIndex);
+    }
     content.querySelector('.fill-profile-apply').addEventListener('click', function() {
       for (var i = 0; i < passengerCount; i++) {
         var sel = content.querySelector('#fillSlot' + i);
         if (!sel) continue;
         var idx = parseInt(sel.value, 10);
         if (isNaN(idx) || idx < 0 || !savedPassengersForFill[idx]) continue;
-        var s = savedPassengersForFill[idx];
-        var pass = (s.passport || '').replace(/\s/g, '');
-        var digitsOnly = pass.replace(/\D/g, '');
-        var countryCode = digitsOnly.length === 10 ? 'RU' : (pass.length >= 9 && /^[A-Za-z]{2}\d{7}$/.test(pass.replace(/[^A-Za-z0-9]/g, '')) ? 'BY' : 'OTHER');
-        passengers[i] = { last_name: s.last_name || '', first_name: s.first_name || '', middle_name: s.middle_name || '', birth_date: s.birth_date || '', passport: s.passport || '', passport_country: countryCode, citizenship: countryCode };
+        applySavedPassengerToSlot(i, savedPassengersForFill[idx]);
       }
       closeFillModal();
       renderPassengers();
@@ -251,8 +371,8 @@
     document.getElementById('anotherPhoneBlock').classList.toggle('hidden', !this.checked);
   });
 
-  document.getElementById('passengerPlus').addEventListener('click', function() { passengerCount = Math.min(10, passengerCount + 1); updatePassengerNum(); renderPassengers(); });
-  document.getElementById('passengerMinus').addEventListener('click', function() { passengerCount = Math.max(1, passengerCount - 1); updatePassengerNum(); renderPassengers(); });
+  document.getElementById('passengerPlus').addEventListener('click', function() { passengerCount = Math.min(10, passengerCount + 1); updatePassengerNum(); updateFillFromProfileButton(); renderPassengers(); });
+  document.getElementById('passengerMinus').addEventListener('click', function() { passengerCount = Math.max(1, passengerCount - 1); updatePassengerNum(); updateFillFromProfileButton(); renderPassengers(); });
 
   function updatePassengerNum() {
     document.getElementById('passengerNum').textContent = passengerCount;
@@ -586,8 +706,11 @@
     if (typeof updateBookingUIForStep === 'function') updateBookingUIForStep(2);
     if (typeof getTheme === 'function') document.documentElement.setAttribute('data-theme', getTheme());
     clearStep2Errors();
-    var phoneVal = (typeof getTelegramUserId === 'function' && getTelegramUserId() ? '' : '');
-    if (getEl('phone').value.trim() === '' && phoneVal) getEl('phone').value = phoneVal;
+    syncProfileSaveOptions();
+    if (cachedProfilePhone) applyProfilePhoneToFields(cachedProfilePhone);
+    else ensureProfilePhoneLoaded().then(function(phoneVal) {
+      if (phoneVal) applyProfilePhoneToFields(phoneVal);
+    });
     recalcPriceSummary();
   });
 

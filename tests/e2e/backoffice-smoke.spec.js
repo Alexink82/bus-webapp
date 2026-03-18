@@ -318,9 +318,13 @@ test('admin desktop smoke shows sidebar and operations audit', async ({ page }) 
   await expect(page.locator('#dispatchersList')).toContainText('Минск - Москва');
   await expect(page.locator('#dispatchersList')).toContainText('Москва');
 
-  await page.locator('#adminTabs .segment[data-tab="roleAuditPanel"]').click();
+  await page.locator('#adminTabs .segment[data-tab="auditPanel"]').click();
   await expect(page.locator('#roleAuditContent')).toContainText('Добавлен диспетчер');
   await expect(page.locator('#operationsAuditContent')).toContainText('Смена статуса заявки');
+
+  await page.locator('#adminTabs .segment[data-tab="monitoringPanel"]').click();
+  await expect(page.locator('#systemHealthContent')).toContainText('Общий статус');
+  await expect(page.locator('#privacyStatusContent')).toContainText('Retention period');
 
   await page.locator('#adminSidebarToggle').click();
   await expect(page.locator('body')).toHaveClass(/admin-sidebar-collapsed/);
@@ -381,9 +385,12 @@ test('profile smoke shows overview and nearest trip actions', async ({ page }) =
   await page.goto('/profile.html');
 
   await expect(page.locator('#profileOverviewPanel')).toBeVisible();
+  await expect(page.locator('#profileTravelDashboard')).toBeVisible();
   await expect(page.locator('#profileOverviewTrip')).toContainText('Минск - Москва');
   await expect(page.locator('#profileOverviewTrip')).toContainText('BK-PR-1');
   await expect(page.locator('#profileOverviewActions')).toContainText('Подробнее');
   await expect(page.locator('#profileOverviewSupport')).toContainText('Поддержка');
+  await expect(page.locator('#profileTravelFavorites')).toContainText('Минск - Москва');
+  await expect(page.locator('#profileTravelInsights')).toContainText('Готовность к следующей поездке');
   await expect(page.locator('#bookingsListActive')).toContainText('Минск - Москва');
 });
