@@ -675,16 +675,16 @@
     var nearest = pickNearestTrip(items || []);
     panel.classList.remove('hidden');
     if (!nearest) {
-      hintEl.textContent = 'Активной поездки сейчас нет. Отсюда можно быстро вернуться к поиску и управлению пассажирами.';
+      hintEl.textContent = 'Активной поездки сейчас нет. Ниже можно быстро вернуться к поиску и пассажирам.';
       tripEl.innerHTML = profileEmptyStateHtml('nearest-trip', 'Ближайшая поездка пока не запланирована', 'Когда вы создадите новую бронь, здесь появится её статус и быстрые действия.');
       checklistEl.innerHTML =
-        '<div class="profile-overview__list-item"><strong>Следующий шаг:</strong> выберите маршрут и дату на главной странице.</div>' +
-        '<div class="profile-overview__list-item"><strong>Совет:</strong> заранее сохраните пассажиров, чтобы оформить бронь быстрее.</div>';
+        '<div class="profile-overview__list-item"><strong>Следующий шаг:</strong> выберите маршрут и дату.</div>' +
+        '<div class="profile-overview__list-item"><strong>Совет:</strong> сохраните пассажиров заранее.</div>';
       actionsEl.innerHTML =
         '<a class="btn btn-primary btn-small" href="index.html">Найти рейс</a>' +
         '<button type="button" class="btn btn-outline btn-small" id="profileOverviewGoPassengers">Открыть пассажиров</button>';
       supportEl.innerHTML =
-        '<div class="profile-overview__list-item"><strong>Поддержка:</strong> если нужна помощь с переносом или отменой, напишите в Telegram.</div>' +
+        '<div class="profile-overview__list-item"><strong>Поддержка:</strong> по переносу и отмене лучше писать в Telegram.</div>' +
         '<div class="profile-overview__list-item"><a href="https://t.me/bus_news" target="_blank" rel="noopener">Открыть @bus_news</a></div>';
       var goPassengersBtn = document.getElementById('profileOverviewGoPassengers');
       if (goPassengersBtn) {
@@ -695,7 +695,7 @@
       }
       return;
     }
-    hintEl.textContent = 'Здесь собрана ближайшая заявка, чтобы перед поездкой не искать её в списках.';
+    hintEl.textContent = 'Здесь собрана ближайшая заявка и быстрые действия по ней.';
     var mins = minutesUntilDeparture(nearest.departure_date, nearest.departure_time);
     var passengersCount = nearest.passengers_count != null ? nearest.passengers_count : ((nearest.passengers && nearest.passengers.length) || '—');
     var statusBadge = typeof getStatusBadge === 'function' ? getStatusBadge(nearest.status) : { class: 'badge badge--neutral', label: nearest.status || '—' };
@@ -718,16 +718,16 @@
       '</div>';
     checklistEl.innerHTML =
       '<div class="profile-overview__list-item"><strong>Статус:</strong> ' + esc(getTripActionLabel(nearest.status)) + '</div>' +
-      '<div class="profile-overview__list-item"><strong>Документы:</strong> проверьте данные пассажиров перед поездкой.</div>' +
-      '<div class="profile-overview__list-item"><strong>Сохранено пассажиров:</strong> ' + esc((passengers || []).length) + '</div>';
+      '<div class="profile-overview__list-item"><strong>Документы:</strong> проверьте данные пассажиров.</div>' +
+      '<div class="profile-overview__list-item"><strong>Пассажиров в профиле:</strong> ' + esc((passengers || []).length) + '</div>';
     actionsEl.innerHTML =
       '<button type="button" class="btn btn-primary btn-small" id="profileOverviewDetails">Подробнее</button>' +
       '<a class="btn btn-outline btn-small" href="success.html?booking_id=' + encodeURIComponent(nearest.booking_id) + '">Открыть билет</a>' +
       '<button type="button" class="btn btn-outline btn-small" id="profileOverviewRepeat">Повторить маршрут</button>';
     supportEl.innerHTML =
       '<div class="profile-overview__list-item"><strong>Поддержка:</strong> перенос и сложные вопросы лучше решать через Telegram.</div>' +
-      '<div class="profile-overview__list-item"><a href="https://t.me/bus_news" target="_blank" rel="noopener">Открыть поддержку / канал @bus_news</a></div>' +
-      '<div class="profile-overview__list-item"><strong>Совет:</strong> если заявка оплачена или билет отправлен, держите страницу заявки под рукой.</div>';
+      '<div class="profile-overview__list-item"><a href="https://t.me/bus_news" target="_blank" rel="noopener">Открыть поддержку / @bus_news</a></div>' +
+      '<div class="profile-overview__list-item"><strong>Совет:</strong> держите билет и страницу заявки под рукой.</div>';
     var detailsBtn = document.getElementById('profileOverviewDetails');
     if (detailsBtn) {
       detailsBtn.addEventListener('click', function() {
@@ -1156,8 +1156,6 @@
       var cancelled = items.filter(function(b) { return b.status === 'cancelled'; });
       updateProfileStats(items);
       renderProfileOverview(items, data.passengers || []);
-      renderTravelDashboard(items, data.passengers || [], data.profile || {});
-      renderProfileCommandCenter(items, data.passengers || [], data.profile || {});
       renderBookingCards(active, 'bookingsListActive');
       renderBookingCards(upcoming, 'bookingsListUpcoming');
       renderBookingCards(completed, 'bookingsListCompleted');
@@ -1167,11 +1165,7 @@
       if (profilePhoneEl && data.profile && data.profile.phone) profilePhoneEl.value = data.profile.phone || '';
     }).catch(function() {
       var panel = document.getElementById('profileOverviewPanel');
-      var dashboardPanel = document.getElementById('profileTravelDashboard');
-      var commandPanel = document.getElementById('profileCommandCenter');
       if (panel) panel.classList.add('hidden');
-      if (dashboardPanel) dashboardPanel.classList.add('hidden');
-      if (commandPanel) commandPanel.classList.add('hidden');
       ['bookingsListActive', 'bookingsListUpcoming', 'bookingsListCompleted', 'bookingsListCancelled'].forEach(function(id) {
         var el = document.getElementById(id);
         if (el) el.innerHTML = profileEmptyStateHtml('bookings-error', 'Не удалось загрузить заявки', 'Обновите раздел или проверьте соединение.');

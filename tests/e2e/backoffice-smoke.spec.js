@@ -388,15 +388,10 @@ test('profile smoke shows overview and nearest trip actions', async ({ page }) =
   await page.goto('/profile.html');
 
   await expect(page.locator('#profileOverviewPanel')).toBeVisible();
-  await expect(page.locator('#profileTravelDashboard')).toBeVisible();
-  await expect(page.locator('#profileCommandCenter')).toBeVisible();
   await expect(page.locator('#profileOverviewTrip')).toContainText('Минск - Москва');
   await expect(page.locator('#profileOverviewTrip')).toContainText('BK-PR-1');
   await expect(page.locator('#profileOverviewActions')).toContainText('Подробнее');
   await expect(page.locator('#profileOverviewSupport')).toContainText('Поддержка');
-  await expect(page.locator('#profileTravelFavorites')).toContainText('Минск - Москва');
-  await expect(page.locator('#profileTravelInsights')).toContainText('Готовность к следующей поездке');
-  await expect(page.locator('#profileSignalsList')).toContainText('Билет');
-  await expect(page.locator('#profileReadinessPanel')).toContainText('Готовность');
+  await expect(page.locator('#profileStatsBlock')).toContainText('Поездок');
   await expect(page.locator('#bookingsListActive')).toContainText('Минск - Москва');
 });

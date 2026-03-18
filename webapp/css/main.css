@@ -836,7 +836,7 @@ body {
   align-items: center;
   min-height: 32px;
   padding: 6px 10px;
-  border-radius: 999px;
+  border-radius: 12px;
   border: 1px solid var(--border);
   background: var(--surface-elevated);
   color: var(--text-muted);
@@ -867,6 +867,10 @@ body {
   cursor: pointer;
   appearance: button;
   flex: 1 1 180px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
 }
 .booking-card__actions .btn-small {
   margin-top: 0;
@@ -897,7 +901,7 @@ body {
   align-items: center;
   margin-left: 8px;
   padding: 4px 8px;
-  border-radius: 999px;
+  border-radius: 10px;
   background: rgba(84, 132, 255, 0.12);
   color: var(--accent);
   font-size: 0.75rem;
@@ -986,10 +990,12 @@ body {
   font-weight: 700;
 }
 .profile-overview__title {
+  margin: 0;
   font-size: 1.2rem;
   color: var(--text);
 }
 .profile-overview__hint {
+  margin: 0;
   color: var(--text-muted);
   font-size: 0.92rem;
 }
@@ -1090,6 +1096,10 @@ body {
 .profile-overview__actions .btn,
 .profile-overview__actions a {
   flex: 1 1 160px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
   text-decoration: none;
 }
 .profile-dashboard {
@@ -1190,7 +1200,7 @@ body {
   align-items: center;
   min-height: 32px;
   padding: 6px 10px;
-  border-radius: 999px;
+  border-radius: 12px;
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text-muted);
@@ -1340,6 +1350,10 @@ body {
   text-decoration: none;
   cursor: pointer;
   appearance: button;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
 }
 .booking-card__actions .btn-small { margin-top: 0; }
 .booking-card__top {
@@ -1357,7 +1371,7 @@ body {
   align-items: center;
   min-height: 28px;
   padding: 0 10px;
-  border-radius: 999px;
+  border-radius: 10px;
   background: rgba(84, 132, 255, 0.12);
   color: var(--accent);
   font-size: 0.78rem;
@@ -1702,7 +1716,7 @@ body {
   padding: 0 10px;
   font-size: 0.8rem;
   font-weight: 600;
-  border-radius: 999px;
+  border-radius: 10px;
 }
 .badge .icon { width: 14px; height: 14px; vertical-align: middle; }
 .badge--new { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
@@ -1952,8 +1966,8 @@ body {
 .segmented-control {
   display: flex;
   background: rgba(0, 0, 0, 0.06);
-  border-radius: 999px;
-  padding: 5px;
+  border-radius: 18px;
+  padding: 6px;
   margin: 16px 12px 20px;
   max-width: 100%;
   overflow-x: auto;
@@ -1970,11 +1984,11 @@ body {
 .segmented-control::-webkit-scrollbar { display: none; }
 .segment {
   flex: 0 0 auto;
-  padding: 10px 18px;
+  padding: 11px 16px;
   min-width: 70px;
   background: transparent;
   border: none;
-  border-radius: 999px;
+  border-radius: 12px;
   color: var(--text-muted);
   font-size: 15px;
   font-weight: 500;
@@ -1991,7 +2005,7 @@ body {
   color: #fff;
   font-weight: 600;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
-  transform: scale(1.02);
+  transform: none;
 }
 .telegram-theme .segment.active {
   background: var(--tg-theme-button-color, var(--accent));
@@ -2135,6 +2149,9 @@ select:focus-visible {
 .page-profile .profile-tabs .segment {
   flex: 1 1 auto;
   min-width: 0;
+  min-height: 52px;
+  padding: 12px 10px;
+  line-height: 1.25;
   white-space: normal;
   text-align: center;
 }
@@ -2148,12 +2165,20 @@ select:focus-visible {
 .page-profile .profile-bookings-tabs .segment {
   flex: 1 1 auto;
   min-width: 0;
-  min-height: 44px;
+  min-height: 52px;
+  padding: 12px 10px;
+  line-height: 1.25;
   white-space: normal;
   text-align: center;
 }
 
-.page-profile #bookingsSection,
+.page-profile #bookingsSection {
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
 .page-profile #passengersSection,
 .page-profile #settingsSection {
   background: var(--surface);
@@ -2172,23 +2197,118 @@ select:focus-visible {
 }
 
 @media (max-width: 560px) {
-  .profile-overview__trip-summary,
   .profile-overview__grid,
   .profile-dashboard__grid {
     grid-template-columns: 1fr;
+  }
+
+  .page-profile .tab-content {
+    padding: 0 8px 18px;
+  }
+
+  .page-profile .profile-tabs.segmented-control,
+  .page-profile .profile-bookings-tabs.segmented-control {
+    margin-top: 12px;
+    margin-bottom: 14px;
+  }
+
+  .profile-overview {
+    gap: 12px;
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .profile-overview__hero {
+    gap: 4px;
+  }
+
+  .profile-overview__eyebrow {
+    font-size: 0.72rem;
+  }
+
+  .profile-overview__title {
+    font-size: 1.08rem;
+  }
+
+  .profile-overview__hint {
+    font-size: 0.86rem;
+    line-height: 1.35;
+  }
+
+  .profile-overview__trip {
+    gap: 10px;
+    padding: 14px;
+  }
+
+  .profile-overview__trip-route {
+    font-size: 1rem;
+  }
+
+  .profile-overview__trip-meta {
+    font-size: 0.86rem;
+  }
+
+  .profile-overview__trip-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .profile-overview__trip-item,
+  .profile-overview__list-item {
+    padding: 9px 10px;
+  }
+
+  .profile-overview__card {
+    gap: 8px;
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .profile-overview__card-title {
+    font-size: 0.92rem;
+  }
+
+  .profile-overview__actions .btn,
+  .profile-overview__actions a {
+    min-height: 44px;
+    flex-basis: 100%;
   }
 
   .page-profile .profile-bookings-tabs.segmented-control {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .page-profile .profile-bookings-tabs .segment {
+    min-height: 46px;
+    padding: 10px 8px;
+    font-size: 0.84rem;
+  }
+
   .profile-stats {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .profile-stat-card {
+    padding: 10px 8px;
+  }
+
+  .profile-stat-card__value {
+    font-size: 0.98rem;
+  }
+
+  .profile-stat-card__label {
+    font-size: 0.72rem;
   }
 }
 
 @media (max-width: 420px) {
   .page-profile .profile-tabs.segmented-control {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-overview__trip-summary,
+  .profile-stats {
     grid-template-columns: 1fr;
   }
 }
