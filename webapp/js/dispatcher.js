@@ -64,6 +64,12 @@
 
   let isAdminView = false;
   let dispatchersListLoaded = false;
+  let activeDispatcherTab = 'new';
+  const dispatcherLoadState = {
+    new: { loaded: false, dirty: true, inFlight: false, promise: null },
+    active: { loaded: false, dirty: true, inFlight: false, promise: null },
+    stats: { loaded: false, dirty: true, inFlight: false, promise: null }
+  };
 
   function fmtDate(value) {
     if (!value) return '—';
@@ -95,11 +101,14 @@
           'IP: ' + esc(item.ip_address || 'не определён') + '<br>' +
           'UA: ' + esc(item.user_agent || 'не определён') +
         '</div>';
-      }).join('') : '<div class="dispatcher-session__meta">Активных browser-session пока нет.</div>';
+      }).join('') : '';
+      const details = sessions.length
+        ? '<details class="dispatcher-session__details"><summary>Активные browser-session: ' + sessions.length + '</summary><div class="dispatcher-session__list">' + items + '</div></details>'
+        : '<div class="dispatcher-session__meta">Активных browser-session пока нет.</div>';
       sessionPanel.innerHTML =
         '<div class="dispatcher-session__title">Состояние доступа</div>' +
-        '<div class="dispatcher-session__meta">Текущий режим: <strong>' + (authMode === 'browser' ? 'browser-session' : 'Telegram Mini App') + '</strong>. При работе в отдельном окне можно вручную завершить текущую или все browser-session. Для ноутбука: в Chrome/Edge откройте меню браузера и выберите "Установить приложение" / "Install app", затем закрепите его на панели задач.</div>' +
-        '<div class="dispatcher-session__list">' + items + '</div>';
+        '<div class="dispatcher-session__meta">Режим: <strong>' + (authMode === 'browser' ? 'browser-session' : 'Telegram Mini App') + '</strong>. Для отдельного окна используйте кнопку "Открыть в браузере", затем при желании установите PWA через меню Chrome/Edge.</div>' +
+        details;
     }).catch(function() {
       if (logoutAllBtn) logoutAllBtn.classList.add('hidden');
       if (!sessionPanel) return;
@@ -189,6 +198,19 @@
     return (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
+  function markDispatcherDirty(name) {
+    if (!dispatcherLoadState[name]) return;
+    dispatcherLoadState[name].dirty = true;
+  }
+
+  function schedulePostMutationRefresh() {
+    loadStats(true);
+    if (activeDispatcherTab === 'new' || dispatcherLoadState.new.loaded) loadNew(true);
+    else markDispatcherDirty('new');
+    if (activeDispatcherTab === 'active' || dispatcherLoadState.active.loaded) loadActive(true);
+    else markDispatcherDirty('active');
+  }
+
   function getBadgeHtml(statusOrPayment) {
     if (typeof getStatusBadge !== 'function') return statusOrPayment || '—';
     var badge = getStatusBadge(statusOrPayment);
@@ -204,11 +226,12 @@
       btn.classList.add('active');
       btn.setAttribute('aria-selected', 'true');
       const tab = btn.dataset.tab;
+      activeDispatcherTab = tab;
       const panelId = 'tab' + tab.charAt(0).toUpperCase() + tab.slice(1);
       const panel = document.getElementById(panelId);
       if (panel) panel.classList.remove('hidden');
-      if (tab === 'new') loadNew();
-      if (tab === 'active') loadActive();
+      if (tab === 'new') loadNew(false);
+      if (tab === 'active') loadActive(false);
     });
   });
 
@@ -366,7 +389,7 @@
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         api('/api/dispatcher/bookings/' + btn.dataset.id + '/take', { method: 'POST' })
-          .then(() => { loadNew(); loadActive(); loadStats(); })
+          .then(() => { schedulePostMutationRefresh(); })
           .catch(e => { var msg = e && e.message ? e.message : 'Произошла ошибка. Попробуйте позже.'; (typeof showAppAlert === 'function' ? showAppAlert : alert)(msg, 'Ошибка'); });
       });
     });
@@ -398,7 +421,7 @@
             var ov = document.querySelector('.app-modal-overlay.app-modal-visible');
             if (ov) ov.click();
             if (typeof onSuccess === 'function') onSuccess();
-            loadActive(); loadNew(); loadStats();
+            schedulePostMutationRefresh();
           }).catch(function(e) {
             var msg = e && e.message ? e.message : 'Ошибка.';
             (typeof showAppAlert === 'function' ? showAppAlert : alert)(msg, 'Ошибка');
@@ -414,7 +437,7 @@
         headers: { 'Content-Type': 'application/json' },
       }).then(function() {
         if (typeof onSuccess === 'function') onSuccess();
-        loadActive(); loadNew(); loadStats();
+        schedulePostMutationRefresh();
       }).catch(function(e) {
         var msg = e && e.message ? e.message : 'Ошибка.';
         alert(msg);
@@ -437,12 +460,20 @@
           method: 'POST',
           body: JSON.stringify({ status: status }),
           headers: { 'Content-Type': 'application/json' },
-        }).then(() => { loadActive(); loadNew(); loadStats(); }).catch(e => { var msg = e && e.message ? e.message : 'Произошла ошибка.'; (typeof showAppAlert === 'function' ? showAppAlert : alert)(msg, 'Ошибка'); });
+        }).then(() => { schedulePostMutationRefresh(); }).catch(e => { var msg = e && e.message ? e.message : 'Произошла ошибка.'; (typeof showAppAlert === 'function' ? showAppAlert : alert)(msg, 'Ошибка'); });
       });
     });
   }
 
-  function loadNew() {
+  function loadNew(force) {
+    var state = dispatcherLoadState.new;
+    if (!force && state.loaded && !state.dirty) return state.promise || Promise.resolve();
+    if (state.inFlight) {
+      state.dirty = true;
+      return state.promise || Promise.resolve();
+    }
+    state.inFlight = true;
+    state.dirty = false;
     const list = document.getElementById('newList');
     if (list) list.innerHTML = skeletonListHtml;
     const f = readFilters();
@@ -451,7 +482,7 @@
     if (f.date) qs.set('departure_date', f.date);
     if (f.payment) qs.set('payment_status', f.payment);
     if (isAdminView && f.dispatcher_id) qs.set('filter_dispatcher_id', f.dispatcher_id);
-    api('/api/dispatcher/bookings?' + qs.toString()).then(data => {
+    state.promise = api('/api/dispatcher/bookings?' + qs.toString()).then(data => {
       setAdminView(!!data.is_admin_view);
       let items = data.bookings || [];
       const sortEl = document.getElementById('sortNew');
@@ -484,9 +515,15 @@
         list.innerHTML = fresh.map(b => renderNewCard(b)).join('') || '<p>Нет новых заявок.</p>';
         bindTakeButtons(list);
       }
+      state.loaded = true;
       updateNewBulkActions();
       bindNewBulkActionsOnce();
-    }).catch(() => { if (list) list.innerHTML = '<p>Нет доступа (вы не диспетчер).</p>'; updateNewBulkActions(); });
+    }).catch(() => { if (list) list.innerHTML = '<p>Нет доступа (вы не диспетчер).</p>'; updateNewBulkActions(); }).finally(function() {
+      state.inFlight = false;
+      state.promise = null;
+      if (state.dirty) loadNew(true);
+    });
+    return state.promise;
   }
 
   function getNewCardCheckboxes() {
@@ -544,9 +581,7 @@
         function runNext() {
           if (done >= ids.length) {
             takeBtn.innerHTML = 'Взять все выбранные (<span id="takeSelectedCount">0</span>)';
-            loadNew();
-            loadActive();
-            loadStats();
+            schedulePostMutationRefresh();
             return;
           }
           var id = ids[done];
@@ -558,9 +593,7 @@
               takeBtn.disabled = false;
               takeBtn.innerHTML = 'Взять все выбранные (<span id="takeSelectedCount">0</span>)';
               document.getElementById('takeSelectedCount').textContent = getSelectedNewBookingIds().length;
-              loadNew();
-              loadActive();
-              loadStats();
+              schedulePostMutationRefresh();
             });
         }
         runNext();
@@ -573,7 +606,15 @@
     if (overdueList) overdueList.addEventListener('change', delegateCheck);
   }
 
-  function loadActive() {
+  function loadActive(force) {
+    var state = dispatcherLoadState.active;
+    if (!force && state.loaded && !state.dirty) return state.promise || Promise.resolve();
+    if (state.inFlight) {
+      state.dirty = true;
+      return state.promise || Promise.resolve();
+    }
+    state.inFlight = true;
+    state.dirty = false;
     const activeList = document.getElementById('activeList');
     if (activeList) activeList.innerHTML = skeletonListHtml;
     const f = readFilters();
@@ -582,7 +623,7 @@
     if (f.date) qs.set('departure_date', f.date);
     if (f.payment) qs.set('payment_status', f.payment);
     if (isAdminView && f.dispatcher_id) qs.set('filter_dispatcher_id', f.dispatcher_id);
-    api('/api/dispatcher/bookings?' + qs.toString()).then(data => {
+    state.promise = api('/api/dispatcher/bookings?' + qs.toString()).then(data => {
       setAdminView(!!data.is_admin_view);
       let items = data.bookings || [];
       const sortEl = document.getElementById('sortActive');
@@ -595,10 +636,16 @@
         });
       }
       updateActiveWidget(items.length ? items[0] : null);
+      state.loaded = true;
     }).catch(() => {
       if (activeList) activeList.innerHTML = '<p>Нет доступа (вы не диспетчер).</p>';
       updateActiveWidget(null);
+    }).finally(function() {
+      state.inFlight = false;
+      state.promise = null;
+      if (state.dirty) loadActive(true);
     });
+    return state.promise;
   }
 
   function updateActiveWidget(booking) {
@@ -631,12 +678,20 @@
     });
   }
 
-  function loadStats() {
+  function loadStats(force) {
+    var state = dispatcherLoadState.stats;
+    if (!force && state.loaded && !state.dirty) return state.promise || Promise.resolve();
+    if (state.inFlight) {
+      state.dirty = true;
+      return state.promise || Promise.resolve();
+    }
+    state.inFlight = true;
+    state.dirty = false;
     const f = readFilters();
     const qs = new URLSearchParams();
     if (isAdminView && f.dispatcher_id) qs.set('filter_dispatcher_id', f.dispatcher_id);
     const url = '/api/dispatcher/stats' + (qs.toString() ? '?' + qs.toString() : '');
-    api(url).then(data => {
+    state.promise = api(url).then(data => {
       setAdminView(!!data.is_admin_view);
       const total = data.total != null ? data.total : 0;
       const sum = data.sum != null ? data.sum : 0;
@@ -650,20 +705,29 @@
         slaEl.textContent = overdue15 > 0 ? 'Просрочено: ' + overdue15 : '—';
         slaEl.setAttribute('data-overdue', overdue15 > 0 ? 'true' : 'false');
       }
+      state.loaded = true;
     }).catch(() => {
       const sidebarEl = document.getElementById('sidebarStatsContent');
       if (sidebarEl) sidebarEl.textContent = 'Ошибка загрузки';
       const slaEl = document.getElementById('dispatcherSlaCount');
       if (slaEl) slaEl.textContent = '—';
+    }).finally(function() {
+      state.inFlight = false;
+      state.promise = null;
+      if (state.dirty) loadStats(true);
     });
+    return state.promise;
   }
 
   const applyFiltersBtn = document.getElementById('applyFiltersBtn');
   if (applyFiltersBtn) {
     applyFiltersBtn.addEventListener('click', function() {
-      loadNew();
-      loadActive();
-      loadStats();
+      markDispatcherDirty('new');
+      markDispatcherDirty('active');
+      markDispatcherDirty('stats');
+      loadStats(true);
+      if (activeDispatcherTab === 'active') loadActive(true);
+      else loadNew(true);
     });
   }
 
@@ -728,19 +792,25 @@
           if (payment && p) payment.value = p.value || '';
           var ov = document.querySelector('.app-modal-overlay.app-modal-visible');
           if (ov) ov.click();
-          loadNew();
-          loadActive();
+          markDispatcherDirty('new');
+          markDispatcherDirty('active');
+          markDispatcherDirty('stats');
+          if (activeDispatcherTab === 'active') loadActive(true);
+          else loadNew(true);
+          loadStats(true);
         });
       } else {
-        loadNew();
-        loadActive();
+        markDispatcherDirty('new');
+        markDispatcherDirty('active');
+        loadStats(true);
+        if (activeDispatcherTab === 'active') loadActive(true);
+        else loadNew(true);
       }
     });
   }
 
-  loadNew();
-  loadActive();
-  loadStats();
+  loadNew(true);
+  loadStats(true);
 
   // Экспорт заявок за смену (CSV)
   (function bindExport() {
@@ -761,8 +831,8 @@
   function attachSortHandlers() {
     var sortNew = document.getElementById('sortNew');
     var sortActive = document.getElementById('sortActive');
-    if (sortNew) sortNew.addEventListener('change', function() { loadNew(); });
-    if (sortActive) sortActive.addEventListener('change', function() { loadActive(); });
+    if (sortNew) sortNew.addEventListener('change', function() { markDispatcherDirty('new'); loadNew(true); });
+    if (sortActive) sortActive.addEventListener('change', function() { markDispatcherDirty('active'); loadActive(true); });
   }
   attachSortHandlers();
 
@@ -841,14 +911,13 @@
         try {
           const msg = JSON.parse(ev.data);
           if (msg.type === 'new_booking') {
-            loadNew();
-            loadStats();
+            markDispatcherDirty('new');
+            loadStats(true);
+            if (activeDispatcherTab === 'new' || dispatcherLoadState.new.loaded) loadNew(true);
             if (window.Telegram && Telegram.WebApp && Telegram.WebApp.HapticFeedback) Telegram.WebApp.HapticFeedback.notificationOccurred('success');
           }
           if (msg.type === 'status_changed') {
-            loadNew();
-            loadActive();
-            loadStats();
+            schedulePostMutationRefresh();
           }
         } catch (e) {}
       };

@@ -48,11 +48,27 @@
   gap: 8px;
   margin-top: 10px;
 }
+.dispatcher-session__details {
+  margin-top: 10px;
+}
+.dispatcher-session__details summary {
+  cursor: pointer;
+  color: var(--text);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
 .dispatcher-session__item {
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 10px 12px;
   background: rgba(255, 255, 255, 0.03);
+}
+.dispatcher-access-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 0 16px 12px;
 }
 .dispatcher-auth-badge {
   display: inline-flex;
@@ -135,6 +151,9 @@
     max-width: 100%;
     padding-left: 24px;
     padding-right: 24px;
+  }
+  .dispatcher-access-actions {
+    padding: 0 0 12px;
   }
 }
 

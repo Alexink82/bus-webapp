@@ -194,6 +194,40 @@
 
   var PROFILE_LIST_PAGE_SIZE = 10;
 
+  function profileEmptyStateHtml(kind, title, hint, iconHtml) {
+    var icon = iconHtml || '';
+    return '<div class="empty-state profile-empty-state">' +
+      (icon ? '<span class="icon icon--l">' + icon + '</span>' : '') +
+      '<p class="empty-state__title">' + title + '</p>' +
+      '<p>' + hint + '</p>' +
+    '</div>';
+  }
+
+  function bookingsEmptyStateHtml(containerId) {
+    var icon = (typeof APP_ICONS !== 'undefined' && APP_ICONS.bus) ? APP_ICONS.bus : '';
+    var title = 'Пока нет заявок';
+    var hint = 'Здесь появятся ваши поездки.';
+    if (containerId === 'bookingsListActive') {
+      title = 'Нет активных заявок';
+      hint = 'Когда заявка будет подтверждена или взята в работу, она появится здесь.';
+    } else if (containerId === 'bookingsListUpcoming') {
+      title = 'Нет предстоящих заявок';
+      hint = 'Новые бронирования на будущие даты появятся в этом разделе.';
+    } else if (containerId === 'bookingsListCompleted') {
+      title = 'Нет завершённых поездок';
+      hint = 'После завершения рейсов история поездок будет собираться здесь.';
+    } else if (containerId === 'bookingsListCancelled') {
+      title = 'Нет отменённых заявок';
+      hint = 'Отменённые бронирования будут храниться в этом разделе.';
+    }
+    return profileEmptyStateHtml('bookings', title, hint, icon);
+  }
+
+  function passengersEmptyStateHtml() {
+    var icon = (typeof APP_ICONS !== 'undefined' && APP_ICONS.passenger) ? APP_ICONS.passenger : '';
+    return profileEmptyStateHtml('passengers', 'Нет сохранённых пассажиров', 'Добавьте пассажира один раз, чтобы потом быстрее оформлять бронь.', icon);
+  }
+
   function renderBookingCards(items, containerId) {
     var list = document.getElementById(containerId);
     if (!list) return;
@@ -206,13 +240,24 @@
       var badgeHtml = '<span class="' + esc(badge.class) + '">' + (badge.class.indexOf('success') !== -1 ? iconCheck : '') + '<span>' + esc(badge.label) + '</span></span>';
       var cancelBtn = (b.status !== 'cancelled' && b.status !== 'done' && b.status !== 'ticket_sent') ? ' <button type="button" class="btn btn-outline btn-small cancel-booking" data-id="' + esc(b.booking_id) + '">' + iconCross + ' Отменить</button>' : '';
       var detailsBtn = '<button type="button" class="btn btn-outline btn-small booking-details" data-id="' + esc(b.booking_id) + '">Подробнее</button>';
+      var fromTo = [b.from_city, b.to_city].filter(Boolean).map(esc).join(' → ');
       return '<div class="trip-card booking-card">' +
-        '<div class="booking-card__head"><strong>' + esc(b.booking_id) + '</strong> — ' + esc(b.route_name) + '</div>' +
-        '<div class="booking-card__meta">' + esc(b.departure_date) + ' ' + esc(b.departure_time) + ' | ' + esc(b.price_total) + ' ' + esc(b.currency) + ' | ' + badgeHtml + '</div>' +
+        '<div class="booking-card__top">' +
+          '<div class="booking-card__identity">' +
+            '<span class="booking-card__id">' + esc(b.booking_id) + '</span>' +
+            '<div class="booking-card__head">' + esc(b.route_name || 'Маршрут') + '</div>' +
+            '<div class="booking-card__route">' + (fromTo || 'Маршрут уточняется') + '</div>' +
+          '</div>' +
+          '<div class="booking-card__status">' + badgeHtml + '</div>' +
+        '</div>' +
+        '<div class="booking-card__summary">' +
+          '<div class="booking-card__summary-item"><span class="booking-card__summary-label">Дата и время</span><span class="booking-card__summary-value">' + esc((b.departure_date || '—') + ((b.departure_time || '') ? ' ' + b.departure_time : '')) + '</span></div>' +
+          '<div class="booking-card__summary-item"><span class="booking-card__summary-label">Стоимость</span><span class="booking-card__summary-value">' + esc((b.price_total != null ? b.price_total : '—') + ' ' + (b.currency || 'BYN')) + '</span></div>' +
+          '<div class="booking-card__summary-item"><span class="booking-card__summary-label">Пассажиры</span><span class="booking-card__summary-value">' + esc(b.passengers_count != null ? b.passengers_count : '—') + '</span></div>' +
+        '</div>' +
         '<div class="booking-card__actions">' + detailsBtn + cancelBtn + '</div></div>';
     }
-    var emptyHtml = typeof APP_ICONS !== 'undefined' && APP_ICONS.bus ? '<div class="empty-state"><span class="icon icon--l">' + APP_ICONS.bus + '</span><p class="empty-state__title">' + (typeof t === 'function' ? t('noBookings') : 'Пока нет заявок') + '</p><p>' + (typeof t === 'function' ? t('noBookingsHint') : 'Здесь появятся ваши поездки') + '</p></div>' : '<p>' + (typeof t === 'function' ? t('noBookings') : 'Нет заявок') + '.</p>';
-    if (!items.length) { list.innerHTML = emptyHtml; return; }
+    if (!items.length) { list.innerHTML = bookingsEmptyStateHtml(containerId); return; }
     var visibleCount = Math.min(PROFILE_LIST_PAGE_SIZE, items.length);
     var visibleHtml = items.slice(0, visibleCount).map(cardHtml).join('');
     var moreCount = items.length - visibleCount;
@@ -306,6 +351,14 @@
       var el = document.getElementById(id);
       if (el) el.innerHTML = html;
     });
+  }
+
+  function showPassengersSkeleton() {
+    var list = document.getElementById('passengersList');
+    if (!list) return;
+    list.innerHTML =
+      '<div class="skeleton-card trip-card"><div class="skeleton skeleton-line skeleton-line--title"></div><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line skeleton-line--short"></div></div>' +
+      '<div class="skeleton-card trip-card"><div class="skeleton skeleton-line skeleton-line--title"></div><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line skeleton-line--short"></div></div>';
   }
 
   function minutesUntilDeparture(depDateStr, depTimeStr) {
@@ -478,7 +531,7 @@
         '<button type="button" class="btn btn-small btn-outline delete-passenger" data-id="' + esc(p.id) + '">Удалить</button>' +
         '</div></div>';
     }
-    if (!items.length) { list.innerHTML = '<p>Нет сохранённых пассажиров.</p>'; return; }
+    if (!items.length) { list.innerHTML = passengersEmptyStateHtml(); return; }
     var visibleCount = Math.min(PROFILE_LIST_PAGE_SIZE, items.length);
     var visibleHtml = items.slice(0, visibleCount).map(cardHtml).join('');
     var moreCount = items.length - visibleCount;
@@ -521,14 +574,18 @@
 
   function loadPassengers() {
     var list = document.getElementById('passengersList');
+    showPassengersSkeleton();
     apiFn('/api/user/passengers').then(function(data) {
       renderPassengersList(data.passengers || [], loadPassengers);
-    }).catch(function() { if (list) list.innerHTML = '<p>\u041e\u0448\u0438\u0431\u043a\u0430 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0438.</p>'; });
+    }).catch(function() { if (list) list.innerHTML = profileEmptyStateHtml('passengers-error', 'Не удалось загрузить пассажиров', 'Попробуйте обновить раздел ещё раз.'); });
   }
 
   function loadDashboard() {
     showBookingsSkeleton();
+    showPassengersSkeleton();
     var list = document.getElementById('passengersList');
+    var refreshBtn = document.getElementById('refreshBookingsBtn');
+    if (refreshBtn) refreshBtn.disabled = true;
     apiFn('/api/user/dashboard').then(function(data) {
       var items = data.bookings || [];
       var today = new Date().toISOString().slice(0, 10);
@@ -547,9 +604,11 @@
     }).catch(function() {
       ['bookingsListActive', 'bookingsListUpcoming', 'bookingsListCompleted', 'bookingsListCancelled'].forEach(function(id) {
         var el = document.getElementById(id);
-        if (el) el.innerHTML = '<p>Ошибка загрузки.</p>';
+        if (el) el.innerHTML = profileEmptyStateHtml('bookings-error', 'Не удалось загрузить заявки', 'Обновите раздел или проверьте соединение.');
       });
-      if (list) list.innerHTML = '<p>\u041e\u0448\u0438\u0431\u043a\u0430 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0438.</p>';
+      if (list) list.innerHTML = profileEmptyStateHtml('passengers-error', 'Не удалось загрузить пассажиров', 'Обновите раздел или попробуйте позже.');
+    }).finally(function() {
+      if (refreshBtn) refreshBtn.disabled = false;
     });
   }
 

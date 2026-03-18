@@ -7,16 +7,16 @@
   <title>Диспетчер</title>
   <script>(function(){var t=localStorage.getItem('theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);else if(window.matchMedia&&window.matchMedia('(min-width: 1024px)').matches)document.documentElement.setAttribute('data-theme','dark');})();</script>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script type="module" crossorigin src="/assets/dispatcher-DthRuInb.js"></script>
+  <script type="module" crossorigin src="/assets/dispatcher-C2fASwuJ.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/api-BIE_2TWG.js">
   <link rel="modulepreload" crossorigin href="/assets/icons-BwUb0pDV.js">
   <link rel="modulepreload" crossorigin href="/assets/auth-BtufPi45.js">
   <link rel="modulepreload" crossorigin href="/assets/app-modal-BWjIbSvX.js">
-  <link rel="modulepreload" crossorigin href="/assets/theme-0Sm6HUR2.js">
+  <link rel="modulepreload" crossorigin href="/assets/theme-BqZTuSch.js">
   <link rel="modulepreload" crossorigin href="/assets/nav-DSEjnhJQ.js">
   <link rel="stylesheet" crossorigin href="/assets/auth-AUa4N_F6.css">
-  <link rel="stylesheet" crossorigin href="/assets/theme-BOAbSNAg.css">
-  <link rel="stylesheet" crossorigin href="/assets/dispatcher-D8qrFNXq.css">
+  <link rel="stylesheet" crossorigin href="/assets/theme-DmupI9GP.css">
+  <link rel="stylesheet" crossorigin href="/assets/dispatcher-DwuuTJWa.css">
 </head>
 <body class="page-dispatcher">
   <div class="container">
@@ -30,13 +30,15 @@
         <div class="header__title-wrap">
           <h1>Панель диспетчера</h1>
         </div>
-        <span id="dispatcherAuthModeBadge" class="dispatcher-auth-badge hidden">Telegram</span>
-        <button type="button" id="openDispatcherInBrowser" class="btn btn-outline btn-small">Открыть в браузере</button>
-        <button type="button" id="dispatcherLogoutBtn" class="btn btn-outline btn-small hidden">Выйти из браузера</button>
-        <button type="button" id="dispatcherLogoutAllBtn" class="btn btn-outline btn-small hidden">Выйти везде</button>
         <a href="index.html" class="header__exit">Выйти</a>
       </div>
     </header>
+    <div class="dispatcher-access-actions">
+      <span id="dispatcherAuthModeBadge" class="dispatcher-auth-badge hidden">Telegram</span>
+      <button type="button" id="openDispatcherInBrowser" class="btn btn-outline btn-small">Открыть в браузере</button>
+      <button type="button" id="dispatcherLogoutBtn" class="btn btn-outline btn-small hidden">Выйти из браузера</button>
+      <button type="button" id="dispatcherLogoutAllBtn" class="btn btn-outline btn-small hidden">Выйти везде</button>
+    </div>
     <div id="loginWarning" class="warning hidden">Войдите через Telegram (как диспетчер) или через browser-session backoffice.</div>
     <div id="dispatcherSessionPanel" class="dispatcher-session hidden"></div>
 

@@ -399,6 +399,8 @@ body {
   border-radius: var(--radius);
   margin-bottom: 24px;
   transition: background-color 0.25s ease;
+  border: 1px solid var(--border);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
 }
 
 .search-form__hint {
@@ -667,6 +669,11 @@ body {
 
 .results {
   margin-bottom: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
 }
 
 .results.hidden {
@@ -689,27 +696,83 @@ body {
 
 .booking-card {
   max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border: 1px solid var(--border);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+}
+.booking-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.booking-card__identity {
+  min-width: 0;
+  flex: 1;
+}
+.booking-card__id {
+  display: inline-block;
+  margin-bottom: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent);
 }
 .booking-card__head {
   font-size: 1rem;
-  margin-bottom: 6px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
 }
-.booking-card__meta {
+.booking-card__route {
   font-size: 0.9rem;
   color: var(--text-muted);
-  margin-bottom: 10px;
+}
+.booking-card__status {
+  display: inline-flex;
+  align-items: center;
+}
+.booking-card__summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.booking-card__summary-item {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
+}
+.booking-card__summary-label {
+  display: block;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.booking-card__summary-value {
+  display: block;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--text);
 }
 .booking-card__actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
 }
 .booking-card__actions .btn,
 .booking-card__actions .booking-details {
   text-decoration: none;
   cursor: pointer;
   appearance: button;
+  flex: 1 1 180px;
 }
 .booking-card__actions .btn-small {
   margin-top: 0;
@@ -723,12 +786,26 @@ body {
 .booking-details-modal__actions a { text-decoration: none; }
 
 /* Карточка пассажира в профиле (как в личном кабинете) */
-.passenger-card { display: flex; flex-direction: column; gap: 12px; }
+.passenger-card { display: flex; flex-direction: column; gap: 12px; border: 1px solid var(--border); box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08); }
 .passenger-card__info { min-width: 0; }
 .passenger-card__name { font-weight: 600; font-size: 1rem; margin-bottom: 4px; }
 .passenger-card__meta { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 2px; }
 .passenger-card__actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 4px; padding-top: 12px; border-top: 1px solid var(--border); }
 .passenger-card__actions .btn-small { margin-top: 0; flex: 1; min-width: 0; }
+.profile-list-more { display: grid; gap: 12px; margin-top: 12px; }
+.profile-show-more { margin-top: 12px; }
+.profile-empty-state { border: 1px dashed var(--border); border-radius: 16px; background: var(--surface-elevated); }
+
+@media (max-width: 640px) {
+  .booking-card__summary {
+    grid-template-columns: 1fr;
+  }
+
+  .booking-card__actions .btn,
+  .booking-card__actions .booking-details {
+    flex-basis: 100%;
+  }
+}
 .btn-link { background: none; border: none; color: var(--accent); cursor: pointer; text-decoration: underline; font-size: inherit; padding: 0; }
 .btn-link:hover { color: var(--accent-hover); }
 
@@ -861,6 +938,11 @@ body {
 
 .schedule-section {
   margin-bottom: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
 }
 
 .schedule-section h3 {
@@ -950,6 +1032,7 @@ body {
   border-radius: var(--radius);
   overflow-wrap: break-word;
   word-wrap: break-word;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
 }
 
 .actual-info h3 {
@@ -1408,7 +1491,7 @@ body {
 .settings-section h2 { font-size: 1.1rem; margin-bottom: 12px; }
 .settings-group { margin-bottom: 12px; }
 .settings-group label { display: block; margin-bottom: 4px; color: var(--text-muted); }
-.settings-select { width: 100%; max-width: 200px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); color: var(--text); font-size: 1rem; }
+.settings-select { width: 100%; max-width: 320px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); color: var(--text); font-size: 1rem; }
 .settings-checkbox { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; cursor: pointer; }
 .settings-checkbox input { width: auto; }
 .settings-hint { font-size: 0.85rem; color: var(--text-muted); margin-top: 0; margin-bottom: 12px; }
@@ -1458,4 +1541,159 @@ input:focus-visible,
 select:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+.page-profile .profile-tabs.segmented-control,
+.page-profile .profile-bookings-tabs.segmented-control {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.page-profile .profile-tabs.segmented-control {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.page-profile .profile-tabs .segment {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: normal;
+  text-align: center;
+}
+
+.page-profile .profile-bookings-tabs.segmented-control {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.page-profile .profile-bookings-tabs .segment {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 44px;
+  white-space: normal;
+  text-align: center;
+}
+
+.page-profile #bookingsSection,
+.page-profile #passengersSection,
+.page-profile #settingsSection {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
+}
+
+.page-profile .profile-edit-phone .settings-input {
+  max-width: 420px;
+}
+
+.page-profile #passengersSection #addPassenger {
+  margin-top: 12px;
+}
+
+@media (max-width: 560px) {
+  .page-profile .profile-bookings-tabs.segmented-control {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .profile-stats {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 420px) {
+  .page-profile .profile-tabs.segmented-control {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 900px) {
+  .container {
+    max-width: 960px;
+    padding: 24px;
+    padding-left: max(24px, env(safe-area-inset-left));
+    padding-right: max(24px, env(safe-area-inset-right));
+  }
+
+  .header {
+    margin-bottom: 16px;
+  }
+
+  .header__row {
+    grid-template-columns: 48px 1fr 48px;
+    min-height: 48px;
+    padding: 0;
+  }
+
+  .header__title-wrap h1 {
+    font-size: 1.5rem;
+  }
+
+  .tab-bar {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: min(640px, calc(100vw - 32px));
+    margin: 0;
+    bottom: 12px;
+    border-radius: 18px;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.18);
+  }
+}
+
+@media (min-width: 1024px) {
+  body.page-home .container {
+    max-width: 1180px;
+  }
+
+  body.page-home .main {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(320px, 0.9fr);
+    gap: 24px;
+    align-items: start;
+  }
+
+  body.page-home #lastSearchBlock,
+  body.page-home #searchFormSubtitle,
+  body.page-home #searchForm,
+  body.page-home #results,
+  body.page-home #scheduleSection {
+    grid-column: 1;
+  }
+
+  body.page-home #actualInfo {
+    grid-column: 2;
+    grid-row: 1 / span 5;
+    position: sticky;
+    top: 24px;
+  }
+
+  body.page-home .search-form-subtitle {
+    margin: 0 0 12px;
+    text-align: left;
+  }
+
+  body.page-home .results,
+  body.page-home .schedule-section,
+  body.page-home .actual-info {
+    padding: 20px;
+  }
+
+  body.page-profile .container {
+    max-width: 1120px;
+  }
+
+  body.page-profile .main {
+    max-width: 960px;
+    margin: 0 auto;
+  }
+
+  .page-profile #bookingsSection,
+  .page-profile #passengersSection,
+  .page-profile #settingsSection {
+    padding: 20px;
+  }
 }

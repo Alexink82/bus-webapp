@@ -276,6 +276,20 @@
   display: none;
 }
 
+.booking-page .stepper,
+.booking-page #step1,
+.booking-page #step2 {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
+}
+
+.booking-page #step1,
+.booking-page #step2 {
+  padding: 20px;
+}
+
 /* Фиксированная нижняя панель (TG WebApp 2026) */
 .fixed-bottom-bar {
   position: fixed;
@@ -304,4 +318,40 @@
 }
 body.booking-page .main {
   padding-bottom: 80px;
+}
+
+@media (max-width: 420px) {
+  .phone-field-row {
+    flex-wrap: wrap;
+  }
+
+  .phone-country-select,
+  .phone-field-row .phone-input {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (min-width: 900px) {
+  body.booking-page .container {
+    max-width: 960px;
+  }
+
+  body.booking-page .main {
+    max-width: 860px;
+    margin: 0 auto;
+    padding-bottom: 120px;
+  }
+
+  .fixed-bottom-bar {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: min(860px, calc(100vw - 32px));
+    bottom: 16px;
+    padding: 14px 18px;
+    border: 1px solid var(--border, var(--tg-theme-secondary-bg-color, #eee));
+    border-radius: 20px;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.18);
+  }
 }

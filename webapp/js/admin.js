@@ -49,10 +49,26 @@
   const authMode = identity.authMode || 'telegram';
   try { localStorage.setItem('preferredBackofficeEntry', 'admin'); } catch (e) {}
   let statsFromDate = '', statsToDate = '';
+  var latestStatsData = null;
   var adminContext = { permissions: [], permissions_catalog: [], is_super_admin: true, telegram_id: uid };
   var editingAdminId = null;
   var editingDispatcherId = null;
   var routeCatalog = [];
+  var activeAdminTab = 'statsPanel';
+  var activeStatsView = 'overview';
+  var adminLoadState = {
+    stats: false,
+    bookingOps: false,
+    systemHealth: false,
+    privacy: false,
+    logs: false,
+    roleAudit: false,
+    operationsAudit: false,
+    admins: false,
+    dispatchers: false,
+    routeCatalog: false,
+    bookings: false,
+  };
   var authBadge = document.getElementById('adminAuthModeBadge');
   var sessionPanel = document.getElementById('adminSessionPanel');
   var openInBrowserBtn = document.getElementById('openAdminInBrowser');
@@ -100,11 +116,14 @@
           '<div>IP: ' + (item.ip_address || 'не определён') + '</div>' +
           '<div>UA: ' + esc(item.user_agent || 'не определён') + '</div>' +
         '</div>';
-      }).join('') : '<div class="admin-session__meta">Активных browser-session пока нет.</div>';
+      }).join('') : '';
+      var details = sessions.length
+        ? '<details class="admin-session__details"><summary>Активные browser-session: ' + sessions.length + '</summary><div class="admin-session__list">' + items + '</div></details>'
+        : '<div class="admin-session__meta">Активных browser-session пока нет.</div>';
       sessionPanel.innerHTML =
         '<div class="admin-session__title">Состояние доступа</div>' +
-        '<div class="admin-session__meta">Текущий режим: <strong>' + (authMode === 'browser' ? 'browser-session' : 'Telegram Mini App') + '</strong>. Telegram-чаты можно держать открытыми отдельно, а browser-session при необходимости завершать вручную. Для ноутбука: в Chrome/Edge откройте меню браузера и выберите "Установить приложение" / "Install app", затем закрепите ярлык на панели задач.</div>' +
-        '<div class="admin-session__list">' + items + '</div>';
+        '<div class="admin-session__meta">Режим: <strong>' + (authMode === 'browser' ? 'browser-session' : 'Telegram Mini App') + '</strong>. Для отдельного окна используйте кнопку "Открыть в браузере", затем при желании установите PWA через меню Chrome/Edge.</div>' +
+        details;
     }).catch(function() {
       if (logoutAllBtn) logoutAllBtn.classList.add('hidden');
       if (!sessionPanel) return;
@@ -174,13 +193,27 @@
       routeCatalog = (data.routes || []).map(function(route) {
         return { id: route.id, name: route.name || route.id };
       });
+      adminLoadState.routeCatalog = true;
       renderRoutePicker('dispatcherRoutesPicker', [], 'dispatcher-routes-create');
       return routeCatalog;
     }).catch(function() {
       routeCatalog = [];
+      adminLoadState.routeCatalog = false;
       renderRoutePicker('dispatcherRoutesPicker', [], 'dispatcher-routes-create');
       return routeCatalog;
     });
+  }
+
+  function ensureRouteCatalog() {
+    if (adminLoadState.routeCatalog && routeCatalog.length) {
+      return Promise.resolve(routeCatalog);
+    }
+    return loadRouteCatalog();
+  }
+
+  function currentStatsPeriod() {
+    var el = document.querySelector('.admin-period-tab--active');
+    return el ? el.getAttribute('data-period') : 'month';
   }
 
   function setUnavailable(targetId, message) {
@@ -293,17 +326,20 @@
       document.getElementById('loginWarning').classList.add('hidden');
       document.getElementById('adminTabs').classList.remove('hidden');
       document.getElementById('adminMain').classList.remove('hidden');
+      adminLoadState.stats = true;
+      latestStatsData = data;
       statsFromDate = data.from_date;
       statsToDate = data.to_date;
       document.getElementById('statsPeriod').innerHTML = 'Период: <strong>' + data.from_date + '</strong> — <strong>' + data.to_date + '</strong>';
       document.getElementById('statsBookings').textContent = data.total_bookings != null ? data.total_bookings : '—';
       document.getElementById('statsSum').textContent = data.total_sum != null ? data.total_sum : '—';
-      drawStatsCharts(data);
+      if (activeStatsView === 'analytics') drawStatsCharts(data);
     }).catch(function() { document.getElementById('loginWarning').classList.remove('hidden'); document.getElementById('loginWarning').textContent = 'Нет доступа (не админ).'; });
   }
 
   function loadBookingOpsOverview() {
     api('/api/admin/booking-ops-overview').then(function(data) {
+      adminLoadState.bookingOps = true;
       var today = data.today || {};
       var queues = data.queues || {};
       var alerts = data.alerts || [];
@@ -354,6 +390,7 @@
 
   function loadSystemHealth() {
     api('/api/admin/system-health').then(function(data) {
+      adminLoadState.systemHealth = true;
       var badge = function(label, value) {
         var cls = value === 'ok' ? 'badge badge--success' : (value === 'disabled' ? 'badge badge--neutral' : 'badge badge--warning');
         return '<div class="admin-health-item"><span>' + esc(label) + '</span><span class="' + cls + '">' + esc(value) + '</span></div>';
@@ -374,6 +411,7 @@
 
   function loadPrivacyStatus() {
     api('/api/admin/privacy-status').then(function(data) {
+      adminLoadState.privacy = true;
       document.getElementById('privacyStatusContent').innerHTML =
         '<div class="admin-health-item"><span>Retention period</span><strong>' + esc(data.saved_passenger_passport_retention_days) + ' дней</strong></div>' +
         '<div class="admin-health-item"><span>Сохранённых паспортов</span><strong>' + esc(data.stored_passports_count) + '</strong></div>' +
@@ -386,12 +424,81 @@
     });
   }
 
+  function ensureStatsLoaded(period, force) {
+    if (!force && adminLoadState.stats) return;
+    loadStats(period || currentStatsPeriod());
+  }
+
+  function ensureStatsOverviewLoaded(force) {
+    ensureStatsLoaded(currentStatsPeriod(), force);
+    if (!adminLoadState.bookingOps || force) loadBookingOpsOverview();
+  }
+
+  function ensureStatsMonitoringLoaded(force) {
+    if (hasPermission('view_logs') && (!adminLoadState.systemHealth || force)) loadSystemHealth();
+    if (hasPermission('manage_privacy') && (!adminLoadState.privacy || force)) loadPrivacyStatus();
+  }
+
+  function switchStatsView(viewName) {
+    activeStatsView = viewName || 'overview';
+    document.querySelectorAll('[data-stats-view]').forEach(function(btn) {
+      btn.classList.toggle('admin-subtab--active', btn.getAttribute('data-stats-view') === activeStatsView);
+    });
+    document.querySelectorAll('.admin-stats-view').forEach(function(panel) {
+      panel.classList.toggle('admin-stats-view--active', panel.id === 'adminStatsView-' + activeStatsView);
+    });
+    if (activeStatsView === 'overview') ensureStatsOverviewLoaded(false);
+    if (activeStatsView === 'monitoring') ensureStatsMonitoringLoaded(false);
+    if (activeStatsView === 'analytics') {
+      ensureStatsLoaded(currentStatsPeriod(), false);
+      if (latestStatsData) drawStatsCharts(latestStatsData);
+    }
+  }
+
+  function ensureAdminTabLoaded(tabName, force) {
+    if (tabName === 'statsPanel') {
+      if (activeStatsView === 'monitoring') ensureStatsMonitoringLoaded(force);
+      else if (activeStatsView === 'analytics') ensureStatsLoaded(currentStatsPeriod(), force);
+      else ensureStatsOverviewLoaded(force);
+      return;
+    }
+    if (tabName === 'bookingsPanel' && (!adminLoadState.bookings || force)) {
+      loadAdminBookings();
+      return;
+    }
+    if (tabName === 'logsPanel' && hasPermission('view_logs') && (!adminLoadState.logs || force)) {
+      loadLogs();
+      return;
+    }
+    if (tabName === 'roleAuditPanel' && hasPermission('view_logs') && (!adminLoadState.roleAudit || !adminLoadState.operationsAudit || force)) {
+      loadRoleAudit();
+      loadOperationsAudit();
+      return;
+    }
+    if (tabName === 'adminsPanel' && hasPermission('manage_roles') && (!adminLoadState.admins || force)) {
+      loadAdmins();
+      return;
+    }
+    if (tabName === 'dispatchersPanel' && hasPermission('manage_roles') && (!adminLoadState.dispatchers || force)) {
+      ensureRouteCatalog().then(function() {
+        loadDispatchers();
+      });
+    }
+  }
+
   document.querySelectorAll('.admin-period-tab').forEach(function(btn) {
     btn.addEventListener('click', function() {
       var period = this.getAttribute('data-period');
       document.querySelectorAll('.admin-period-tab').forEach(function(b) { b.classList.remove('admin-period-tab--active'); });
       this.classList.add('admin-period-tab--active');
-      loadStats(period);
+      ensureStatsLoaded(period, true);
+      if (activeStatsView === 'overview') loadBookingOpsOverview();
+    });
+  });
+
+  document.querySelectorAll('[data-stats-view]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      switchStatsView(btn.getAttribute('data-stats-view'));
     });
   });
 
@@ -458,6 +565,7 @@
   }
   function loadLogs() {
     api('/api/admin/logs?limit=50').then(function(data) {
+      adminLoadState.logs = true;
       const logs = data.logs || [];
       document.getElementById('logsContent').innerHTML = logs.length ? logs.map(function(l) {
         var cls = (l.level || '').toLowerCase().indexOf('error') !== -1 ? 'admin-log-item__level--error' : 'admin-log-item__level--info';
@@ -480,6 +588,7 @@
   });
   function loadRoleAudit() {
     api('/api/admin/role-audit').then(function(data) {
+      adminLoadState.roleAudit = true;
       var entries = data.entries || [];
       var actionLabels = { add_admin: 'Добавлен админ', add_dispatcher: 'Добавлен диспетчер', delete_dispatcher: 'Удалён диспетчер', update_admin_permissions: 'Изменены права админа', update_dispatcher_scope: 'Изменён scope диспетчера' };
       document.getElementById('roleAuditContent').innerHTML = entries.length ? entries.map(function(e) {
@@ -493,6 +602,7 @@
   }
   function loadOperationsAudit() {
     api('/api/admin/operations-audit?limit=100').then(function(data) {
+      adminLoadState.operationsAudit = true;
       var entries = data.entries || [];
       var actionLabels = {
         cancel_bulk_bookings: 'Массовая отмена заявок',
@@ -546,6 +656,7 @@
     var skeletonRows = Array(5).join('<tr><td></td><td><span class="skeleton" style="display:inline-block;width:80px;height:12px;"></span></td><td><span class="skeleton" style="display:inline-block;width:120px;height:12px;"></span></td><td><span class="skeleton" style="display:inline-block;width:70px;height:12px;"></span></td><td><span class="skeleton" style="display:inline-block;width:50px;height:12px;"></span></td><td><span class="skeleton" style="display:inline-block;width:50px;height:12px;"></span></td><td><span class="skeleton" style="display:inline-block;width:80px;height:12px;"></span></td></tr>');
     document.getElementById('bookingsListWrap').innerHTML = '<div class="admin-bookings-table-wrap"><table class="admin-bookings-table"><thead><tr><th></th><th>ID</th><th>Маршрут</th><th>Дата / время</th><th>Статус</th><th>Сумма</th><th>Контакт</th></tr></thead><tbody>' + skeletonRows + '</tbody></table></div>';
     api('/api/admin/bookings?' + qs).then(function(data) {
+      adminLoadState.bookings = true;
       var list = data.bookings || [];
       var total = data.total != null ? data.total : 0;
       var esc = function(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
@@ -594,12 +705,8 @@
   document.getElementById('bookingsApplyFilters').addEventListener('click', function() { bookingsOffset = 0; loadAdminBookings(); });
   document.querySelectorAll('.segmented-control .segment').forEach(function(btn) {
     btn.addEventListener('click', function() {
-      var tab = this.getAttribute('data-tab');
-      if (tab === 'roleAuditPanel' && hasPermission('view_logs')) {
-        loadRoleAudit();
-        loadOperationsAudit();
-      }
-      if (tab === 'bookingsPanel') loadAdminBookings();
+      activeAdminTab = this.getAttribute('data-tab') || 'statsPanel';
+      ensureAdminTabLoaded(activeAdminTab, false);
     });
   });
 
@@ -670,6 +777,7 @@
 
   function loadAdmins() {
     api('/api/admin/admins').then(function(data) {
+      adminLoadState.admins = true;
       if (data.permissions_catalog && data.permissions_catalog.length) {
         adminContext.permissions_catalog = data.permissions_catalog;
       }
@@ -768,6 +876,7 @@
 
   function loadDispatchers() {
     api('/api/admin/dispatchers').then(function(data) {
+      adminLoadState.dispatchers = true;
       renderDispatchers(data.dispatchers || []);
     }).catch(function() { document.getElementById('dispatchersList').innerHTML = '<div class="admin-log-item text-error">Не удалось загрузить список</div>'; });
   }
@@ -800,23 +909,7 @@
     document.getElementById('adminMain').classList.remove('hidden');
     renderSessionPanel();
     applyPermissionsUi();
-    loadStats('month');
-    loadBookingOpsOverview();
-    if (hasPermission('view_logs')) {
-      loadLogs();
-      loadSystemHealth();
-      loadRoleAudit();
-      loadOperationsAudit();
-    }
-    if (hasPermission('manage_privacy')) {
-      loadPrivacyStatus();
-    }
-    if (hasPermission('manage_roles')) {
-      loadAdmins();
-      loadRouteCatalog().then(function() {
-        loadDispatchers();
-      });
-    }
+    switchStatsView(activeStatsView);
   }).catch(function() {
     showLoginWarning('Нет доступа к админ-панели. Откройте её через Telegram под ролью администратора.');
   });

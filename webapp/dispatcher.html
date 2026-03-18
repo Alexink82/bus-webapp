@@ -24,13 +24,15 @@
         <div class="header__title-wrap">
           <h1>Панель диспетчера</h1>
         </div>
-        <span id="dispatcherAuthModeBadge" class="dispatcher-auth-badge hidden">Telegram</span>
-        <button type="button" id="openDispatcherInBrowser" class="btn btn-outline btn-small">Открыть в браузере</button>
-        <button type="button" id="dispatcherLogoutBtn" class="btn btn-outline btn-small hidden">Выйти из браузера</button>
-        <button type="button" id="dispatcherLogoutAllBtn" class="btn btn-outline btn-small hidden">Выйти везде</button>
         <a href="index.html" class="header__exit">Выйти</a>
       </div>
     </header>
+    <div class="dispatcher-access-actions">
+      <span id="dispatcherAuthModeBadge" class="dispatcher-auth-badge hidden">Telegram</span>
+      <button type="button" id="openDispatcherInBrowser" class="btn btn-outline btn-small">Открыть в браузере</button>
+      <button type="button" id="dispatcherLogoutBtn" class="btn btn-outline btn-small hidden">Выйти из браузера</button>
+      <button type="button" id="dispatcherLogoutAllBtn" class="btn btn-outline btn-small hidden">Выйти везде</button>
+    </div>
     <div id="loginWarning" class="warning hidden">Войдите через Telegram (как диспетчер) или через browser-session backoffice.</div>
     <div id="dispatcherSessionPanel" class="dispatcher-session hidden"></div>
 

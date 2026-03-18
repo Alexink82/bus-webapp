@@ -19,14 +19,16 @@
     <header class="admin-header">
       <span class="admin-header__title">⚙️ Админ-панель</span>
       <div class="admin-header__actions">
-        <span id="adminAuthModeBadge" class="admin-header__badge hidden">Telegram</span>
-        <button type="button" id="openAdminInBrowser" class="admin-header__link">Открыть в браузере</button>
-        <button type="button" id="adminLogoutBtn" class="admin-header__link hidden">Выйти из браузера</button>
-        <button type="button" id="adminLogoutAllBtn" class="admin-header__link hidden">Выйти везде</button>
         <a href="dispatcher.html" class="admin-header__link">Панель диспетчера</a>
         <a href="index.html" class="admin-header__exit">Выйти</a>
       </div>
     </header>
+    <div class="admin-access-actions">
+      <span id="adminAuthModeBadge" class="admin-header__badge hidden">Telegram</span>
+      <button type="button" id="openAdminInBrowser" class="admin-header__link">Открыть в браузере</button>
+      <button type="button" id="adminLogoutBtn" class="admin-header__link hidden">Выйти из браузера</button>
+      <button type="button" id="adminLogoutAllBtn" class="admin-header__link hidden">Выйти везде</button>
+    </div>
     <div id="loginWarning" class="warning hidden">Войдите через Telegram (как администратор) или через browser-session backoffice.</div>
     <div id="adminSessionPanel" class="admin-session hidden"></div>
     <div class="admin-layout" id="adminLayout">
@@ -48,57 +50,68 @@
         <div id="tab-statsPanel" class="tab-content active">
         <section id="statsPanel">
           <h2 class="admin-section__title">Статистика</h2>
-          <div class="admin-period-tabs">
-            <button type="button" class="admin-period-tab admin-period-tab--active" data-period="day">День</button>
-            <button type="button" class="admin-period-tab" data-period="week">Неделя</button>
-            <button type="button" class="admin-period-tab" data-period="month">Месяц</button>
+          <div class="admin-subtabs" id="adminStatsSubtabs">
+            <button type="button" class="admin-subtab admin-subtab--active" data-stats-view="overview">Обзор</button>
+            <button type="button" class="admin-subtab" data-stats-view="monitoring">Мониторинг</button>
+            <button type="button" class="admin-subtab" data-stats-view="analytics">Аналитика</button>
           </div>
-          <div id="statsPeriod" class="admin-period"></div>
-          <div class="admin-stats">
-            <div class="admin-stat-card">
-              <div id="statsBookings" class="admin-stat-card__value">—</div>
-              <div class="admin-stat-card__label">Заявок</div>
+          <div id="adminStatsView-overview" class="admin-stats-view admin-stats-view--active">
+            <div class="admin-period-tabs">
+              <button type="button" class="admin-period-tab admin-period-tab--active" data-period="day">День</button>
+              <button type="button" class="admin-period-tab" data-period="week">Неделя</button>
+              <button type="button" class="admin-period-tab" data-period="month">Месяц</button>
             </div>
-            <div class="admin-stat-card">
-              <div id="statsSum" class="admin-stat-card__value">—</div>
-              <div class="admin-stat-card__label">BYN</div>
+            <div id="statsPeriod" class="admin-period"></div>
+            <div class="admin-stats">
+              <div class="admin-stat-card">
+                <div id="statsBookings" class="admin-stat-card__value">—</div>
+                <div class="admin-stat-card__label">Заявок</div>
+              </div>
+              <div class="admin-stat-card">
+                <div id="statsSum" class="admin-stat-card__value">—</div>
+                <div class="admin-stat-card__label">BYN</div>
+              </div>
             </div>
-          </div>
-          <div class="admin-logs mb-6">
-            <div class="admin-logs__title">Booking Operations</div>
-            <div id="bookingOpsOverviewContent">Загрузка...</div>
-          </div>
-          <div class="admin-logs mb-6">
-            <div class="admin-logs__title">System Health</div>
-            <div id="systemHealthContent">Загрузка...</div>
-          </div>
-          <div class="admin-logs mb-6">
-            <div class="admin-logs__title">Privacy & Retention</div>
-            <div id="privacyStatusContent">Загрузка...</div>
-            <div class="mt-4" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-              <input type="number" id="privacyRedactDays" class="input" value="365" min="30" max="3650" style="width:100px;">
-              <span>дней</span>
-              <button type="button" id="runPrivacyRedactionBtn" class="btn btn--outline">Очистить старые паспорта</button>
+            <div class="admin-logs mb-6">
+              <div class="admin-logs__title">Booking Operations</div>
+              <div id="bookingOpsOverviewContent">Загрузка...</div>
             </div>
-          </div>
-          <div class="admin-stats-charts">
-            <div class="admin-chart-wrap">
-              <canvas id="statsChartBookings" height="200" aria-label="График заявок по дням"></canvas>
-              <p class="admin-chart-label">Заявок по дням</p>
-            </div>
-            <div class="admin-chart-wrap">
-              <canvas id="statsChartRoutes" height="200" aria-label="График заявок по маршрутам"></canvas>
-              <p class="admin-chart-label">Заявок по маршрутам</p>
+            <div class="admin-actions">
+              <button type="button" id="exportCsv" class="btn btn--secondary btn--block">📥 Экспорт CSV</button>
+              <div class="admin-archive mt-4">
+                <label class="form-label">Архивация старых заявок</label>
+                <p class="text-secondary text-small mb-2">Пометить заявки старше N дней как архивированные (они не попадают в статистику).</p>
+                <input type="number" id="archiveOlderDays" class="input" value="90" min="30" max="365" style="max-width:100px; display:inline-block; margin-right:8px;">
+                <span>дней</span>
+                <button type="button" id="runArchiveBtn" class="btn btn--secondary btn--small ml-2">Выполнить архивацию</button>
+              </div>
             </div>
           </div>
-          <div class="admin-actions">
-            <button type="button" id="exportCsv" class="btn btn--secondary btn--block">📥 Экспорт CSV</button>
-            <div class="admin-archive mt-4">
-              <label class="form-label">Архивация старых заявок</label>
-              <p class="text-secondary text-small mb-2">Пометить заявки старше N дней как архивированные (они не попадают в статистику).</p>
-              <input type="number" id="archiveOlderDays" class="input" value="90" min="30" max="365" style="max-width:100px; display:inline-block; margin-right:8px;">
-              <span>дней</span>
-              <button type="button" id="runArchiveBtn" class="btn btn--secondary btn--small ml-2">Выполнить архивацию</button>
+          <div id="adminStatsView-monitoring" class="admin-stats-view">
+            <div class="admin-logs mb-6">
+              <div class="admin-logs__title">System Health</div>
+              <div id="systemHealthContent">Откройте вкладку, чтобы загрузить мониторинг.</div>
+            </div>
+            <div class="admin-logs mb-6">
+              <div class="admin-logs__title">Privacy & Retention</div>
+              <div id="privacyStatusContent">Откройте вкладку, чтобы загрузить privacy status.</div>
+              <div class="mt-4" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <input type="number" id="privacyRedactDays" class="input" value="365" min="30" max="3650" style="width:100px;">
+                <span>дней</span>
+                <button type="button" id="runPrivacyRedactionBtn" class="btn btn--outline">Очистить старые паспорта</button>
+              </div>
+            </div>
+          </div>
+          <div id="adminStatsView-analytics" class="admin-stats-view">
+            <div class="admin-stats-charts">
+              <div class="admin-chart-wrap">
+                <canvas id="statsChartBookings" height="200" aria-label="График заявок по дням"></canvas>
+                <p class="admin-chart-label">Заявок по дням</p>
+              </div>
+              <div class="admin-chart-wrap">
+                <canvas id="statsChartRoutes" height="200" aria-label="График заявок по маршрутам"></canvas>
+                <p class="admin-chart-label">Заявок по маршрутам</p>
+              </div>
             </div>
           </div>
         </section>
