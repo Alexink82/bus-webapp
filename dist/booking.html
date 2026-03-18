@@ -17,19 +17,19 @@
     })();
   </script>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script type="module" crossorigin src="/assets/booking-Cj2YFUzA.js"></script>
+  <script type="module" crossorigin src="/assets/booking-HKjvle5t.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/api-DoHnkU-n.js">
-  <link rel="modulepreload" crossorigin href="/assets/theme-BPsGpnOl.js">
+  <link rel="modulepreload" crossorigin href="/assets/theme-CuLyKZG6.js">
   <link rel="modulepreload" crossorigin href="/assets/passport-config-DBLABtX7.js">
   <link rel="modulepreload" crossorigin href="/assets/auth-BtufPi45.js">
   <link rel="modulepreload" crossorigin href="/assets/app-modal-BWjIbSvX.js">
   <link rel="modulepreload" crossorigin href="/assets/settings-BYq5oODd.js">
   <link rel="modulepreload" crossorigin href="/assets/consent-CRTF3YGE.js">
   <link rel="modulepreload" crossorigin href="/assets/icons-BwUb0pDV.js">
-  <link rel="stylesheet" crossorigin href="/assets/theme-CSuvGdgf.css">
+  <link rel="stylesheet" crossorigin href="/assets/theme-CZIMkzlF.css">
   <link rel="stylesheet" crossorigin href="/assets/passport-config-xNAwk9GV.css">
   <link rel="stylesheet" crossorigin href="/assets/auth-AUa4N_F6.css">
-  <link rel="stylesheet" crossorigin href="/assets/booking-0f918rxG.css">
+  <link rel="stylesheet" crossorigin href="/assets/booking-DIElfSXK.css">
 </head>
 <body class="booking-page">
   <div class="container">
@@ -51,6 +51,27 @@
       <span class="stepper__connector" aria-hidden="true"></span>
       <div class="step" data-step="2">2. Оплата</div>
     </div>
+    <section id="bookingContextPanel" class="booking-context-panel hidden" aria-label="Контекст поездки">
+      <div class="booking-context-panel__hero">
+        <div class="booking-context-panel__eyebrow">Контекст поездки</div>
+        <h2 class="booking-context-panel__title">Проверьте маршрут и сценарий оформления</h2>
+        <p id="bookingContextHint" class="booking-context-panel__hint">После проверки данных можно заполнять пассажиров и переходить к оплате.</p>
+      </div>
+      <div class="booking-context-panel__grid">
+        <div class="booking-context-panel__card">
+          <div class="booking-context-panel__card-title">Маршрут</div>
+          <div id="bookingContextRoute" class="booking-context-panel__list"></div>
+        </div>
+        <div class="booking-context-panel__card">
+          <div class="booking-context-panel__card-title">Что потребуется</div>
+          <div id="bookingContextRequirements" class="booking-context-panel__list"></div>
+        </div>
+        <div class="booking-context-panel__card">
+          <div class="booking-context-panel__card-title">Следующий шаг</div>
+          <div id="bookingContextActions" class="booking-context-panel__list"></div>
+        </div>
+      </div>
+    </section>
 
     <main class="main">
       <div id="step1" class="step">
@@ -97,6 +118,7 @@
 
       <div id="step2" class="step hidden">
         <h2>Шаг 2. Контакт и оплата</h2>
+        <div id="bookingStepGuide" class="booking-step-guide hidden" aria-live="polite"></div>
         <div class="field-group phone-field-group">
           <label for="phone">Контактный телефон <span class="required">*</span></label>
           <p class="field-hint">Номер для связи и подтверждения брони. Укажите номер, доступный во время поездки. Можно полностью очистить поле и ввести заново.</p>

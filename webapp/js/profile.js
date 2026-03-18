@@ -354,6 +354,11 @@
     if (btn) btn.click();
   }
 
+  function openBookingsStatusTab(tabName) {
+    var btn = document.querySelector('.profile-bookings-tabs .segment[data-tab="' + tabName + '"]');
+    if (btn) btn.click();
+  }
+
   function getFavoriteRoutes() {
     try {
       var raw = localStorage.getItem(FAVORITE_ROUTES_KEY);
@@ -431,6 +436,113 @@
       if (b.count !== a.count) return b.count - a.count;
       return (b.latest_date || '').localeCompare(a.latest_date || '');
     });
+  }
+
+  function sortBookingsByDeparture(items, desc) {
+    return (items || []).slice().sort(function(a, b) {
+      var da = (a.departure_date || '') + ' ' + (a.departure_time || '');
+      var db = (b.departure_date || '') + ' ' + (b.departure_time || '');
+      return desc ? db.localeCompare(da) : da.localeCompare(db);
+    });
+  }
+
+  function renderProfileCommandCenter(items, passengers, profile) {
+    var panel = document.getElementById('profileCommandCenter');
+    var signalsEl = document.getElementById('profileSignalsList');
+    var journalEl = document.getElementById('profileJourneyLog');
+    var readinessEl = document.getElementById('profileReadinessPanel');
+    if (!panel || !signalsEl || !journalEl || !readinessEl) return;
+
+    var esc = function(s) { if (s == null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
+    var nearest = pickNearestTrip(items || []);
+    var completed = sortBookingsByDeparture((items || []).filter(function(item) { return item.status === 'done'; }), true);
+    var cancelled = sortBookingsByDeparture((items || []).filter(function(item) { return item.status === 'cancelled'; }), true);
+    var activeOrPending = sortBookingsByDeparture((items || []).filter(function(item) {
+      return ['new', 'active', 'paid', 'payment_link_sent', 'ticket_sent'].indexOf(item.status) !== -1;
+    }), false);
+    var signals = [];
+
+    panel.classList.remove('hidden');
+    if (nearest) {
+      var mins = minutesUntilDeparture(nearest.departure_date, nearest.departure_time);
+      if (nearest.status === 'ticket_sent' || nearest.status === 'paid') {
+        signals.push('<div class="profile-command-center__item"><strong>Билет под рукой:</strong> по заявке ' + esc(nearest.booking_id) + ' уже можно открыть страницу билета.<div class="profile-command-center__actions"><a class="btn btn-outline btn-small" href="success.html?booking_id=' + encodeURIComponent(nearest.booking_id) + '">Открыть билет</a></div></div>');
+      }
+      if (mins != null && mins >= 0 && mins <= 180) {
+        signals.push('<div class="profile-command-center__item"><strong>Скорое отправление:</strong> до рейса осталось ' + esc(formatMinutesLabel(mins)) + '. Проверьте телефон, билет и документы.<div class="profile-command-center__actions"><button type="button" class="btn btn-outline btn-small" id="profileSignalNearestDetails">Проверить заявку</button></div></div>');
+      }
+      if (nearest.status === 'new' || nearest.status === 'active') {
+        signals.push('<div class="profile-command-center__item"><strong>Заявка в работе:</strong> ' + esc(getTripActionLabel(nearest.status)) + '. Если планы изменились, запрос на перенос лучше отправить заранее.<div class="profile-command-center__actions"><button type="button" class="btn btn-outline btn-small" id="profileSignalOpenActive">Открыть активные</button></div></div>');
+      }
+    }
+    if (!(profile && profile.phone)) {
+      signals.push('<div class="profile-command-center__item"><strong>Нужен контакт:</strong> номер телефона ещё не сохранён в профиле, а он нужен для подтверждений и связи.<div class="profile-command-center__actions"><button type="button" class="btn btn-outline btn-small" data-command-tab="profileSettings">Добавить телефон</button></div></div>');
+    }
+    if (!(passengers || []).length) {
+      signals.push('<div class="profile-command-center__item"><strong>Пассажиры не сохранены:</strong> следующий заказ придётся заполнять вручную.<div class="profile-command-center__actions"><button type="button" class="btn btn-outline btn-small" data-command-tab="profilePassengers">Открыть пассажиров</button></div></div>');
+    }
+    if (!signals.length) {
+      signals.push('<div class="profile-command-center__item"><strong>Новых сигналов нет:</strong> все текущие заявки выглядят спокойно, можно пользоваться быстрым повтором маршрутов и историей поездок.</div>');
+    }
+    signalsEl.innerHTML = signals.join('');
+
+    var journalCards = [];
+    if (activeOrPending[0]) {
+      journalCards.push('<div class="profile-command-center__item"><strong>Последняя активная заявка:</strong> ' + esc(activeOrPending[0].route_name || 'Маршрут') + ' · ' + esc(formatDepartureLabel(activeOrPending[0].departure_date, activeOrPending[0].departure_time)) + '<div class="profile-command-center__actions"><button type="button" class="btn btn-outline btn-small" id="profileJournalActive">Открыть активные</button></div></div>');
+    }
+    if (completed[0]) {
+      journalCards.push('<div class="profile-command-center__item"><strong>Последняя завершённая поездка:</strong> ' + esc(completed[0].route_name || 'Маршрут') + ' · ' + esc(formatDepartureLabel(completed[0].departure_date, completed[0].departure_time)) + '<div class="profile-command-center__actions"><button type="button" class="btn btn-outline btn-small" id="profileJournalCompleted">История завершённых</button><button type="button" class="btn btn-outline btn-small" id="profileJournalRepeatCompleted">Повторить маршрут</button></div></div>');
+    }
+    if (cancelled[0]) {
+      journalCards.push('<div class="profile-command-center__item"><strong>Последняя отменённая заявка:</strong> ' + esc(cancelled[0].route_name || 'Маршрут') + '. При необходимости можно быстро повторить поиск по этому направлению.<div class="profile-command-center__actions"><button type="button" class="btn btn-outline btn-small" id="profileJournalCancelled">Открыть отменённые</button></div></div>');
+    }
+    if (!journalCards.length) {
+      journalCards.push('<div class="profile-command-center__item"><strong>Журнал формируется:</strong> когда появятся активные, завершённые или отменённые поездки, здесь будут быстрые ссылки на нужные сценарии.</div>');
+    }
+    journalEl.innerHTML = journalCards.join('');
+
+    var readinessSteps = [];
+    readinessSteps.push({ label: 'Контактный телефон сохранён', done: !!(profile && profile.phone) });
+    readinessSteps.push({ label: 'Есть хотя бы один пассажир', done: !!((passengers || []).length) });
+    readinessSteps.push({ label: 'Основной пассажир выбран', done: !!((passengers || []).filter(function(p) { return String(p.id) === getPreferredPassengerId(); })[0]) });
+    if (nearest) {
+      readinessSteps.push({ label: 'Заявка найдена в активных', done: true });
+      readinessSteps.push({ label: 'Билет доступен для открытия', done: ['paid', 'ticket_sent', 'active'].indexOf(nearest.status) !== -1 });
+      readinessSteps.push({ label: 'Маршрут можно быстро повторить', done: true });
+      if ((nearest.route_type || '').toLowerCase() === 'international') {
+        readinessSteps.push({ label: 'Для международного рейса сохранены пассажирские данные', done: !!((passengers || []).length) });
+      }
+    }
+    var doneCount = readinessSteps.filter(function(step) { return step.done; }).length;
+    var readinessPercent = readinessSteps.length ? Math.round((doneCount / readinessSteps.length) * 100) : 0;
+    readinessEl.innerHTML =
+      '<div class="profile-command-center__item"><strong>Готовность:</strong> ' + esc(readinessPercent) + '%</div>' +
+      '<div class="profile-command-center__checklist">' + readinessSteps.map(function(step) {
+        return '<div class="profile-command-center__check ' + (step.done ? 'profile-command-center__check--done' : 'profile-command-center__check--pending') + '">' + esc(step.label) + '</div>';
+      }).join('') + '</div>' +
+      '<div class="profile-command-center__item"><strong>Подсказка:</strong> ' + esc(nearest ? 'Если поездка скоро, держите страницу билета открытой и проверьте документы заранее.' : 'Сохраните пассажиров и контакт, чтобы следующая бронь заполнялась быстрее.') + '</div>';
+
+    signalsEl.querySelectorAll('[data-command-tab]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        openProfileTab(btn.getAttribute('data-command-tab'));
+      });
+    });
+    var nearestDetailsBtn = document.getElementById('profileSignalNearestDetails');
+    if (nearestDetailsBtn && nearest) nearestDetailsBtn.addEventListener('click', function() { showBookingDetailsModal(nearest); });
+    var openActiveBtn = document.getElementById('profileSignalOpenActive');
+    if (openActiveBtn) openActiveBtn.addEventListener('click', function() { openBookingsStatusTab('active'); });
+    var journalActiveBtn = document.getElementById('profileJournalActive');
+    if (journalActiveBtn) journalActiveBtn.addEventListener('click', function() { openBookingsStatusTab('active'); });
+    var journalCompletedBtn = document.getElementById('profileJournalCompleted');
+    if (journalCompletedBtn) journalCompletedBtn.addEventListener('click', function() { openBookingsStatusTab('completed'); });
+    var journalCancelledBtn = document.getElementById('profileJournalCancelled');
+    if (journalCancelledBtn) journalCancelledBtn.addEventListener('click', function() { openBookingsStatusTab('cancelled'); });
+    var repeatCompletedBtn = document.getElementById('profileJournalRepeatCompleted');
+    if (repeatCompletedBtn && completed[0]) {
+      repeatCompletedBtn.addEventListener('click', function() {
+        repeatRouteSearch(completed[0]);
+      });
+    }
   }
 
   function renderTravelDashboard(items, passengers, profile) {
@@ -1045,6 +1157,7 @@
       updateProfileStats(items);
       renderProfileOverview(items, data.passengers || []);
       renderTravelDashboard(items, data.passengers || [], data.profile || {});
+      renderProfileCommandCenter(items, data.passengers || [], data.profile || {});
       renderBookingCards(active, 'bookingsListActive');
       renderBookingCards(upcoming, 'bookingsListUpcoming');
       renderBookingCards(completed, 'bookingsListCompleted');
@@ -1055,8 +1168,10 @@
     }).catch(function() {
       var panel = document.getElementById('profileOverviewPanel');
       var dashboardPanel = document.getElementById('profileTravelDashboard');
+      var commandPanel = document.getElementById('profileCommandCenter');
       if (panel) panel.classList.add('hidden');
       if (dashboardPanel) dashboardPanel.classList.add('hidden');
+      if (commandPanel) commandPanel.classList.add('hidden');
       ['bookingsListActive', 'bookingsListUpcoming', 'bookingsListCompleted', 'bookingsListCancelled'].forEach(function(id) {
         var el = document.getElementById(id);
         if (el) el.innerHTML = profileEmptyStateHtml('bookings-error', 'Не удалось загрузить заявки', 'Обновите раздел или проверьте соединение.');

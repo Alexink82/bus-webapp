@@ -365,9 +365,12 @@ test('booking smoke keeps core route and price flow', async ({ page }) => {
     await page.locator('#consentAccept').click();
   }
   await expect(page.locator('#routeSummary')).toContainText('Минск');
+  await expect(page.locator('#bookingContextPanel')).toBeVisible();
+  await expect(page.locator('#bookingContextRequirements')).toContainText('Тип рейса');
   await expect(page.locator('#fillFromProfileWrap')).toBeVisible();
   await page.locator('#passengersList input[data-f="first_name"]').fill('Иван');
   await page.locator('#toStep2').click();
+  await expect(page.locator('#bookingStepGuide')).toContainText('Контактный сценарий');
   await expect(page.locator('#priceSummary')).toContainText('80.00');
   await page.locator('#backToStep1').click();
 
@@ -386,11 +389,14 @@ test('profile smoke shows overview and nearest trip actions', async ({ page }) =
 
   await expect(page.locator('#profileOverviewPanel')).toBeVisible();
   await expect(page.locator('#profileTravelDashboard')).toBeVisible();
+  await expect(page.locator('#profileCommandCenter')).toBeVisible();
   await expect(page.locator('#profileOverviewTrip')).toContainText('Минск - Москва');
   await expect(page.locator('#profileOverviewTrip')).toContainText('BK-PR-1');
   await expect(page.locator('#profileOverviewActions')).toContainText('Подробнее');
   await expect(page.locator('#profileOverviewSupport')).toContainText('Поддержка');
   await expect(page.locator('#profileTravelFavorites')).toContainText('Минск - Москва');
   await expect(page.locator('#profileTravelInsights')).toContainText('Готовность к следующей поездке');
+  await expect(page.locator('#profileSignalsList')).toContainText('Билет');
+  await expect(page.locator('#profileReadinessPanel')).toContainText('Готовность');
   await expect(page.locator('#bookingsListActive')).toContainText('Минск - Москва');
 });

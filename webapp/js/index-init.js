@@ -77,6 +77,68 @@
   let selectedRoute = null;
   let dateCalendarMonth = null;
 
+  function getLastSearchData() {
+    try {
+      var raw = localStorage.getItem('bus_booking_last_search');
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function renderHomeOverview() {
+    var panel = document.getElementById('homeOverviewPanel');
+    var stateEl = document.getElementById('homeSearchState');
+    var routesEl = document.getElementById('homeRouteSummary');
+    var tipsEl = document.getElementById('homeBookingTips');
+    var hintEl = document.getElementById('homeOverviewHint');
+    if (!panel || !stateEl || !routesEl || !tipsEl || !hintEl) return;
+    var esc = (typeof window.escapeHtml === 'function' ? window.escapeHtml : function(s) {
+      return s == null ? '' : String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    });
+    var lastSearch = getLastSearchData();
+    var fromValue = fromSelect ? fromSelect.value : '';
+    var toValue = toSelect ? toSelect.value : '';
+    var dateValue = travelDate ? travelDate.value : '';
+    var routesCount = routes.length;
+    var internationalCount = routes.filter(function(r) { return r.type === 'international'; }).length;
+    var localCount = routes.filter(function(r) { return r.type === 'local'; }).length;
+
+    panel.classList.remove('hidden');
+    if (selectedRoute && fromValue && toValue && dateValue) {
+      hintEl.textContent = 'Направление выбрано. Ниже можно сразу перейти к доступным рейсам и забронировать подходящее время.';
+    } else if (lastSearch && lastSearch.from && lastSearch.to) {
+      hintEl.textContent = 'Можно продолжить с последнего сценария или выбрать новое направление с нуля.';
+    } else {
+      hintEl.textContent = 'Сначала выберите направление и дату, затем система покажет актуальные рейсы на этот день.';
+    }
+
+    var searchState = [];
+    if (fromValue || toValue || dateValue) {
+      searchState.push('<div class="home-overview-panel__item"><strong>Сейчас выбрано:</strong> ' + esc([fromValue || 'Откуда', toValue || 'Куда'].join(' → ')) + (dateValue ? ' · ' + esc(dateValue) : '') + '</div>');
+    } else {
+      searchState.push('<div class="home-overview-panel__item"><strong>Поиск ещё не начат:</strong> укажите город отправления, прибытия и дату.</div>');
+    }
+    if (lastSearch && lastSearch.from && lastSearch.to) {
+      searchState.push('<div class="home-overview-panel__item"><strong>Последний маршрут:</strong> ' + esc(lastSearch.from + ' → ' + lastSearch.to) + (lastSearch.date ? ' · ' + esc(lastSearch.date) : '') + '</div>');
+    }
+    if (selectedRoute) {
+      searchState.push('<div class="home-overview-panel__item"><strong>Найден маршрут:</strong> ' + esc(selectedRoute.name || [fromValue, toValue].filter(Boolean).join(' → ')) + '</div>');
+    }
+    stateEl.innerHTML = searchState.join('');
+
+    routesEl.innerHTML =
+      '<div class="home-overview-panel__item"><strong>Активных направлений:</strong> ' + esc(routesCount) + '</div>' +
+      '<div class="home-overview-panel__item"><strong>Внутренние рейсы:</strong> ' + esc(localCount) + '</div>' +
+      '<div class="home-overview-panel__item"><strong>Международные рейсы:</strong> ' + esc(internationalCount) + '</div>';
+
+    var tips = [];
+    tips.push('<div class="home-overview-panel__item"><strong>Локальный рейс:</strong> для брони обычно достаточно имени пассажира и телефона.</div>');
+    tips.push('<div class="home-overview-panel__item"><strong>Международный рейс:</strong> заранее проверьте дату рождения и паспортные данные.</div>');
+    tips.push('<div class="home-overview-panel__item"><strong>Если часто ездите:</strong> любимые направления и пассажиры потом появятся в профиле для быстрого повтора.</div>');
+    tipsEl.innerHTML = tips.join('');
+  }
+
   function closeFromDropdown() {
     if (fromBlock) fromBlock.classList.remove('search-field-block--open');
     if (fromDropdown) fromDropdown.classList.add('hidden');
@@ -92,12 +154,16 @@
     var el = document.getElementById('fromValue');
     if (el) el.textContent = v || '';
     if (fromBlock) fromBlock.classList.toggle('search-field-block--has-value', !!v);
+    selectedRoute = null;
+    renderHomeOverview();
   }
   function updateToValue() {
     var v = toSelect ? toSelect.value : '';
     var el = document.getElementById('toValue');
     if (el) el.textContent = v || '';
     if (toBlock) toBlock.classList.toggle('search-field-block--has-value', !!v);
+    selectedRoute = null;
+    renderHomeOverview();
   }
 
   function setMinDate() {
@@ -244,6 +310,8 @@
       dateDisplay.textContent = '';
       dateBlock.classList.remove('search-field-block--date-has-value');
     }
+    selectedRoute = null;
+    renderHomeOverview();
   }
 
   if (dateDisplay && dateCalendar) {
@@ -400,6 +468,7 @@
     const route = routes.find(r => r.id === routeId);
     if (!route) return;
     selectedRoute = route;
+    renderHomeOverview();
     const fromCity = fromSelect.value;
     const toCity = toSelect.value;
     let trips = getTripsForDate(route, dateStr);
@@ -485,7 +554,7 @@
       return first && first.city === fromCity;
     }) || matching[0];
     if (route) showResults(route.id, dateStr);
-    else resultsList.innerHTML = '<p>' + (typeof window.t === 'function' ? window.t('routeNotFound') : 'Маршрут не найден.') + '</p>', resultsSection.classList.remove('hidden');
+    else selectedRoute = null, renderHomeOverview(), resultsList.innerHTML = '<p>' + (typeof window.t === 'function' ? window.t('routeNotFound') : 'Маршрут не найден.') + '</p>', resultsSection.classList.remove('hidden');
   });
 
   fetch(window.BASE_URL + '/api/routes').then(r =>
@@ -494,6 +563,7 @@
     routes = data.routes || [];
     fillCities();
     renderSchedule();
+    renderHomeOverview();
     var params = new URLSearchParams(window.location.search);
     if (params.get('error') === 'invalid_booking_link') {
       (typeof window.showAppAlert === 'function' ? window.showAppAlert : alert)('Указан неполный маршрут. Выберите маршрут, дату и время.', 'Ошибка ссылки');
@@ -525,7 +595,7 @@
         }
       }
     } catch (err) {}
-  }).catch(() => { routes = []; fillCities(); renderSchedule(); if (resultsList) resultsList.innerHTML = '<p class="text-secondary">Не удалось загрузить маршруты.</p>'; resultsSection.classList.remove('hidden'); });
+  }).catch(() => { routes = []; selectedRoute = null; fillCities(); renderSchedule(); renderHomeOverview(); if (resultsList) resultsList.innerHTML = '<p class="text-secondary">Не удалось загрузить маршруты.</p>'; resultsSection.classList.remove('hidden'); });
 
   (function() {
     var scheduleSection = document.getElementById('scheduleSection');
@@ -585,6 +655,7 @@
 
   setMinDate();
   updateDateDisplay();
+  renderHomeOverview();
 
   if (window.Telegram && Telegram.WebApp) Telegram.WebApp.ready();
 

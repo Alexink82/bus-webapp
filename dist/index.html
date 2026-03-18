@@ -17,16 +17,16 @@
     })();
   </script>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script type="module" crossorigin src="/assets/index-dfuBypOd.js"></script>
+  <script type="module" crossorigin src="/assets/index-DLLDWKOe.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/api-DoHnkU-n.js">
-  <link rel="modulepreload" crossorigin href="/assets/theme-BPsGpnOl.js">
+  <link rel="modulepreload" crossorigin href="/assets/theme-CuLyKZG6.js">
   <link rel="modulepreload" crossorigin href="/assets/auth-BtufPi45.js">
   <link rel="modulepreload" crossorigin href="/assets/prefetch-C9grhagV.js">
   <link rel="modulepreload" crossorigin href="/assets/settings-BYq5oODd.js">
   <link rel="modulepreload" crossorigin href="/assets/nav-DSEjnhJQ.js">
   <link rel="modulepreload" crossorigin href="/assets/app-modal-BWjIbSvX.js">
   <link rel="modulepreload" crossorigin href="/assets/consent-CRTF3YGE.js">
-  <link rel="stylesheet" crossorigin href="/assets/theme-CSuvGdgf.css">
+  <link rel="stylesheet" crossorigin href="/assets/theme-CZIMkzlF.css">
   <link rel="stylesheet" crossorigin href="/assets/auth-AUa4N_F6.css">
   <link rel="stylesheet" crossorigin href="/assets/animations-StooRXu3.css">
 </head>
@@ -65,6 +65,27 @@
         </button>
       </div>
       <p class="search-form-subtitle" id="searchFormSubtitle" data-i18n="selectRouteAndDate">Выберите маршрут и дату</p>
+      <section id="homeOverviewPanel" class="home-overview-panel hidden" aria-label="Состояние поиска и быстрые подсказки">
+        <div class="home-overview-panel__hero">
+          <div class="home-overview-panel__eyebrow">Быстрый старт</div>
+          <h2 class="home-overview-panel__title">Поиск поездки без лишних шагов</h2>
+          <p id="homeOverviewHint" class="home-overview-panel__hint">Сначала выберите направление и дату, затем система покажет актуальные рейсы на этот день.</p>
+        </div>
+        <div class="home-overview-panel__grid">
+          <div class="home-overview-panel__card">
+            <div class="home-overview-panel__card-title">Состояние поиска</div>
+            <div id="homeSearchState" class="home-overview-panel__list"></div>
+          </div>
+          <div class="home-overview-panel__card">
+            <div class="home-overview-panel__card-title">Что доступно</div>
+            <div id="homeRouteSummary" class="home-overview-panel__list"></div>
+          </div>
+          <div class="home-overview-panel__card">
+            <div class="home-overview-panel__card-title">Подсказки перед бронью</div>
+            <div id="homeBookingTips" class="home-overview-panel__list"></div>
+          </div>
+        </div>
+      </section>
       <form id="searchForm" class="search-form">
         <div class="search-field-block" id="fromBlock">
           <button type="button" class="search-field-block__trigger" id="fromTrigger" aria-haspopup="listbox" aria-expanded="false">

@@ -276,6 +276,89 @@
   display: none;
 }
 
+.booking-context-panel {
+  margin-bottom: 18px;
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(84, 132, 255, 0.08), transparent 42%), var(--surface);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+}
+.booking-context-panel.hidden { display: none; }
+.booking-context-panel__hero {
+  display: grid;
+  gap: 6px;
+}
+.booking-context-panel__eyebrow {
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 700;
+}
+.booking-context-panel__title {
+  margin: 0;
+  font-size: 1.12rem;
+  color: var(--text);
+}
+.booking-context-panel__hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+.booking-context-panel__grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.booking-context-panel__card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface-elevated);
+}
+.booking-context-panel__card-title {
+  font-size: 0.96rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.booking-context-panel__list {
+  display: grid;
+  gap: 10px;
+}
+.booking-context-panel__item {
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+.booking-context-panel__item strong {
+  color: var(--text);
+}
+.booking-step-guide {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.booking-step-guide.hidden { display: none; }
+.booking-step-guide__item {
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface-elevated);
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+.booking-step-guide__item strong {
+  color: var(--text);
+}
+
 .booking-page .stepper,
 .booking-page #step1,
 .booking-page #step2 {
@@ -330,6 +413,10 @@ body.booking-page .main {
     width: 100%;
     min-width: 0;
   }
+
+  .booking-context-panel__grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (min-width: 900px) {
@@ -341,6 +428,12 @@ body.booking-page .main {
     max-width: 860px;
     margin: 0 auto;
     padding-bottom: 120px;
+  }
+
+  .booking-context-panel {
+    max-width: 860px;
+    margin-left: auto;
+    margin-right: auto;
   }
 
   .fixed-bottom-bar {

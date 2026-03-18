@@ -91,6 +91,7 @@
       if (route.border_docs_text) borderEl.textContent = 'Документы для границы: ' + route.border_docs_text;
       else borderEl.textContent = '';
       updateDiscountsBlock();
+      renderBookingContext();
       syncProfileSaveOptions();
       renderPassengers();
       loadSavedPassengersForFill();
@@ -123,6 +124,56 @@
     if (!text) { block.classList.add('hidden'); block.innerHTML = ''; return; }
     block.classList.remove('hidden');
     block.innerHTML = '<p class="discounts-block__text">' + (typeof escapeHtml === 'function' ? escapeHtml(text) : text.replace(/</g, '&lt;')) + '</p>';
+  }
+
+  function renderBookingContext() {
+    var panel = document.getElementById('bookingContextPanel');
+    var routeEl = document.getElementById('bookingContextRoute');
+    var reqEl = document.getElementById('bookingContextRequirements');
+    var actionsEl = document.getElementById('bookingContextActions');
+    var hintEl = document.getElementById('bookingContextHint');
+    if (!panel || !routeEl || !reqEl || !actionsEl || !hintEl) return;
+    if (!route) {
+      panel.classList.add('hidden');
+      return;
+    }
+    var esc = typeof escapeHtml === 'function' ? escapeHtml : function(s) {
+      return s == null ? '' : String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    };
+    var isInternational = route.type === 'international';
+    var routeLabel = route.name || [fromCity, toCity].filter(Boolean).join(' → ');
+    panel.classList.remove('hidden');
+    hintEl.textContent = isInternational
+      ? 'Для международной поездки лучше сразу проверить дату рождения и паспортные данные каждого пассажира.'
+      : 'Для внутреннего рейса оформление короче: обычно достаточно имён пассажиров и контактного телефона.';
+    routeEl.innerHTML =
+      '<div class="booking-context-panel__item"><strong>Направление:</strong> ' + esc(routeLabel) + '</div>' +
+      '<div class="booking-context-panel__item"><strong>Дата:</strong> ' + esc(dateStr) + '</div>' +
+      '<div class="booking-context-panel__item"><strong>Отправление:</strong> ' + esc(timeStr || 'Уточняется') + '</div>';
+    reqEl.innerHTML =
+      '<div class="booking-context-panel__item"><strong>Тип рейса:</strong> ' + esc(isInternational ? 'Международный' : 'Внутренний') + '</div>' +
+      '<div class="booking-context-panel__item"><strong>Пассажиры:</strong> ' + esc(isInternational ? 'Нужны ФИО, дата рождения и паспорт.' : 'Достаточно имени пассажира. Дата рождения нужна для скидок.') + '</div>' +
+      '<div class="booking-context-panel__item"><strong>Контакт:</strong> телефон потребуется для связи и подтверждения.</div>';
+    actionsEl.innerHTML =
+      '<div class="booking-context-panel__item"><strong>Сейчас:</strong> заполните пассажиров на шаге 1, затем перейдите к контакту и оплате.</div>' +
+      '<div class="booking-context-panel__item"><strong>Полезно:</strong> если пассажиры уже сохранены в профиле, их можно быстро подставить в форму.</div>';
+  }
+
+  function renderBookingStepGuide() {
+    var guide = document.getElementById('bookingStepGuide');
+    if (!guide || !route) return;
+    var isInternational = route.type === 'international';
+    var savePhoneWrap = getEl('savePhoneWrap');
+    var savePassengersWrap = getEl('savePassengersWrap');
+    guide.classList.remove('hidden');
+    guide.innerHTML =
+      '<div class="booking-step-guide__item"><strong>Контактный сценарий:</strong> ' + (isInternational
+        ? 'сохранение пассажира включает и телефон, чтобы следующая международная бронь заполнялась почти автоматически.'
+        : 'номер телефона можно сохранить отдельно в профиль, чтобы не вводить его при каждой новой заявке.') + '</div>' +
+      '<div class="booking-step-guide__item"><strong>Что видно сейчас:</strong> ' + (savePassengersWrap && !savePassengersWrap.classList.contains('hidden')
+        ? 'доступно сохранение данных пассажира вместе с телефоном.'
+        : 'доступно отдельное сохранение контактного телефона.') + '</div>' +
+      '<div class="booking-step-guide__item"><strong>Перед отправкой:</strong> проверьте номер телефона, способ оплаты и данные пассажиров.</div>';
   }
 
   function getAgeAtTravel(birthIso, travelDateStr) {
@@ -268,6 +319,7 @@
     if (savePassengersWrap) savePassengersWrap.classList.toggle('hidden', !isInternational);
     if (isInternational && savePhone) savePhone.checked = false;
     if (!isInternational && savePassengers) savePassengers.checked = false;
+    renderBookingStepGuide();
   }
 
   function updateFillFromProfileButton() {
@@ -707,6 +759,7 @@
     if (typeof getTheme === 'function') document.documentElement.setAttribute('data-theme', getTheme());
     clearStep2Errors();
     syncProfileSaveOptions();
+    renderBookingStepGuide();
     if (cachedProfilePhone) applyProfilePhoneToFields(cachedProfilePhone);
     else ensureProfilePhoneLoaded().then(function(phoneVal) {
       if (phoneVal) applyProfilePhoneToFields(phoneVal);
