@@ -228,6 +228,135 @@
     return profileEmptyStateHtml('passengers', 'Нет сохранённых пассажиров', 'Добавьте пассажира один раз, чтобы потом быстрее оформлять бронь.', icon);
   }
 
+  function formatDepartureLabel(depDate, depTime) {
+    if (!depDate) return '—';
+    var label = depDate;
+    try {
+      label = new Date(depDate + 'T12:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+    } catch (e) {}
+    return label + (depTime ? ' ' + depTime : '');
+  }
+
+  function formatMinutesLabel(minutes) {
+    if (minutes == null) return 'Уточняется';
+    if (minutes < 0) return 'Отправление прошло';
+    if (minutes < 60) return 'Через ' + minutes + ' мин';
+    var hours = Math.floor(minutes / 60);
+    var mins = minutes % 60;
+    if (hours < 24) return 'Через ' + hours + ' ч' + (mins ? ' ' + mins + ' мин' : '');
+    var days = Math.floor(hours / 24);
+    var remHours = hours % 24;
+    return 'Через ' + days + ' д' + (remHours ? ' ' + remHours + ' ч' : '');
+  }
+
+  function getTripActionLabel(status) {
+    if (status === 'new') return 'Ожидает подтверждения';
+    if (status === 'active') return 'Диспетчер обрабатывает заявку';
+    if (status === 'payment_link_sent') return 'Откройте ссылку на оплату';
+    if (status === 'paid') return 'Оплата получена';
+    if (status === 'ticket_sent') return 'Билет уже отправлен';
+    return 'Следите за обновлением статуса';
+  }
+
+  function pickNearestTrip(items) {
+    var relevant = (items || []).filter(function(b) {
+      return ['new', 'active', 'paid', 'payment_link_sent', 'ticket_sent'].indexOf(b.status) !== -1 && b.departure_date;
+    });
+    if (!relevant.length) return null;
+    relevant.sort(function(a, b) {
+      var da = (a.departure_date || '') + ' ' + (a.departure_time || '');
+      var db = (b.departure_date || '') + ' ' + (b.departure_time || '');
+      return da.localeCompare(db);
+    });
+    return relevant[0];
+  }
+
+  function saveLastSearchCompat(fromCity, toCity, dateStr) {
+    try {
+      localStorage.setItem('lastSearch', JSON.stringify({ from: fromCity, to: toCity, date: dateStr }));
+    } catch (e) {}
+  }
+
+  function renderProfileOverview(items, passengers) {
+    var panel = document.getElementById('profileOverviewPanel');
+    var tripEl = document.getElementById('profileOverviewTrip');
+    var checklistEl = document.getElementById('profileOverviewChecklist');
+    var actionsEl = document.getElementById('profileOverviewActions');
+    var supportEl = document.getElementById('profileOverviewSupport');
+    var hintEl = document.getElementById('profileOverviewHint');
+    if (!panel || !tripEl || !checklistEl || !actionsEl || !supportEl || !hintEl) return;
+    var esc = function(s) { if (s == null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
+    var nearest = pickNearestTrip(items || []);
+    panel.classList.remove('hidden');
+    if (!nearest) {
+      hintEl.textContent = 'Активной поездки сейчас нет. Отсюда можно быстро вернуться к поиску и управлению пассажирами.';
+      tripEl.innerHTML = profileEmptyStateHtml('nearest-trip', 'Ближайшая поездка пока не запланирована', 'Когда вы создадите новую бронь, здесь появится её статус и быстрые действия.');
+      checklistEl.innerHTML =
+        '<div class="profile-overview__list-item"><strong>Следующий шаг:</strong> выберите маршрут и дату на главной странице.</div>' +
+        '<div class="profile-overview__list-item"><strong>Совет:</strong> заранее сохраните пассажиров, чтобы оформить бронь быстрее.</div>';
+      actionsEl.innerHTML =
+        '<a class="btn btn-primary btn-small" href="index.html">Найти рейс</a>' +
+        '<button type="button" class="btn btn-outline btn-small" id="profileOverviewGoPassengers">Открыть пассажиров</button>';
+      supportEl.innerHTML =
+        '<div class="profile-overview__list-item"><strong>Поддержка:</strong> если нужна помощь с переносом или отменой, напишите в Telegram.</div>' +
+        '<div class="profile-overview__list-item"><a href="https://t.me/bus_news" target="_blank" rel="noopener">Открыть @bus_news</a></div>';
+      var goPassengersBtn = document.getElementById('profileOverviewGoPassengers');
+      if (goPassengersBtn) {
+        goPassengersBtn.addEventListener('click', function() {
+          var btn = document.querySelector('.profile-tabs .segment[data-tab="profilePassengers"]');
+          if (btn) btn.click();
+        });
+      }
+      return;
+    }
+    hintEl.textContent = 'Здесь собрана ближайшая заявка, чтобы перед поездкой не искать её в списках.';
+    var mins = minutesUntilDeparture(nearest.departure_date, nearest.departure_time);
+    var passengersCount = nearest.passengers_count != null ? nearest.passengers_count : ((nearest.passengers && nearest.passengers.length) || '—');
+    var statusBadge = typeof getStatusBadge === 'function' ? getStatusBadge(nearest.status) : { class: 'badge badge--neutral', label: nearest.status || '—' };
+    var iconCheck = (typeof APP_ICONS !== 'undefined' && APP_ICONS.check) ? APP_ICONS.check : '';
+    var badgeHtml = '<span class="' + esc(statusBadge.class) + '">' + (statusBadge.class.indexOf('success') !== -1 ? iconCheck : '') + '<span>' + esc(statusBadge.label) + '</span></span>';
+    tripEl.innerHTML =
+      '<div class="profile-overview__trip-top">' +
+        '<div>' +
+          '<span class="profile-overview__trip-id">' + esc(nearest.booking_id) + '</span>' +
+          '<div class="profile-overview__trip-route">' + esc(nearest.route_name || 'Маршрут') + '</div>' +
+          '<div class="profile-overview__trip-meta">' + esc([nearest.from_city, nearest.to_city].filter(Boolean).join(' → ')) + '</div>' +
+        '</div>' +
+        '<div>' + badgeHtml + '</div>' +
+      '</div>' +
+      '<div class="profile-overview__trip-summary">' +
+        '<div class="profile-overview__trip-item"><span class="profile-overview__trip-label">Отправление</span><span class="profile-overview__trip-value">' + esc(formatDepartureLabel(nearest.departure_date, nearest.departure_time)) + '</span></div>' +
+        '<div class="profile-overview__trip-item"><span class="profile-overview__trip-label">До поездки</span><span class="profile-overview__trip-value">' + esc(formatMinutesLabel(mins)) + '</span></div>' +
+        '<div class="profile-overview__trip-item"><span class="profile-overview__trip-label">Стоимость</span><span class="profile-overview__trip-value">' + esc((nearest.price_total != null ? nearest.price_total : '—') + ' ' + (nearest.currency || 'BYN')) + '</span></div>' +
+        '<div class="profile-overview__trip-item"><span class="profile-overview__trip-label">Пассажиры</span><span class="profile-overview__trip-value">' + esc(passengersCount) + '</span></div>' +
+      '</div>';
+    checklistEl.innerHTML =
+      '<div class="profile-overview__list-item"><strong>Статус:</strong> ' + esc(getTripActionLabel(nearest.status)) + '</div>' +
+      '<div class="profile-overview__list-item"><strong>Документы:</strong> проверьте данные пассажиров перед поездкой.</div>' +
+      '<div class="profile-overview__list-item"><strong>Сохранено пассажиров:</strong> ' + esc((passengers || []).length) + '</div>';
+    actionsEl.innerHTML =
+      '<button type="button" class="btn btn-primary btn-small" id="profileOverviewDetails">Подробнее</button>' +
+      '<a class="btn btn-outline btn-small" href="success.html?booking_id=' + encodeURIComponent(nearest.booking_id) + '">Открыть билет</a>' +
+      '<button type="button" class="btn btn-outline btn-small" id="profileOverviewRepeat">Повторить маршрут</button>';
+    supportEl.innerHTML =
+      '<div class="profile-overview__list-item"><strong>Поддержка:</strong> перенос и сложные вопросы лучше решать через Telegram.</div>' +
+      '<div class="profile-overview__list-item"><a href="https://t.me/bus_news" target="_blank" rel="noopener">Открыть поддержку / канал @bus_news</a></div>' +
+      '<div class="profile-overview__list-item"><strong>Совет:</strong> если заявка оплачена или билет отправлен, держите страницу заявки под рукой.</div>';
+    var detailsBtn = document.getElementById('profileOverviewDetails');
+    if (detailsBtn) {
+      detailsBtn.addEventListener('click', function() {
+        showBookingDetailsModal(nearest);
+      });
+    }
+    var repeatBtn = document.getElementById('profileOverviewRepeat');
+    if (repeatBtn) {
+      repeatBtn.addEventListener('click', function() {
+        saveLastSearchCompat(nearest.from_city || '', nearest.to_city || '', nearest.departure_date || '');
+        window.location.href = 'index.html?from=' + encodeURIComponent(nearest.from_city || '') + '&to=' + encodeURIComponent(nearest.to_city || '');
+      });
+    }
+  }
+
   function renderBookingCards(items, containerId) {
     var list = document.getElementById(containerId);
     if (!list) return;
@@ -594,6 +723,7 @@
       var completed = items.filter(function(b) { return b.status === 'done'; });
       var cancelled = items.filter(function(b) { return b.status === 'cancelled'; });
       updateProfileStats(items);
+      renderProfileOverview(items, data.passengers || []);
       renderBookingCards(active, 'bookingsListActive');
       renderBookingCards(upcoming, 'bookingsListUpcoming');
       renderBookingCards(completed, 'bookingsListCompleted');
@@ -602,6 +732,8 @@
       var profilePhoneEl = document.getElementById('profilePhone');
       if (profilePhoneEl && data.profile && data.profile.phone) profilePhoneEl.value = data.profile.phone || '';
     }).catch(function() {
+      var panel = document.getElementById('profileOverviewPanel');
+      if (panel) panel.classList.add('hidden');
       ['bookingsListActive', 'bookingsListUpcoming', 'bookingsListCompleted', 'bookingsListCancelled'].forEach(function(id) {
         var el = document.getElementById(id);
         if (el) el.innerHTML = profileEmptyStateHtml('bookings-error', 'Не удалось загрузить заявки', 'Обновите раздел или проверьте соединение.');

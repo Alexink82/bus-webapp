@@ -44,6 +44,28 @@
       <div id="tab-profileBookings" class="tab-content active">
         <section id="bookingsSection">
           <h2 id="bookingsTitle" class="visually-hidden" data-i18n="myBookings">Мои брони</h2>
+          <section id="profileOverviewPanel" class="profile-overview hidden" aria-label="Личный кабинет поездки">
+            <div class="profile-overview__hero">
+              <div class="profile-overview__eyebrow">Личный кабинет поездки</div>
+              <h3 class="profile-overview__title">Ближайшая поездка</h3>
+              <p id="profileOverviewHint" class="profile-overview__hint">Здесь появится ваша ближайшая заявка и быстрые действия по ней.</p>
+            </div>
+            <div id="profileOverviewTrip" class="profile-overview__trip"></div>
+            <div class="profile-overview__grid">
+              <div class="profile-overview__card">
+                <div class="profile-overview__card-title">Что сейчас важно</div>
+                <div id="profileOverviewChecklist" class="profile-overview__list"></div>
+              </div>
+              <div class="profile-overview__card">
+                <div class="profile-overview__card-title">Быстрые действия</div>
+                <div id="profileOverviewActions" class="profile-overview__actions"></div>
+              </div>
+              <div class="profile-overview__card">
+                <div class="profile-overview__card-title">Поддержка и подготовка</div>
+                <div id="profileOverviewSupport" class="profile-overview__list"></div>
+              </div>
+            </div>
+          </section>
           <div id="profileStatsBlock" class="profile-stats hidden" aria-label="Сводка по поездкам">
             <div class="profile-stat-card">
               <span id="profileStatTrips" class="profile-stat-card__value">0</span>

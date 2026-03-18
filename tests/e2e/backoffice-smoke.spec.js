@@ -241,6 +241,68 @@ async function mockBookingApi(page) {
   });
 }
 
+async function mockProfileApi(page) {
+  await page.route('**/api/**', async (route) => {
+    const url = new URL(route.request().url());
+    const json = (body) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+
+    if (url.pathname === '/api/user/dashboard') {
+      return json({
+        profile: { phone: '+375291112233' },
+        passengers: [
+          { id: 1, last_name: 'Иванов', first_name: 'Иван', middle_name: '', birth_date: '1990-01-01', passport: 'MP1234567' },
+        ],
+        bookings: [
+          {
+            booking_id: 'BK-PR-1',
+            route_name: 'Минск - Москва',
+            from_city: 'Минск',
+            to_city: 'Москва',
+            departure_date: '2030-01-12',
+            departure_time: '10:00',
+            status: 'paid',
+            price_total: 120,
+            currency: 'BYN',
+            passengers_count: 1,
+          },
+        ],
+      });
+    }
+
+    if (url.pathname === '/api/bookings/BK-PR-1') {
+      return json({
+        booking_id: 'BK-PR-1',
+        route_name: 'Минск - Москва',
+        from_city: 'Минск',
+        to_city: 'Москва',
+        departure_date: '2030-01-12',
+        departure_time: '10:00',
+        status: 'paid',
+        price_total: 120,
+        currency: 'BYN',
+        passengers: [
+          { last_name: 'Иванов', first_name: 'Иван', middle_name: '', birth_date: '1990-01-01' },
+        ],
+        contact_phone: '+375291112233',
+      });
+    }
+
+    if (url.pathname === '/api/user/passengers') {
+      return json({
+        passengers: [
+          { id: 1, last_name: 'Иванов', first_name: 'Иван', middle_name: '', birth_date: '1990-01-01', passport: 'MP1234567' },
+        ],
+      });
+    }
+
+    if (url.pathname === '/api/user/profile') {
+      return json({ success: true });
+    }
+
+    return route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ detail: 'not_found' }) });
+  });
+}
+
 test('admin desktop smoke shows sidebar and operations audit', async ({ page }) => {
   await mockTelegramAndCdn(page, 999);
   await mockAdminApi(page);
@@ -310,4 +372,18 @@ test('booking smoke keeps core route and price flow', async ({ page }) => {
   await page.locator('#passengersList input[data-i="1"][data-f="first_name"]').fill('Петр');
   await page.locator('#toStep2').click();
   await expect(page.locator('#priceSummary')).toContainText('160.00');
+});
+
+test('profile smoke shows overview and nearest trip actions', async ({ page }) => {
+  await mockTelegramAndCdn(page, 999);
+  await mockProfileApi(page);
+
+  await page.goto('/profile.html');
+
+  await expect(page.locator('#profileOverviewPanel')).toBeVisible();
+  await expect(page.locator('#profileOverviewTrip')).toContainText('Минск - Москва');
+  await expect(page.locator('#profileOverviewTrip')).toContainText('BK-PR-1');
+  await expect(page.locator('#profileOverviewActions')).toContainText('Подробнее');
+  await expect(page.locator('#profileOverviewSupport')).toContainText('Поддержка');
+  await expect(page.locator('#bookingsListActive')).toContainText('Минск - Москва');
 });

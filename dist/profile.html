@@ -7,9 +7,9 @@
   <title>Профиль</title>
   <script>(function(){var t=localStorage.getItem('theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);})();</script>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script type="module" crossorigin src="/assets/profile-SSWMFv1B.js"></script>
-  <link rel="modulepreload" crossorigin href="/assets/api-BIE_2TWG.js">
-  <link rel="modulepreload" crossorigin href="/assets/theme-BqZTuSch.js">
+  <script type="module" crossorigin src="/assets/profile-DaTwUqNG.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/api-DoHnkU-n.js">
+  <link rel="modulepreload" crossorigin href="/assets/theme-VHzwAVn6.js">
   <link rel="modulepreload" crossorigin href="/assets/passport-config-DBLABtX7.js">
   <link rel="modulepreload" crossorigin href="/assets/auth-BtufPi45.js">
   <link rel="modulepreload" crossorigin href="/assets/prefetch-C9grhagV.js">
@@ -19,7 +19,7 @@
   <link rel="modulepreload" crossorigin href="/assets/app-modal-BWjIbSvX.js">
   <link rel="modulepreload" crossorigin href="/assets/nav-DSEjnhJQ.js">
   <link rel="modulepreload" crossorigin href="/assets/consent-CRTF3YGE.js">
-  <link rel="stylesheet" crossorigin href="/assets/theme-DmupI9GP.css">
+  <link rel="stylesheet" crossorigin href="/assets/theme-WK6pegOO.css">
   <link rel="stylesheet" crossorigin href="/assets/passport-config-xNAwk9GV.css">
   <link rel="stylesheet" crossorigin href="/assets/auth-AUa4N_F6.css">
 </head>
@@ -55,6 +55,28 @@
       <div id="tab-profileBookings" class="tab-content active">
         <section id="bookingsSection">
           <h2 id="bookingsTitle" class="visually-hidden" data-i18n="myBookings">Мои брони</h2>
+          <section id="profileOverviewPanel" class="profile-overview hidden" aria-label="Личный кабинет поездки">
+            <div class="profile-overview__hero">
+              <div class="profile-overview__eyebrow">Личный кабинет поездки</div>
+              <h3 class="profile-overview__title">Ближайшая поездка</h3>
+              <p id="profileOverviewHint" class="profile-overview__hint">Здесь появится ваша ближайшая заявка и быстрые действия по ней.</p>
+            </div>
+            <div id="profileOverviewTrip" class="profile-overview__trip"></div>
+            <div class="profile-overview__grid">
+              <div class="profile-overview__card">
+                <div class="profile-overview__card-title">Что сейчас важно</div>
+                <div id="profileOverviewChecklist" class="profile-overview__list"></div>
+              </div>
+              <div class="profile-overview__card">
+                <div class="profile-overview__card-title">Быстрые действия</div>
+                <div id="profileOverviewActions" class="profile-overview__actions"></div>
+              </div>
+              <div class="profile-overview__card">
+                <div class="profile-overview__card-title">Поддержка и подготовка</div>
+                <div id="profileOverviewSupport" class="profile-overview__list"></div>
+              </div>
+            </div>
+          </section>
           <div id="profileStatsBlock" class="profile-stats hidden" aria-label="Сводка по поездкам">
             <div class="profile-stat-card">
               <span id="profileStatTrips" class="profile-stat-card__value">0</span>

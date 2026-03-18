@@ -849,6 +849,135 @@ body {
   gap: 10px;
   margin-bottom: 16px;
 }
+.profile-overview {
+  margin-bottom: 16px;
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-elevated) 100%);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.10);
+}
+.profile-overview.hidden { display: none; }
+.profile-overview__hero {
+  display: grid;
+  gap: 6px;
+}
+.profile-overview__eyebrow {
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 700;
+}
+.profile-overview__title {
+  font-size: 1.2rem;
+  color: var(--text);
+}
+.profile-overview__hint {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+.profile-overview__trip {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+.profile-overview__trip-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.profile-overview__trip-route {
+  font-size: 1.08rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.profile-overview__trip-meta {
+  font-size: 0.92rem;
+  color: var(--text-muted);
+}
+.profile-overview__trip-id {
+  display: inline-block;
+  margin-bottom: 6px;
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.profile-overview__trip-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.profile-overview__trip-item {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.profile-overview__trip-label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+.profile-overview__trip-value {
+  display: block;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.profile-overview__grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.profile-overview__card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+.profile-overview__card-title {
+  font-size: 0.96rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.profile-overview__list {
+  display: grid;
+  gap: 8px;
+}
+.profile-overview__list-item {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+.profile-overview__list-item strong {
+  color: var(--text);
+}
+.profile-overview__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.profile-overview__actions .btn,
+.profile-overview__actions a {
+  flex: 1 1 160px;
+  text-decoration: none;
+}
 .profile-stats.hidden { display: none; }
 .profile-stat-card {
   background: var(--surface);
@@ -1595,6 +1724,11 @@ select:focus-visible {
 }
 
 @media (max-width: 560px) {
+  .profile-overview__trip-summary,
+  .profile-overview__grid {
+    grid-template-columns: 1fr;
+  }
+
   .page-profile .profile-bookings-tabs.segmented-control {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

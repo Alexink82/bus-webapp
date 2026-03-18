@@ -170,5 +170,9 @@ window.escapeHtml = escapeHtml;
 window.ERROR_MESSAGES = ERROR_MESSAGES;
 
 if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
-  window.addEventListener('load', function() { navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function() {}); });
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(function(reg) {
+      if (reg && typeof reg.update === 'function') reg.update();
+    }).catch(function() {});
+  });
 }
