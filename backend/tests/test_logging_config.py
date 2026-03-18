@@ -44,3 +44,25 @@ def test_setup_logging_clears_uvicorn_handlers_and_enables_propagation(monkeypat
     assert logging.getLogger("uvicorn").propagate is True
     assert logging.getLogger("uvicorn.error").propagate is True
     assert logging.getLogger("uvicorn.access").propagate is True
+
+
+def test_sanitize_log_details_masks_sensitive_fields():
+    from logging_config import sanitize_log_details
+
+    data = {
+        "phone": "+375291234567",
+        "passport": "MP1234567",
+        "nested": {
+            "secret": "super-secret",
+            "signature": "abcdef123456",
+            "safe": "visible",
+        },
+    }
+
+    sanitized = sanitize_log_details(data)
+
+    assert sanitized["phone"] != data["phone"]
+    assert sanitized["passport"] != data["passport"]
+    assert sanitized["nested"]["secret"] != data["nested"]["secret"]
+    assert sanitized["nested"]["signature"] != data["nested"]["signature"]
+    assert sanitized["nested"]["safe"] == "visible"

@@ -13,6 +13,9 @@ async function mockTelegramAndCdn(page, userId) {
       dispatchEvent() { return false; },
     });
     window.matchMedia = window.matchMedia || mq;
+    try {
+      window.localStorage.setItem('dataConsentAccepted', '1');
+    } catch {}
     window.Telegram = {
       WebApp: {
         initData: 'query_id=test&user=%7B%22id%22%3A' + uid + '%7D&auth_date=1893456000&hash=test',
@@ -55,9 +58,32 @@ async function mockAdminApi(page) {
   await page.route('**/api/**', async (route) => {
     const url = new URL(route.request().url());
     const json = (body) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+    const permissionsCatalog = [
+      { key: 'manage_roles', label: 'Управление ролями' },
+      { key: 'view_logs', label: 'Логи и аудит' },
+      { key: 'manage_operations', label: 'Операционные действия' },
+      { key: 'export_data', label: 'Экспорт данных' },
+      { key: 'manage_privacy', label: 'Privacy и retention' },
+    ];
 
     if (url.pathname === '/api/user/roles') {
       return json({ is_admin: true, is_dispatcher: true });
+    }
+    if (url.pathname === '/api/routes') {
+      return json({
+        routes: [
+          { id: 'minsk_moscow', name: 'Минск - Москва' },
+          { id: 'gomel_mozyr', name: 'Гомель - Мозырь' },
+        ],
+      });
+    }
+    if (url.pathname === '/api/admin/me') {
+      return json({
+        telegram_id: 999,
+        permissions_catalog: permissionsCatalog,
+        permissions: permissionsCatalog.map((item) => item.key),
+        is_super_admin: true,
+      });
     }
     if (url.pathname === '/api/admin/stats') {
       return json({
@@ -69,14 +95,36 @@ async function mockAdminApi(page) {
         by_route: { minsk_moscow: 7, gomel_mozyr: 5 },
       });
     }
+    if (url.pathname === '/api/admin/booking-ops-overview') {
+      return json({
+        today: { created: 5, paid: 2 },
+        queues: { unassigned_new: 3, overdue_new_15m: 1, active_sla_breach_30m: 1, pending_payment: 2, reschedule_requests: 1 },
+        alerts: [
+          { severity: 'critical', code: 'new_bookings_sla_breach', message: '1 новых заявок ждут назначения более 15 минут.' },
+        ],
+        route_hotspots: [{ route_id: 'minsk_moscow', route_name: 'Минск - Москва', count: 4 }],
+        dispatcher_load: [{ dispatcher_id: 222, active_bookings: 2 }],
+        attention_bookings: [{ booking_id: 'BK-ATT-1', status: 'new', route_id: 'minsk_moscow', route_name: 'Минск - Москва', age_minutes: 27 }],
+      });
+    }
     if (url.pathname === '/api/admin/logs') {
       return json({ logs: [{ timestamp: '2030-01-10T10:00:00', level: 'INFO', source: 'api', action: 'healthcheck' }] });
     }
+    if (url.pathname === '/api/admin/system-health') {
+      return json({ status: 'ok', db: 'ok', redis: 'disabled', sentry_enabled: false, bot_token_configured: true, webpay_secret_configured: true, rate_limit_per_minute: 120, frontend_mode: 'dist-first' });
+    }
+    if (url.pathname === '/api/admin/privacy-status') {
+      return json({ saved_passenger_passport_retention_days: 365, stored_passports_count: 4, stale_passports_count: 1, log_redaction_enabled: true });
+    }
     if (url.pathname === '/api/admin/admins') {
-      return json({ admin_ids: [999] });
+      return json({
+        admin_ids: [999],
+        admins: [{ telegram_id: 999, from_env: true, is_super_admin: true, permissions: permissionsCatalog.map((item) => item.key), explicit_permissions: [] }],
+        permissions_catalog: permissionsCatalog,
+      });
     }
     if (url.pathname === '/api/admin/dispatchers') {
-      return json({ dispatchers: [{ telegram_id: 222, name: 'Иван', phone: '+375291111111', is_active: true, from_env: false }] });
+      return json({ dispatchers: [{ telegram_id: 222, name: 'Иван', phone: '+375291111111', is_active: true, from_env: false, routes: ['minsk_moscow'], route_names: ['Минск - Москва'], direction: 'Москва' }] });
     }
     if (url.pathname === '/api/admin/role-audit') {
       return json({ entries: [{ timestamp: '2030-01-10T09:00:00', action: 'add_dispatcher', user_id: 999, details: { target_telegram_id: 222 } }] });
@@ -161,6 +209,38 @@ async function mockDispatcherApi(page) {
   });
 }
 
+async function mockBookingApi(page) {
+  await page.route('**/api/**', async (route) => {
+    const url = new URL(route.request().url());
+    const json = (body) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+
+    if (url.pathname === '/api/routes') {
+      return json({
+        routes: [
+          {
+            id: 'minsk_moscow',
+            name: 'Минск - Москва',
+            type: 'local',
+            base_price: 80,
+            border_docs_text: '',
+            discount_rules: {},
+            stops: [{ city: 'Минск', price_offset: 0 }, { city: 'Москва', price_offset: 80 }],
+          },
+        ],
+      });
+    }
+    if (url.pathname === '/api/user/passengers') {
+      return json({
+        passengers: [
+          { last_name: 'Иванов', first_name: 'Иван', middle_name: '', birth_date: '1990-01-01', passport: '' },
+        ],
+      });
+    }
+
+    return route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ detail: 'not_found' }) });
+  });
+}
+
 test('admin desktop smoke shows sidebar and operations audit', async ({ page }) => {
   await mockTelegramAndCdn(page, 999);
   await mockAdminApi(page);
@@ -169,6 +249,12 @@ test('admin desktop smoke shows sidebar and operations audit', async ({ page }) 
 
   await expect(page.locator('#adminTabs')).toBeVisible();
   await expect(page.locator('#adminSidebarToggle')).toBeVisible();
+  await expect(page.locator('#bookingOpsOverviewContent')).toContainText('Новые без назначения');
+  await expect(page.locator('#bookingOpsOverviewContent')).toContainText('BK-ATT-1');
+  await expect(page.locator('#bookingOpsOverviewContent')).toContainText('ждут назначения более 15 минут');
+  await page.locator('#adminTabs .segment[data-tab="dispatchersPanel"]').click();
+  await expect(page.locator('#dispatchersList')).toContainText('Минск - Москва');
+  await expect(page.locator('#dispatchersList')).toContainText('Москва');
 
   await page.locator('#adminTabs .segment[data-tab="roleAuditPanel"]').click();
   await expect(page.locator('#roleAuditContent')).toContainText('Добавлен диспетчер');
@@ -201,4 +287,27 @@ test('dispatcher desktop smoke hides passenger links and keeps admin tools', asy
 
   await page.reload();
   await expect(page.locator('body')).toHaveClass(/dispatcher-sidebar-collapsed/);
+});
+
+test('booking smoke keeps core route and price flow', async ({ page }) => {
+  await mockTelegramAndCdn(page, 999);
+  await mockBookingApi(page);
+
+  await page.goto('/booking.html?route_id=minsk_moscow&from=%D0%9C%D0%B8%D0%BD%D1%81%D0%BA&to=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&date=2030-01-12&time=10:00');
+
+  if (await page.locator('#consentAccept').isVisible().catch(() => false)) {
+    await page.locator('#consentAccept').click();
+  }
+  await expect(page.locator('#routeSummary')).toContainText('Минск');
+  await expect(page.locator('#fillFromProfileWrap')).toBeVisible();
+  await page.locator('#passengersList input[data-f="first_name"]').fill('Иван');
+  await page.locator('#toStep2').click();
+  await expect(page.locator('#priceSummary')).toContainText('80.00');
+  await page.locator('#backToStep1').click();
+
+  await page.locator('#passengerPlus').click();
+  await page.locator('#passengersList input[data-i="0"][data-f="first_name"]').fill('Иван');
+  await page.locator('#passengersList input[data-i="1"][data-f="first_name"]').fill('Петр');
+  await page.locator('#toStep2').click();
+  await expect(page.locator('#priceSummary')).toContainText('160.00');
 });

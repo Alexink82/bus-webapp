@@ -7,6 +7,7 @@
 import logging
 import sys
 import inspect
+import re
 from typing import Any
 
 from config import get_settings
@@ -65,6 +66,50 @@ def _caller_context() -> str:
     return ""
 
 
+_SENSITIVE_KEYWORDS = (
+    "phone",
+    "passport",
+    "secret",
+    "signature",
+    "token",
+    "init_data",
+    "initdata",
+    "authorization",
+    "cookie",
+)
+
+
+def _mask_string(value: str) -> str:
+    s = str(value)
+    digits = "".join(ch for ch in s if ch.isdigit())
+    if len(digits) >= 7:
+        visible = digits[-4:]
+        return f"***{visible}"
+    if len(s) <= 4:
+        return "***"
+    return s[:2] + "***" + s[-2:]
+
+
+def sanitize_log_details(value: Any, key_name: str | None = None) -> Any:
+    """Рекурсивно маскирует чувствительные данные перед записью в логи и audit."""
+    if isinstance(value, dict):
+        return {k: sanitize_log_details(v, str(k)) for k, v in value.items()}
+    if isinstance(value, list):
+        return [sanitize_log_details(v, key_name) for v in value]
+    if isinstance(value, tuple):
+        return tuple(sanitize_log_details(v, key_name) for v in value)
+    if value is None:
+        return None
+    key = (key_name or "").lower()
+    if any(word in key for word in _SENSITIVE_KEYWORDS):
+        return _mask_string(str(value))
+    if isinstance(value, str):
+        looks_like_phone = re.fullmatch(r"\+?\d[\d\-\s\(\)]{6,}", value.strip() or "") is not None
+        if looks_like_phone:
+            return _mask_string(value)
+    return value
+
+
 async def log_action(
     db,
     level: str,
@@ -77,9 +122,10 @@ async def log_action(
     """Write action to log_entries table. source/action попадают в лог сервера и в БД."""
     logger = get_logger("api")
     ctx = _caller_context()
+    safe_details = sanitize_log_details(details or {})
     msg = f"{source} | {action}"
-    if details:
-        msg += f" | {details}"
+    if safe_details:
+        msg += f" | {safe_details}"
     if user_id is not None:
         msg += f" | user_id={user_id}"
     if ctx:
@@ -96,7 +142,7 @@ async def log_action(
             source=source,
             user_id=user_id,
             action=action,
-            details=details or {},
+            details=safe_details,
             ip_address=ip_address,
         )
         db.add(entry)

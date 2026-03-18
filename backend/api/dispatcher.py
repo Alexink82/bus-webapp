@@ -19,7 +19,7 @@ from database import get_db
 from logging_config import log_action
 from models import Booking, Dispatcher
 from services.notification import notify_booking_status
-from services.roles import get_dispatcher_route_ids, is_admin
+from services.roles import get_dispatcher_route_ids, has_admin_permission, is_admin
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/dispatcher", tags=["dispatcher"])
@@ -264,6 +264,8 @@ async def export_dispatcher_bookings_today(
     admin_view = route_ids is None and is_admin(user_id)
     if route_ids is None and not admin_view:
         raise HTTPException(403, detail="not_dispatcher")
+    if admin_view and not await has_admin_permission(db, user_id, "export_data"):
+        raise HTTPException(403, detail="missing_admin_permission:export_data")
     today_str = date.today().isoformat()
     if admin_view:
         q = select(Booking).where(Booking.created_at.startswith(today_str))

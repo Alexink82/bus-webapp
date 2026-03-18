@@ -61,6 +61,9 @@ class Settings(BaseSettings):
     # WebPay callback (проверка подписи/секрета в проде)
     webpay_callback_secret: str = ""
 
+    # Privacy / retention
+    saved_passenger_passport_retention_days: int = 365
+
     # Маршруты из БД (таблица routes + services/cache.py). 0/пусто — из core.constants.ROUTES
     use_routes_from_db: bool = False
 

@@ -551,9 +551,39 @@ def test_admin_role_audit_unauthorized(client):
     assert r.status_code == 401
 
 
+def test_admin_me_unauthorized(client):
+    """GET /api/admin/me без заголовка -> 401."""
+    r = client.get("/api/admin/me")
+    assert r.status_code == 401
+
+
+def test_admin_booking_ops_overview_unauthorized(client):
+    """GET /api/admin/booking-ops-overview без заголовка -> 401."""
+    r = client.get("/api/admin/booking-ops-overview")
+    assert r.status_code == 401
+
+
 def test_admin_operations_audit_unauthorized(client):
     """GET /api/admin/operations-audit без заголовка -> 401."""
     r = client.get("/api/admin/operations-audit")
+    assert r.status_code == 401
+
+
+def test_admin_system_health_unauthorized(client):
+    """GET /api/admin/system-health без заголовка -> 401."""
+    r = client.get("/api/admin/system-health")
+    assert r.status_code == 401
+
+
+def test_admin_privacy_status_unauthorized(client):
+    """GET /api/admin/privacy-status без заголовка -> 401."""
+    r = client.get("/api/admin/privacy-status")
+    assert r.status_code == 401
+
+
+def test_admin_privacy_redaction_unauthorized(client):
+    """POST /api/admin/privacy/redact-saved-passports без заголовка -> 401."""
+    r = client.post("/api/admin/privacy/redact-saved-passports")
     assert r.status_code == 401
 
 
@@ -566,6 +596,18 @@ def test_admin_export_unauthorized(client):
 def test_admin_cancel_bulk_unauthorized(client):
     """POST /api/admin/bookings/cancel-bulk без заголовка -> 401."""
     r = client.post("/api/admin/bookings/cancel-bulk", json={"booking_ids": []})
+    assert r.status_code == 401
+
+
+def test_admin_permissions_update_unauthorized(client):
+    """POST /api/admin/admin-permissions без заголовка -> 401."""
+    r = client.post("/api/admin/admin-permissions", json={"telegram_id": 1, "permissions": ["view_logs"]})
+    assert r.status_code == 401
+
+
+def test_admin_dispatcher_update_unauthorized(client):
+    """PUT /api/admin/dispatchers/1 без заголовка -> 401."""
+    r = client.put("/api/admin/dispatchers/1", json={"telegram_id": 1, "name": "Test", "phone": "", "routes": [], "direction": ""})
     assert r.status_code == 401
 
 
@@ -585,6 +627,91 @@ def test_admin_operations_audit_forbidden_for_non_admin(client):
     old = _env_for_access_tests()
     try:
         r = client.get("/api/admin/operations-audit", headers={"X-Telegram-User-Id": "888"})
+        assert r.status_code == 403
+        assert r.json().get("detail") == "not_admin"
+    finally:
+        _restore_env(old)
+
+
+def test_admin_me_forbidden_for_non_admin(client):
+    """GET /api/admin/me с X-Telegram-User-Id не из ADMIN_IDS -> 403 not_admin."""
+    old = _env_for_access_tests()
+    try:
+        r = client.get("/api/admin/me", headers={"X-Telegram-User-Id": "888"})
+        assert r.status_code == 403
+        assert r.json().get("detail") == "not_admin"
+    finally:
+        _restore_env(old)
+
+
+def test_admin_booking_ops_overview_forbidden_for_non_admin(client):
+    """GET /api/admin/booking-ops-overview с X-Telegram-User-Id не из ADMIN_IDS -> 403 not_admin."""
+    old = _env_for_access_tests()
+    try:
+        r = client.get("/api/admin/booking-ops-overview", headers={"X-Telegram-User-Id": "888"})
+        assert r.status_code == 403
+        assert r.json().get("detail") == "not_admin"
+    finally:
+        _restore_env(old)
+
+
+def test_admin_system_health_forbidden_for_non_admin(client):
+    """GET /api/admin/system-health с X-Telegram-User-Id не из ADMIN_IDS -> 403 not_admin."""
+    old = _env_for_access_tests()
+    try:
+        r = client.get("/api/admin/system-health", headers={"X-Telegram-User-Id": "888"})
+        assert r.status_code == 403
+        assert r.json().get("detail") == "not_admin"
+    finally:
+        _restore_env(old)
+
+
+def test_admin_permissions_update_forbidden_for_non_admin(client):
+    """POST /api/admin/admin-permissions с X-Telegram-User-Id не из ADMIN_IDS -> 403 not_admin."""
+    old = _env_for_access_tests()
+    try:
+        r = client.post(
+            "/api/admin/admin-permissions",
+            headers={"X-Telegram-User-Id": "888"},
+            json={"telegram_id": 1, "permissions": ["view_logs"]},
+        )
+        assert r.status_code == 403
+        assert r.json().get("detail") == "not_admin"
+    finally:
+        _restore_env(old)
+
+
+def test_admin_dispatcher_update_forbidden_for_non_admin(client):
+    """PUT /api/admin/dispatchers/1 с X-Telegram-User-Id не из ADMIN_IDS -> 403 not_admin."""
+    old = _env_for_access_tests()
+    try:
+        r = client.put(
+            "/api/admin/dispatchers/1",
+            headers={"X-Telegram-User-Id": "888"},
+            json={"telegram_id": 1, "name": "Test", "phone": "", "routes": [], "direction": ""},
+        )
+        assert r.status_code == 403
+        assert r.json().get("detail") == "not_admin"
+    finally:
+        _restore_env(old)
+
+
+def test_admin_privacy_status_forbidden_for_non_admin(client):
+    """GET /api/admin/privacy-status с X-Telegram-User-Id не из ADMIN_IDS -> 403 not_admin."""
+    old = _env_for_access_tests()
+    try:
+        r = client.get("/api/admin/privacy-status", headers={"X-Telegram-User-Id": "888"})
+        assert r.status_code == 403
+        assert r.json().get("detail") == "not_admin"
+    finally:
+        _restore_env(old)
+
+
+def test_admin_privacy_redaction_forbidden_for_non_admin(client):
+    """POST /api/admin/privacy/redact-saved-passports с X-Telegram-User-Id не из ADMIN_IDS -> 403 not_admin."""
+    old = _env_for_access_tests()
+    try:
+        r = client.post("/api/admin/privacy/redact-saved-passports", headers={"X-Telegram-User-Id": "888"})
         assert r.status_code == 403
         assert r.json().get("detail") == "not_admin"
     finally:

@@ -11,6 +11,119 @@
   }
   const base = (typeof window.BASE_URL !== 'undefined' ? window.BASE_URL : '');
   let statsFromDate = '', statsToDate = '';
+  var adminContext = { permissions: [], permissions_catalog: [], is_super_admin: true, telegram_id: uid };
+  var editingAdminId = null;
+  var editingDispatcherId = null;
+  var routeCatalog = [];
+
+  function esc(s) {
+    return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function hasPermission(permission) {
+    return adminContext.permissions.indexOf(permission) !== -1;
+  }
+
+  function routeName(routeId) {
+    var found = routeCatalog.find(function(item) { return item.id === routeId; });
+    return found ? (found.name || found.id) : routeId;
+  }
+
+  function renderRoutePicker(targetId, selectedRoutes, inputName) {
+    var root = document.getElementById(targetId);
+    if (!root) return;
+    var selected = Array.isArray(selectedRoutes) ? selectedRoutes : [];
+    if (!routeCatalog.length) {
+      root.innerHTML = '<div class="admin-log-item text-tertiary">Маршруты загружаются...</div>';
+      return;
+    }
+    root.innerHTML = routeCatalog.map(function(route) {
+      var checked = selected.indexOf(route.id) !== -1 ? ' checked' : '';
+      return '<label class="admin-route-picker__option">' +
+        '<input type="checkbox" name="' + esc(inputName) + '" value="' + esc(route.id) + '"' + checked + '> ' +
+        '<span>' + esc(route.name || route.id) + '</span>' +
+      '</label>';
+    }).join('') + '<div class="text-secondary text-small">Пустой выбор = диспетчер видит все маршруты.</div>';
+  }
+
+  function getCheckedValues(root, selector) {
+    return Array.from(root.querySelectorAll(selector + ':checked')).map(function(input) { return input.value; });
+  }
+
+  function loadRouteCatalog() {
+    return api('/api/routes').then(function(data) {
+      routeCatalog = (data.routes || []).map(function(route) {
+        return { id: route.id, name: route.name || route.id };
+      });
+      renderRoutePicker('dispatcherRoutesPicker', [], 'dispatcher-routes-create');
+      return routeCatalog;
+    }).catch(function() {
+      routeCatalog = [];
+      renderRoutePicker('dispatcherRoutesPicker', [], 'dispatcher-routes-create');
+      return routeCatalog;
+    });
+  }
+
+  function setUnavailable(targetId, message) {
+    var el = document.getElementById(targetId);
+    if (!el) return;
+    el.innerHTML = '<div class="admin-log-item text-secondary">' + esc(message || 'Недоступно для вашей роли') + '</div>';
+  }
+
+  function toggleTab(tabName, visible) {
+    var tabButton = document.querySelector('#adminTabs [data-tab="' + tabName + '"]');
+    var tabPanel = document.getElementById('tab-' + tabName);
+    if (tabButton) tabButton.classList.toggle('hidden', !visible);
+    if (tabPanel) tabPanel.classList.toggle('hidden', !visible);
+  }
+
+  function applyPermissionsUi() {
+    var canViewLogs = hasPermission('view_logs');
+    var canManageRoles = hasPermission('manage_roles');
+    var canManageOperations = hasPermission('manage_operations');
+    var canExport = hasPermission('export_data');
+    var canManagePrivacy = hasPermission('manage_privacy');
+    toggleTab('logsPanel', canViewLogs);
+    toggleTab('roleAuditPanel', canViewLogs);
+    toggleTab('adminsPanel', canManageRoles);
+    toggleTab('dispatchersPanel', canManageRoles);
+    var exportBtn = document.getElementById('exportCsv');
+    if (exportBtn) exportBtn.classList.toggle('hidden', !canExport);
+    var archiveBtn = document.getElementById('runArchiveBtn');
+    if (archiveBtn) archiveBtn.classList.toggle('hidden', !canManageOperations);
+    var rotateBtn = document.getElementById('runRotateLogsBtn');
+    if (rotateBtn) rotateBtn.classList.toggle('hidden', !canManageOperations);
+    var privacyBtn = document.getElementById('runPrivacyRedactionBtn');
+    if (privacyBtn) privacyBtn.classList.toggle('hidden', !canManagePrivacy);
+    var addAdminBtn = document.getElementById('addAdminBtn');
+    if (addAdminBtn) addAdminBtn.classList.toggle('hidden', !canManageRoles);
+    var addDispatcherBtn = document.getElementById('addDispatcherBtn');
+    if (addDispatcherBtn) addDispatcherBtn.classList.toggle('hidden', !canManageRoles);
+    var permissionsSummary = document.getElementById('adminPermissionsSummary');
+    if (permissionsSummary) {
+      var labels = (adminContext.permissions_catalog || []).filter(function(item) {
+        return hasPermission(item.key);
+      }).map(function(item) { return item.label; });
+      permissionsSummary.innerHTML =
+        '<div class="admin-permissions-summary">' +
+          '<div><strong>Текущие права:</strong> ' + (labels.length ? labels.map(esc).join(', ') : 'только базовый просмотр') + '</div>' +
+          '<div class="text-secondary text-small">' + (adminContext.is_super_admin ? 'Режим super-admin: полный доступ без явных ограничений.' : 'Ограниченный backoffice-доступ: скрыты недоступные разделы и действия.') + '</div>' +
+        '</div>';
+    }
+    if (!canViewLogs) {
+      setUnavailable('logsContent', 'У вас нет права на просмотр логов и аудита.');
+      setUnavailable('roleAuditContent', 'У вас нет права на просмотр role audit.');
+      setUnavailable('operationsAuditContent', 'У вас нет права на просмотр operations audit.');
+      setUnavailable('systemHealthContent', 'System Health скрыт для вашей роли.');
+    }
+    if (!canManagePrivacy) {
+      setUnavailable('privacyStatusContent', 'Privacy и retention доступны только назначенным администраторам.');
+    }
+    if (!canManageRoles) {
+      setUnavailable('adminsList', 'У вас нет права на управление администраторами.');
+      setUnavailable('dispatchersList', 'У вас нет права на управление диспетчерами.');
+    }
+  }
 
   function periodToDates(period) {
     var today = new Date();
@@ -70,7 +183,89 @@
     }).catch(function() { document.getElementById('loginWarning').classList.remove('hidden'); document.getElementById('loginWarning').textContent = 'Нет доступа (не админ).'; });
   }
 
-  loadStats('month');
+  function loadBookingOpsOverview() {
+    api('/api/admin/booking-ops-overview').then(function(data) {
+      var today = data.today || {};
+      var queues = data.queues || {};
+      var alerts = data.alerts || [];
+      var routes = data.route_hotspots || [];
+      var dispatchers = data.dispatcher_load || [];
+      var attention = data.attention_bookings || [];
+      var cards = [
+        { label: 'Новые без назначения', value: queues.unassigned_new },
+        { label: 'Новые > 15 мин', value: queues.overdue_new_15m },
+        { label: 'Active > 30 мин', value: queues.active_sla_breach_30m },
+        { label: 'Ожидают оплату', value: queues.pending_payment },
+        { label: 'Переносы дат', value: queues.reschedule_requests },
+        { label: 'Создано сегодня', value: today.created },
+        { label: 'Оплачено сегодня', value: today.paid },
+      ];
+      var cardsHtml = '<div class="admin-ops-grid">' + cards.map(function(item) {
+        var danger = Number(item.value || 0) > 0 && (item.label === 'Новые > 15 мин' || item.label === 'Active > 30 мин');
+        return '<div class="admin-ops-card">' +
+          '<div class="admin-ops-card__value' + (danger ? ' admin-ops-card__value--danger' : '') + '">' + esc(item.value != null ? item.value : '—') + '</div>' +
+          '<div class="admin-ops-card__label">' + esc(item.label) + '</div>' +
+        '</div>';
+      }).join('') + '</div>';
+      var routesHtml = routes.length ? routes.map(function(item) {
+        return '<div class="admin-health-item"><span>' + esc(item.route_name || item.route_id || '—') + '</span><strong>' + esc(item.count) + '</strong></div>';
+      }).join('') : '<div class="admin-log-item text-tertiary">Нет данных по маршрутам.</div>';
+      var dispatchersHtml = dispatchers.length ? dispatchers.map(function(item) {
+        return '<div class="admin-health-item"><span>Dispatcher ID ' + esc(item.dispatcher_id) + '</span><strong>' + esc(item.active_bookings) + '</strong></div>';
+      }).join('') : '<div class="admin-log-item text-tertiary">Нет активной загрузки диспетчеров.</div>';
+      var alertsHtml = alerts.length ? '<div class="admin-alerts">' + alerts.map(function(item) {
+        return '<div class="admin-alert admin-alert--' + esc(item.severity || 'info') + '">' + esc(item.message || '') + '</div>';
+      }).join('') + '</div>' : '<div class="admin-log-item text-tertiary">SLA-alerts отсутствуют, критичных сигналов нет.</div>';
+      var attentionHtml = attention.length ? attention.map(function(item) {
+        var suffix = item.dispatcher_id != null ? ' | диспетчер ' + esc(item.dispatcher_id) : '';
+        return '<div class="admin-log-item"><strong>' + esc(item.booking_id) + '</strong> · ' + esc(item.route_name || item.route_id || '—') + '<br><span class="text-tertiary">статус: ' + esc(item.status) + ' | возраст: ' + esc(item.age_minutes) + ' мин' + suffix + '</span></div>';
+      }).join('') : '<div class="admin-log-item text-tertiary">Критичных booking-сигналов сейчас нет.</div>';
+      document.getElementById('bookingOpsOverviewContent').innerHTML =
+        cardsHtml +
+        '<div class="admin-logs mb-4"><div class="admin-logs__title">Операционные alerts</div>' + alertsHtml + '</div>' +
+        '<div class="admin-ops-columns">' +
+          '<div class="admin-logs"><div class="admin-logs__title">Горячие маршруты</div>' + routesHtml + '</div>' +
+          '<div class="admin-logs"><div class="admin-logs__title">Загрузка диспетчеров</div>' + dispatchersHtml + '</div>' +
+        '</div>' +
+        '<div class="admin-logs mt-4"><div class="admin-logs__title">Требуют внимания</div>' + attentionHtml + '</div>';
+    }).catch(function() {
+      document.getElementById('bookingOpsOverviewContent').innerHTML = '<div class="admin-log-item text-error">Не удалось загрузить booking overview</div>';
+    });
+  }
+
+  function loadSystemHealth() {
+    api('/api/admin/system-health').then(function(data) {
+      var badge = function(label, value) {
+        var cls = value === 'ok' ? 'badge badge--success' : (value === 'disabled' ? 'badge badge--neutral' : 'badge badge--warning');
+        return '<div class="admin-health-item"><span>' + esc(label) + '</span><span class="' + cls + '">' + esc(value) + '</span></div>';
+      };
+      document.getElementById('systemHealthContent').innerHTML =
+        badge('Общий статус', data.status || 'unknown') +
+        badge('База данных', data.db || 'unknown') +
+        badge('Redis', data.redis || 'unknown') +
+        badge('Sentry', data.sentry_enabled ? 'enabled' : 'disabled') +
+        badge('BOT_TOKEN', data.bot_token_configured ? 'configured' : 'missing') +
+        badge('WEBPAY secret', data.webpay_secret_configured ? 'configured' : 'missing') +
+        '<div class="admin-health-item"><span>Rate limit</span><strong>' + esc(data.rate_limit_per_minute) + '/min</strong></div>' +
+        '<div class="admin-health-item"><span>Frontend mode</span><strong>' + esc(data.frontend_mode || 'unknown') + '</strong></div>';
+    }).catch(function() {
+      document.getElementById('systemHealthContent').innerHTML = '<div class="admin-log-item text-error">Не удалось загрузить system health</div>';
+    });
+  }
+
+  function loadPrivacyStatus() {
+    api('/api/admin/privacy-status').then(function(data) {
+      document.getElementById('privacyStatusContent').innerHTML =
+        '<div class="admin-health-item"><span>Retention period</span><strong>' + esc(data.saved_passenger_passport_retention_days) + ' дней</strong></div>' +
+        '<div class="admin-health-item"><span>Сохранённых паспортов</span><strong>' + esc(data.stored_passports_count) + '</strong></div>' +
+        '<div class="admin-health-item"><span>Кандидатов на очистку</span><strong>' + esc(data.stale_passports_count) + '</strong></div>' +
+        '<div class="admin-health-item"><span>Log redaction</span><span class="' + (data.log_redaction_enabled ? 'badge badge--success' : 'badge badge--warning') + '">' + (data.log_redaction_enabled ? 'enabled' : 'disabled') + '</span></div>';
+      var daysInput = document.getElementById('privacyRedactDays');
+      if (daysInput && !daysInput.dataset.userChanged) daysInput.value = String(data.saved_passenger_passport_retention_days || 365);
+    }).catch(function() {
+      document.getElementById('privacyStatusContent').innerHTML = '<div class="admin-log-item text-error">Не удалось загрузить privacy status</div>';
+    });
+  }
 
   document.querySelectorAll('.admin-period-tab').forEach(function(btn) {
     btn.addEventListener('click', function() {
@@ -110,18 +305,44 @@
         var n = data.archived != null ? data.archived : 0;
         (typeof window.showToast === 'function' ? window.showToast : (typeof showToast === 'function' ? showToast : alert))('Архивировано заявок: ' + n, 'success');
         loadStats((function(){ var el = document.querySelector('.admin-period-tab--active'); return el ? el.getAttribute('data-period') : null; })() || 'month');
+        loadBookingOpsOverview();
         loadOperationsAudit();
       })
       .catch(function(e) { (typeof window.showAppAlert === 'function' ? window.showAppAlert : alert)(e.message || 'Ошибка архивации', 'Ошибка'); });
   });
-  api('/api/admin/logs?limit=50').then(data => {
-    const logs = data.logs || [];
-    const esc = (s) => (s == null ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'));
-    document.getElementById('logsContent').innerHTML = logs.length ? logs.map(function(l) {
-      var cls = (l.level || '').toLowerCase().indexOf('error') !== -1 ? 'admin-log-item__level--error' : 'admin-log-item__level--info';
-      return '<div class="admin-log-item"><span class="admin-log-item__time">' + esc(l.timestamp) + '</span> <span class="' + cls + '">' + esc(l.level) + '</span> ' + esc(l.source) + ' ' + esc(l.action || l.message || '') + '</div>';
-    }).join('') : '<div class="admin-log-item text-tertiary">Нет записей</div>';
-  }).catch(function() { document.getElementById('logsContent').innerHTML = '<div class="admin-log-item text-error">Не удалось загрузить логи</div>'; });
+  var privacyDaysInput = document.getElementById('privacyRedactDays');
+  if (privacyDaysInput) {
+    privacyDaysInput.addEventListener('input', function() {
+      privacyDaysInput.dataset.userChanged = '1';
+    });
+  }
+  var runPrivacyRedactionBtn = document.getElementById('runPrivacyRedactionBtn');
+  if (runPrivacyRedactionBtn) {
+    runPrivacyRedactionBtn.addEventListener('click', function() {
+      var days = parseInt((document.getElementById('privacyRedactDays') || {}).value, 10);
+      if (isNaN(days) || days < 30 || days > 3650) {
+        (typeof window.showAppAlert === 'function' ? window.showAppAlert : alert)('Укажите число дней от 30 до 3650.', 'Ошибка');
+        return;
+      }
+      if (!confirm('Очистить сохранённые паспортные данные у давно не использовавшихся пассажиров?')) return;
+      api('/api/admin/privacy/redact-saved-passports?older_than_days=' + encodeURIComponent(days), { method: 'POST' })
+        .then(function(data) {
+          (typeof window.showToast === 'function' ? window.showToast : (typeof showToast === 'function' ? showToast : alert))('Очищено паспортов: ' + (data.redacted != null ? data.redacted : 0), 'success');
+          loadPrivacyStatus();
+          loadOperationsAudit();
+        })
+        .catch(function(e) { (typeof window.showAppAlert === 'function' ? window.showAppAlert : alert)(e.message || 'Ошибка очистки', 'Ошибка'); });
+    });
+  }
+  function loadLogs() {
+    api('/api/admin/logs?limit=50').then(function(data) {
+      const logs = data.logs || [];
+      document.getElementById('logsContent').innerHTML = logs.length ? logs.map(function(l) {
+        var cls = (l.level || '').toLowerCase().indexOf('error') !== -1 ? 'admin-log-item__level--error' : 'admin-log-item__level--info';
+        return '<div class="admin-log-item"><span class="admin-log-item__time">' + esc(l.timestamp) + '</span> <span class="' + cls + '">' + esc(l.level) + '</span> ' + esc(l.source) + ' ' + esc(l.action || l.message || '') + '</div>';
+      }).join('') : '<div class="admin-log-item text-tertiary">Нет записей</div>';
+    }).catch(function() { document.getElementById('logsContent').innerHTML = '<div class="admin-log-item text-error">Не удалось загрузить логи</div>'; });
+  }
   document.getElementById('runRotateLogsBtn').addEventListener('click', function() {
     var daysEl = document.getElementById('rotateLogsOlderDays');
     var days = parseInt(daysEl.value, 10);
@@ -131,22 +352,14 @@
       .then(function(data) {
         (typeof window.showToast === 'function' ? window.showToast : (typeof showToast === 'function' ? showToast : alert))('Удалено записей: ' + (data.deleted != null ? data.deleted : 0), 'success');
         loadOperationsAudit();
-        api('/api/admin/logs?limit=50').then(function(d) {
-          var logs = d.logs || [];
-          var esc = function(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
-          document.getElementById('logsContent').innerHTML = logs.length ? logs.map(function(l) {
-            var cls = (l.level || '').toLowerCase().indexOf('error') !== -1 ? 'admin-log-item__level--error' : 'admin-log-item__level--info';
-            return '<div class="admin-log-item"><span class="admin-log-item__time">' + esc(l.timestamp) + '</span> <span class="' + cls + '">' + esc(l.level) + '</span> ' + esc(l.source) + ' ' + esc(l.action || l.message || '') + '</div>';
-          }).join('') : '<div class="admin-log-item text-tertiary">Нет записей</div>';
-        }).catch(function() {});
+        loadLogs();
       })
       .catch(function(e) { (typeof window.showAppAlert === 'function' ? window.showAppAlert : alert)(e.message || 'Ошибка ротации логов', 'Ошибка'); });
   });
   function loadRoleAudit() {
     api('/api/admin/role-audit').then(function(data) {
       var entries = data.entries || [];
-      var esc = function(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
-      var actionLabels = { add_admin: 'Добавлен админ', add_dispatcher: 'Добавлен диспетчер', delete_dispatcher: 'Удалён диспетчер' };
+      var actionLabels = { add_admin: 'Добавлен админ', add_dispatcher: 'Добавлен диспетчер', delete_dispatcher: 'Удалён диспетчер', update_admin_permissions: 'Изменены права админа', update_dispatcher_scope: 'Изменён scope диспетчера' };
       document.getElementById('roleAuditContent').innerHTML = entries.length ? entries.map(function(e) {
         var label = actionLabels[e.action] || e.action;
         var target = (e.details && e.details.target_telegram_id) != null ? ' ID ' + e.details.target_telegram_id : '';
@@ -159,7 +372,6 @@
   function loadOperationsAudit() {
     api('/api/admin/operations-audit?limit=100').then(function(data) {
       var entries = data.entries || [];
-      var esc = function(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
       var actionLabels = {
         cancel_bulk_bookings: 'Массовая отмена заявок',
         archive_bookings: 'Архивация заявок',
@@ -184,6 +396,8 @@
         if (details.filter_dispatcher_id != null) parts.push('диспетчер: ' + esc(details.filter_dispatcher_id));
         if (details.actor_role) parts.push('роль: ' + esc(details.actor_role));
         if (details.requested_date) parts.push('новая дата: ' + esc(details.requested_date));
+        if (details.routes && details.routes.length) parts.push('маршруты: ' + details.routes.map(esc).join(', '));
+        if (details.direction) parts.push('направление: ' + esc(details.direction));
         if (details.has_reason) parts.push('с причиной');
         return parts.join(' | ');
       };
@@ -222,14 +436,16 @@
         }).join('') + '</tbody></table></div>' : '<p class="text-secondary">Нет заявок за выбранный период.</p>';
       var bulkBtn = document.getElementById('bookingsCancelBulk');
       if (bulkBtn) {
-        if (list.some(function(b) { return canCancel(b.status); })) {
+        if (!hasPermission('manage_operations')) {
+          bulkBtn.classList.add('hidden');
+        } else if (list.some(function(b) { return canCancel(b.status); })) {
           bulkBtn.classList.remove('hidden');
           bulkBtn.onclick = function() {
             var ids = Array.from(document.querySelectorAll('.booking-row-cb:checked')).map(function(cb) { return cb.getAttribute('data-id'); });
             if (!ids.length) { (typeof window.showAppAlert === 'function' ? window.showAppAlert : alert)('Выберите заявки для отмены.', 'Внимание'); return; }
             if (!confirm('Отменить ' + ids.length + ' заявок?')) return;
             api('/api/admin/bookings/cancel-bulk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ booking_ids: ids }) })
-              .then(function(data) { (typeof window.showToast === 'function' ? window.showToast : (typeof showToast === 'function' ? showToast : alert))(data.message || 'Готово'); loadAdminBookings(); loadOperationsAudit(); })
+              .then(function(data) { (typeof window.showToast === 'function' ? window.showToast : (typeof showToast === 'function' ? showToast : alert))(data.message || 'Готово'); loadAdminBookings(); loadBookingOpsOverview(); loadOperationsAudit(); })
               .catch(function(e) { (typeof window.showAppAlert === 'function' ? window.showAppAlert : alert)(e.message || 'Ошибка', 'Ошибка'); });
           };
         } else bulkBtn.classList.add('hidden');
@@ -257,53 +473,182 @@
   document.querySelectorAll('.segmented-control .segment').forEach(function(btn) {
     btn.addEventListener('click', function() {
       var tab = this.getAttribute('data-tab');
-      if (tab === 'roleAuditPanel') loadRoleAudit();
-        if (tab === 'roleAuditPanel') loadOperationsAudit();
+      if (tab === 'roleAuditPanel' && hasPermission('view_logs')) {
+        loadRoleAudit();
+        loadOperationsAudit();
+      }
       if (tab === 'bookingsPanel') loadAdminBookings();
     });
   });
 
+  function renderAdmins(admins) {
+    var list = document.getElementById('adminsList');
+    if (!list) return;
+    list.innerHTML = admins.length ? admins.map(function(admin) {
+      var badges = (admin.permissions || []).map(function(key) {
+        var meta = (adminContext.permissions_catalog || []).find(function(item) { return item.key === key; });
+        return '<span class="badge badge--neutral">' + esc(meta ? meta.label : key) + '</span>';
+      }).join(' ');
+      var source = admin.from_env ? '<span class="badge badge--success">env super-admin</span>' : (admin.is_super_admin ? '<span class="badge badge--success">полный доступ</span>' : '<span class="badge badge--warning">ограниченный доступ</span>');
+      var actions = admin.from_env ? '<span class="text-secondary text-small">Права задаются через `ADMIN_ID/ADMIN_IDS`</span>' : '<button type="button" class="btn btn--outline btn--small" data-edit-admin="' + admin.telegram_id + '">' + (editingAdminId === admin.telegram_id ? 'Скрыть' : 'Настроить права') + '</button>';
+      var editor = '';
+      if (!admin.from_env && editingAdminId === admin.telegram_id) {
+        editor = '<div class="admin-permissions-editor">' +
+          (adminContext.permissions_catalog || []).map(function(item) {
+            var checked = (admin.explicit_permissions || admin.permissions || []).indexOf(item.key) !== -1 ? ' checked' : '';
+            return '<label class="admin-permissions-editor__option"><input type="checkbox" value="' + esc(item.key) + '"' + checked + '> <span>' + esc(item.label) + '</span></label>';
+          }).join('') +
+          '<div class="admin-permissions-editor__actions">' +
+            '<button type="button" class="btn btn--primary btn--small" data-save-admin="' + admin.telegram_id + '">Сохранить</button>' +
+            '<button type="button" class="btn btn--ghost btn--small" data-cancel-admin="' + admin.telegram_id + '">Отмена</button>' +
+          '</div>' +
+        '</div>';
+      }
+      return '<div class="admin-member-card" data-admin-card="' + admin.telegram_id + '">' +
+        '<div class="admin-member-card__header">' +
+          '<div><strong>' + esc(admin.telegram_id) + '</strong><div class="text-secondary text-small">' + (admin.from_env ? 'Источник: Render/env' : 'Источник: bot_roles') + '</div></div>' +
+          '<div class="admin-member-card__actions">' + source + ' ' + actions + '</div>' +
+        '</div>' +
+        '<div class="admin-member-card__badges">' + badges + '</div>' +
+        editor +
+      '</div>';
+    }).join('') : '<div class="admin-log-item text-tertiary">Нет записей. Добавьте ID выше или укажите ADMIN_IDS на Render.</div>';
+    list.querySelectorAll('[data-edit-admin]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var tid = parseInt(btn.getAttribute('data-edit-admin'), 10);
+        editingAdminId = editingAdminId === tid ? null : tid;
+        renderAdmins(admins);
+      });
+    });
+    list.querySelectorAll('[data-cancel-admin]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        editingAdminId = null;
+        renderAdmins(admins);
+      });
+    });
+    list.querySelectorAll('[data-save-admin]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var tid = parseInt(btn.getAttribute('data-save-admin'), 10);
+        var card = list.querySelector('[data-admin-card="' + tid + '"]');
+        var permissions = Array.from(card.querySelectorAll('input[type="checkbox"]:checked')).map(function(input) { return input.value; });
+        if (!permissions.length) {
+          (typeof window.showAppAlert === 'function' ? window.showAppAlert : alert)('Нужно выбрать хотя бы одно право.', 'Ошибка');
+          return;
+        }
+        api('/api/admin/admin-permissions', { method: 'POST', body: JSON.stringify({ telegram_id: tid, permissions: permissions }) })
+          .then(function() {
+            editingAdminId = null;
+            loadAdmins();
+            loadRoleAudit();
+          })
+          .catch(function(e) { (typeof window.showAppAlert === 'function' ? window.showAppAlert : alert)(e.message || 'Не удалось обновить права', 'Ошибка'); });
+      });
+    });
+  }
+
   function loadAdmins() {
     api('/api/admin/admins').then(function(data) {
-      var ids = data.admin_ids || [];
-      var esc = function(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
-      document.getElementById('adminsList').innerHTML = ids.length ? ids.map(function(id) { return '<div class="admin-log-item">' + esc(id) + '</div>'; }).join('') : '<div class="admin-log-item text-tertiary">Нет записей. Добавьте ID выше или укажите ADMIN_IDS на Render.</div>';
+      if (data.permissions_catalog && data.permissions_catalog.length) {
+        adminContext.permissions_catalog = data.permissions_catalog;
+      }
+      renderAdmins(data.admins || []);
     }).catch(function() { document.getElementById('adminsList').innerHTML = '<div class="admin-log-item text-error">Не удалось загрузить</div>'; });
   }
-  loadAdmins();
 
   document.getElementById('addAdminBtn').addEventListener('click', function() {
     var tidEl = document.getElementById('adminTelegramId');
     var tid = parseInt(tidEl.value, 10);
     if (!tid || isNaN(tid)) { (typeof window.showAppAlert === 'function' ? window.showAppAlert : alert)('Введите Telegram ID (число).', 'Ошибка'); return; }
     api('/api/admin/admins', { method: 'POST', body: JSON.stringify({ telegram_id: tid }) })
-      .then(function() { tidEl.value = ''; loadAdmins(); loadRoleAudit(); loadOperationsAudit(); })
+      .then(function() { tidEl.value = ''; loadAdmins(); if (hasPermission('view_logs')) { loadRoleAudit(); loadOperationsAudit(); } })
       .catch(function(e) { (typeof window.showAppAlert === 'function' ? window.showAppAlert : alert)(e.message, 'Ошибка'); });
   });
 
+  function renderDispatchers(list) {
+    var root = document.getElementById('dispatchersList');
+    if (!root) return;
+    root.innerHTML = list.length ? list.map(function(d) {
+      var status = d.is_active ? '<span class="badge badge--success">активен</span>' : '<span class="badge badge--neutral">неактивен</span>';
+      var fromEnv = d.from_env ? '<span class="badge badge--neutral">из Render</span>' : '';
+      var direction = d.direction ? '<div class="text-secondary text-small">Направление: ' + esc(d.direction) + '</div>' : '';
+      var routes = (d.routes && d.routes.length ? d.routes : []).map(function(routeId) {
+        return '<span class="badge badge--neutral">' + esc(routeName(routeId)) + '</span>';
+      }).join(' ');
+      var routeBlock = routes || '<span class="text-secondary text-small">Все маршруты</span>';
+      var actions = d.from_env ? '<span class="text-secondary text-small">Scope из env не редактируется здесь</span>' : '<button type="button" class="btn btn--outline btn--small" data-edit-dispatcher="' + d.telegram_id + '">' + (editingDispatcherId === d.telegram_id ? 'Скрыть' : 'Настроить scope') + '</button> <button type="button" class="btn btn--ghost btn--small" data-tid="' + d.telegram_id + '">Удалить</button>';
+      var editor = '';
+      if (!d.from_env && editingDispatcherId === d.telegram_id) {
+        editor = '<div class="admin-dispatcher-editor">' +
+          '<div class="form-group"><label class="form-label">Имя</label><input type="text" class="input" data-dispatcher-name value="' + esc(d.name || '') + '"></div>' +
+          '<div class="form-group"><label class="form-label">Телефон</label><input type="text" class="input" data-dispatcher-phone value="' + esc(d.phone || '') + '"></div>' +
+          '<div class="form-group"><label class="form-label">Направление / заметка</label><input type="text" class="input" data-dispatcher-direction value="' + esc(d.direction || '') + '"></div>' +
+          '<div class="form-group"><label class="form-label">Маршруты</label><div class="admin-route-picker">' + routeCatalog.map(function(route) {
+            var checked = (d.routes || []).indexOf(route.id) !== -1 ? ' checked' : '';
+            return '<label class="admin-route-picker__option"><input type="checkbox" data-dispatcher-route value="' + esc(route.id) + '"' + checked + '> <span>' + esc(route.name || route.id) + '</span></label>';
+          }).join('') + '<div class="text-secondary text-small">Пустой выбор = все маршруты.</div></div></div>' +
+          '<div class="admin-permissions-editor__actions"><button type="button" class="btn btn--primary btn--small" data-save-dispatcher="' + d.telegram_id + '">Сохранить</button><button type="button" class="btn btn--ghost btn--small" data-cancel-dispatcher="' + d.telegram_id + '">Отмена</button></div>' +
+        '</div>';
+      }
+      return '<div class="admin-member-card" data-dispatcher-card="' + d.telegram_id + '">' +
+        '<div class="admin-member-card__header">' +
+          '<div><strong>' + esc(d.telegram_id) + '</strong><div class="text-secondary text-small">' + esc(d.name || '—') + (d.phone ? ' · ' + esc(d.phone) : '') + '</div>' + direction + '</div>' +
+          '<div class="admin-member-card__actions">' + status + ' ' + fromEnv + ' ' + actions + '</div>' +
+        '</div>' +
+        '<div class="admin-member-card__badges">' + routeBlock + '</div>' +
+        editor +
+      '</div>';
+    }).join('') : '<div class="admin-log-item text-tertiary">Нет диспетчеров. Добавьте Telegram ID выше или DISPATCHER_IDS на Render.</div>';
+    root.querySelectorAll('[data-edit-dispatcher]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var tid = parseInt(btn.getAttribute('data-edit-dispatcher'), 10);
+        editingDispatcherId = editingDispatcherId === tid ? null : tid;
+        renderDispatchers(list);
+      });
+    });
+    root.querySelectorAll('[data-cancel-dispatcher]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        editingDispatcherId = null;
+        renderDispatchers(list);
+      });
+    });
+    root.querySelectorAll('[data-save-dispatcher]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var tid = parseInt(btn.getAttribute('data-save-dispatcher'), 10);
+        var card = root.querySelector('[data-dispatcher-card="' + tid + '"]');
+        var payload = {
+          telegram_id: tid,
+          name: (card.querySelector('[data-dispatcher-name]') || {}).value || '',
+          phone: (card.querySelector('[data-dispatcher-phone]') || {}).value || '',
+          direction: (card.querySelector('[data-dispatcher-direction]') || {}).value || '',
+          routes: getCheckedValues(card, 'input[data-dispatcher-route]'),
+        };
+        api('/api/admin/dispatchers/' + tid, { method: 'PUT', body: JSON.stringify(payload) })
+          .then(function() {
+            editingDispatcherId = null;
+            loadDispatchers();
+            if (hasPermission('view_logs')) {
+              loadRoleAudit();
+            }
+          })
+          .catch(function(e) { (typeof window.showAppAlert === 'function' ? window.showAppAlert : alert)(e.message || 'Не удалось обновить диспетчера', 'Ошибка'); });
+      });
+    });
+    root.querySelectorAll('[data-tid]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var tid = this.getAttribute('data-tid');
+        if (!tid || !confirm('Деактивировать диспетчера? Вкладка «Диспетчер» у него пропадёт.')) return;
+        api('/api/admin/dispatchers/' + tid, { method: 'DELETE' })
+          .then(function() { loadDispatchers(); if (hasPermission('view_logs')) { loadRoleAudit(); loadOperationsAudit(); } })
+          .catch(function(e) { (typeof window.showAppAlert === 'function' ? window.showAppAlert : alert)(e.message || 'Ошибка удаления', 'Ошибка'); });
+      });
+    });
+  }
+
   function loadDispatchers() {
     api('/api/admin/dispatchers').then(function(data) {
-      var list = data.dispatchers || [];
-      var esc = function(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
-      document.getElementById('dispatchersList').innerHTML = list.length ? list.map(function(d) {
-        var status = d.is_active ? '<span class="badge badge--success">активен</span>' : '<span class="badge badge--neutral">неактивен</span>';
-        var fromEnv = d.from_env ? ' <span class="badge badge--neutral">из Render</span>' : '';
-        var delBtn = d.is_active && !d.from_env ? '<button type="button" class="btn btn--ghost btn--small" data-tid="' + d.telegram_id + '">Удалить</button>' : '';
-        return '<div class="admin-log-item" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">' +
-          '<span><strong>' + esc(d.telegram_id) + '</strong> ' + esc(d.name || '—') + ' ' + esc(d.phone || '') + ' ' + status + fromEnv + '</span>' + delBtn + '</div>';
-      }).join('') : '<div class="admin-log-item text-tertiary">Нет диспетчеров. Добавьте Telegram ID выше или DISPATCHER_IDS на Render.</div>';
-      document.querySelectorAll('#dispatchersList [data-tid]').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          var tid = this.getAttribute('data-tid');
-          if (!tid || !confirm('Деактивировать диспетчера? Вкладка «Диспетчер» у него пропадёт.')) return;
-          api('/api/admin/dispatchers/' + tid, { method: 'DELETE' })
-            .then(function() { loadDispatchers(); loadRoleAudit(); loadOperationsAudit(); })
-            .catch(function(e) { (typeof window.showAppAlert === 'function' ? window.showAppAlert : alert)(e.message || 'Ошибка удаления', 'Ошибка'); });
-        });
-      });
+      renderDispatchers(data.dispatchers || []);
     }).catch(function() { document.getElementById('dispatchersList').innerHTML = '<div class="admin-log-item text-error">Не удалось загрузить список</div>'; });
   }
-  loadDispatchers();
 
   document.getElementById('addDispatcherBtn').addEventListener('click', function() {
     var tidEl = document.getElementById('dispTelegramId');
@@ -311,9 +656,47 @@
     if (!tid || isNaN(tid)) { (typeof window.showAppAlert === 'function' ? window.showAppAlert : alert)('Введите Telegram ID (число).', 'Ошибка'); return; }
     var name = (document.getElementById('dispName').value || '').trim();
     var phone = (document.getElementById('dispPhone').value || '').trim();
-    api('/api/admin/dispatchers', { method: 'POST', body: JSON.stringify({ telegram_id: tid, name: name, phone: phone, routes: [], direction: '' }) })
-      .then(function() { tidEl.value = ''; document.getElementById('dispName').value = ''; document.getElementById('dispPhone').value = ''; loadDispatchers(); loadRoleAudit(); loadOperationsAudit(); })
+    var direction = (document.getElementById('dispDirection').value || '').trim();
+    var routes = getCheckedValues(document, '#dispatcherRoutesPicker input[name="dispatcher-routes-create"]');
+    api('/api/admin/dispatchers', { method: 'POST', body: JSON.stringify({ telegram_id: tid, name: name, phone: phone, routes: routes, direction: direction }) })
+      .then(function() {
+        tidEl.value = '';
+        document.getElementById('dispName').value = '';
+        document.getElementById('dispPhone').value = '';
+        document.getElementById('dispDirection').value = '';
+        renderRoutePicker('dispatcherRoutesPicker', [], 'dispatcher-routes-create');
+        loadDispatchers();
+        if (hasPermission('view_logs')) { loadRoleAudit(); loadOperationsAudit(); }
+      })
       .catch(function(e) { (typeof window.showAppAlert === 'function' ? window.showAppAlert : alert)(e.message, 'Ошибка'); });
+  });
+
+  api('/api/admin/me').then(function(data) {
+    adminContext = data || adminContext;
+    document.getElementById('loginWarning').classList.add('hidden');
+    document.getElementById('adminTabs').classList.remove('hidden');
+    document.getElementById('adminMain').classList.remove('hidden');
+    applyPermissionsUi();
+    loadStats('month');
+    loadBookingOpsOverview();
+    if (hasPermission('view_logs')) {
+      loadLogs();
+      loadSystemHealth();
+      loadRoleAudit();
+      loadOperationsAudit();
+    }
+    if (hasPermission('manage_privacy')) {
+      loadPrivacyStatus();
+    }
+    if (hasPermission('manage_roles')) {
+      loadAdmins();
+      loadRouteCatalog().then(function() {
+        loadDispatchers();
+      });
+    }
+  }).catch(function() {
+    document.getElementById('loginWarning').classList.remove('hidden');
+    document.getElementById('loginWarning').textContent = 'Нет доступа (не админ).';
   });
 
   var sidebarToggle = document.getElementById('adminSidebarToggle');

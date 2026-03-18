@@ -7,13 +7,13 @@
   <title>Админ-панель — Bus Booking</title>
   <script>(function(){var t=localStorage.getItem('theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);})();</script>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script type="module" crossorigin src="/assets/admin-COtzbjP6.js"></script>
+  <script type="module" crossorigin src="/assets/admin-B6TcqtJi.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/auth-CkyvcK-h.js">
   <link rel="modulepreload" crossorigin href="/assets/segmented-control-DzGR4ZtZ.js">
   <link rel="modulepreload" crossorigin href="/assets/app-modal-BWjIbSvX.js">
   <link rel="modulepreload" crossorigin href="/assets/nav-DSEjnhJQ.js">
   <link rel="stylesheet" crossorigin href="/assets/auth-AUa4N_F6.css">
-  <link rel="stylesheet" crossorigin href="/assets/admin-Bzcx_N8g.css">
+  <link rel="stylesheet" crossorigin href="/assets/admin-LrUotbJ_.css">
 </head>
 <body class="page-admin">
   <div class="app">
@@ -62,6 +62,23 @@
             <div class="admin-stat-card">
               <div id="statsSum" class="admin-stat-card__value">—</div>
               <div class="admin-stat-card__label">BYN</div>
+            </div>
+          </div>
+          <div class="admin-logs mb-6">
+            <div class="admin-logs__title">Booking Operations</div>
+            <div id="bookingOpsOverviewContent">Загрузка...</div>
+          </div>
+          <div class="admin-logs mb-6">
+            <div class="admin-logs__title">System Health</div>
+            <div id="systemHealthContent">Загрузка...</div>
+          </div>
+          <div class="admin-logs mb-6">
+            <div class="admin-logs__title">Privacy & Retention</div>
+            <div id="privacyStatusContent">Загрузка...</div>
+            <div class="mt-4" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <input type="number" id="privacyRedactDays" class="input" value="365" min="30" max="3650" style="width:100px;">
+              <span>дней</span>
+              <button type="button" id="runPrivacyRedactionBtn" class="btn btn--outline">Очистить старые паспорта</button>
             </div>
           </div>
           <div class="admin-stats-charts">
@@ -113,7 +130,8 @@
         <div id="tab-adminsPanel" class="tab-content">
         <section id="adminsPanel">
           <h2 class="admin-section__title">Администраторы</h2>
-          <p class="text-secondary text-small mb-4">Список Telegram ID с правами админа (из переменной ADMIN_IDS на Render и из базы). Добавление сохраняет в базу — новый админ увидит вкладку «Админ» после обновления страницы.</p>
+          <p class="text-secondary text-small mb-4">Список Telegram ID с правами админа (из переменной ADMIN_IDS на Render и из базы). Env-админы всегда остаются super-admin. Для админов из базы можно включать только нужные права backoffice.</p>
+          <div id="adminPermissionsSummary" class="mb-4"></div>
           <div class="form-group">
             <label class="form-label" for="adminTelegramId">Telegram ID (число)</label>
             <input type="number" id="adminTelegramId" class="input" placeholder="123456789" min="1" step="1">
@@ -174,6 +192,15 @@
           <div class="form-group">
             <label class="form-label" for="dispPhone">Телефон (необязательно)</label>
             <input type="text" id="dispPhone" class="input" placeholder="+375...">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="dispDirection">Направление / заметка</label>
+            <input type="text" id="dispDirection" class="input" placeholder="Например: Москва / вечерние рейсы">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Маршруты диспетчера</label>
+            <p class="text-secondary text-small mb-2">Если ничего не выбрать, диспетчер увидит все маршруты.</p>
+            <div id="dispatcherRoutesPicker" class="admin-route-picker"></div>
           </div>
           <button type="button" id="addDispatcherBtn" class="btn btn--primary btn--block mb-6">➕ Добавить диспетчера</button>
           <div class="admin-logs">

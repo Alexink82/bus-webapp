@@ -146,6 +146,7 @@ class BotRole(Base):
     user_id = Column(BigInteger, primary_key=True)
     is_admin = Column(Boolean, default=False)
     is_dispatcher = Column(Boolean, default=False)
+    permissions = Column(JSON, default=list)
 
 
 class Dispatcher(Base):
