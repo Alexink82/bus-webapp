@@ -395,6 +395,12 @@ async def cancel_booking(
         except (ValueError, TypeError):
             pass
 
+    previous_status = b.status
+    actor_role = "owner"
+    if is_admin_user and not is_owner:
+        actor_role = "admin"
+    elif is_dispatcher_user and not is_owner:
+        actor_role = "dispatcher"
     if (is_dispatcher_user or is_admin_user) and not is_owner:
         reason = (body.reason or "").strip()
         if not reason:
@@ -404,6 +410,21 @@ async def cancel_booking(
         b.cancel_reason = None
 
     b.status = "cancelled"
+    await log_action(
+        db,
+        "INFO",
+        "booking",
+        "cancel_booking",
+        user_id=uid,
+        details={
+            "booking_id": booking_id,
+            "route_id": b.route_id,
+            "actor_role": actor_role,
+            "previous_status": previous_status,
+            "new_status": "cancelled",
+            "has_reason": bool((body.reason or "").strip()),
+        },
+    )
     if b.contact_tg_id:
         await notify_booking_status(b.contact_tg_id, booking_id, "cancelled", "ru")
         await invalidate_dashboard_cache(b.contact_tg_id)
@@ -460,6 +481,14 @@ async def reschedule_request(
         pass
 
     b.reschedule_requested_date = new_date
+    await log_action(
+        db,
+        "INFO",
+        "booking",
+        "reschedule_request",
+        user_id=uid,
+        details={"booking_id": booking_id, "route_id": b.route_id, "requested_date": new_date.isoformat(), "current_status": b.status},
+    )
     await db.commit()
 
     try:

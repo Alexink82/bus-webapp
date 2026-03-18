@@ -110,6 +110,7 @@
         var n = data.archived != null ? data.archived : 0;
         (typeof window.showToast === 'function' ? window.showToast : (typeof showToast === 'function' ? showToast : alert))('Архивировано заявок: ' + n, 'success');
         loadStats((function(){ var el = document.querySelector('.admin-period-tab--active'); return el ? el.getAttribute('data-period') : null; })() || 'month');
+        loadOperationsAudit();
       })
       .catch(function(e) { (typeof window.showAppAlert === 'function' ? window.showAppAlert : alert)(e.message || 'Ошибка архивации', 'Ошибка'); });
   });
@@ -129,6 +130,7 @@
     api('/api/admin/rotate-logs?older_than_days=' + days, { method: 'POST' })
       .then(function(data) {
         (typeof window.showToast === 'function' ? window.showToast : (typeof showToast === 'function' ? showToast : alert))('Удалено записей: ' + (data.deleted != null ? data.deleted : 0), 'success');
+        loadOperationsAudit();
         api('/api/admin/logs?limit=50').then(function(d) {
           var logs = d.logs || [];
           var esc = function(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
@@ -153,6 +155,46 @@
         return '<div class="admin-log-item"><span class="admin-log-item__time">' + time + '</span> ' + label + target + by + '</div>';
       }).join('') : '<div class="admin-log-item text-tertiary">Нет записей. Изменения ролей появятся здесь.</div>';
     }).catch(function() { document.getElementById('roleAuditContent').innerHTML = '<div class="admin-log-item text-error">Не удалось загрузить</div>'; });
+  }
+  function loadOperationsAudit() {
+    api('/api/admin/operations-audit?limit=100').then(function(data) {
+      var entries = data.entries || [];
+      var esc = function(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
+      var actionLabels = {
+        cancel_bulk_bookings: 'Массовая отмена заявок',
+        archive_bookings: 'Архивация заявок',
+        rotate_logs: 'Ротация логов',
+        export_bookings: 'Экспорт админских заявок',
+        take_booking: 'Диспетчер взял заявку',
+        set_status: 'Смена статуса заявки',
+        export_dispatcher_bookings: 'Экспорт диспетчерских заявок',
+        cancel_booking: 'Отмена заявки',
+        reschedule_request: 'Запрос на перенос даты'
+      };
+      var formatDetails = function(details) {
+        if (!details || typeof details !== 'object') return '';
+        var parts = [];
+        if (details.booking_id) parts.push('заявка ' + esc(details.booking_id));
+        if (details.target_telegram_id != null) parts.push('цель ID ' + esc(details.target_telegram_id));
+        if (details.previous_status) parts.push('было: ' + esc(details.previous_status));
+        if (details.new_status) parts.push('стало: ' + esc(details.new_status));
+        if (details.rows != null) parts.push('строк: ' + esc(details.rows));
+        if (details.archived != null) parts.push('архивировано: ' + esc(details.archived));
+        if (details.cancelled != null) parts.push('отменено: ' + esc(details.cancelled));
+        if (details.filter_dispatcher_id != null) parts.push('диспетчер: ' + esc(details.filter_dispatcher_id));
+        if (details.actor_role) parts.push('роль: ' + esc(details.actor_role));
+        if (details.requested_date) parts.push('новая дата: ' + esc(details.requested_date));
+        if (details.has_reason) parts.push('с причиной');
+        return parts.join(' | ');
+      };
+      document.getElementById('operationsAuditContent').innerHTML = entries.length ? entries.map(function(e) {
+        var label = actionLabels[e.action] || e.action;
+        var by = e.user_id != null ? ' (ID ' + esc(e.user_id) + ')' : '';
+        var time = e.timestamp ? esc(e.timestamp).replace('T', ' ').slice(0, 19) : '';
+        var detailsText = formatDetails(e.details);
+        return '<div class="admin-log-item"><span class="admin-log-item__time">' + time + '</span> ' + label + by + (detailsText ? '<br><span class="text-tertiary">' + detailsText + '</span>' : '') + '</div>';
+      }).join('') : '<div class="admin-log-item text-tertiary">Нет записей. Операционные действия появятся здесь.</div>';
+    }).catch(function() { document.getElementById('operationsAuditContent').innerHTML = '<div class="admin-log-item text-error">Не удалось загрузить</div>'; });
   }
 
   var bookingsOffset = 0;
@@ -187,7 +229,7 @@
             if (!ids.length) { (typeof window.showAppAlert === 'function' ? window.showAppAlert : alert)('Выберите заявки для отмены.', 'Внимание'); return; }
             if (!confirm('Отменить ' + ids.length + ' заявок?')) return;
             api('/api/admin/bookings/cancel-bulk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ booking_ids: ids }) })
-              .then(function(data) { (typeof window.showToast === 'function' ? window.showToast : (typeof showToast === 'function' ? showToast : alert))(data.message || 'Готово'); loadAdminBookings(); })
+              .then(function(data) { (typeof window.showToast === 'function' ? window.showToast : (typeof showToast === 'function' ? showToast : alert))(data.message || 'Готово'); loadAdminBookings(); loadOperationsAudit(); })
               .catch(function(e) { (typeof window.showAppAlert === 'function' ? window.showAppAlert : alert)(e.message || 'Ошибка', 'Ошибка'); });
           };
         } else bulkBtn.classList.add('hidden');
@@ -216,6 +258,7 @@
     btn.addEventListener('click', function() {
       var tab = this.getAttribute('data-tab');
       if (tab === 'roleAuditPanel') loadRoleAudit();
+        if (tab === 'roleAuditPanel') loadOperationsAudit();
       if (tab === 'bookingsPanel') loadAdminBookings();
     });
   });
@@ -234,7 +277,7 @@
     var tid = parseInt(tidEl.value, 10);
     if (!tid || isNaN(tid)) { (typeof window.showAppAlert === 'function' ? window.showAppAlert : alert)('Введите Telegram ID (число).', 'Ошибка'); return; }
     api('/api/admin/admins', { method: 'POST', body: JSON.stringify({ telegram_id: tid }) })
-      .then(function() { tidEl.value = ''; loadAdmins(); loadRoleAudit(); })
+      .then(function() { tidEl.value = ''; loadAdmins(); loadRoleAudit(); loadOperationsAudit(); })
       .catch(function(e) { (typeof window.showAppAlert === 'function' ? window.showAppAlert : alert)(e.message, 'Ошибка'); });
   });
 
@@ -254,7 +297,7 @@
           var tid = this.getAttribute('data-tid');
           if (!tid || !confirm('Деактивировать диспетчера? Вкладка «Диспетчер» у него пропадёт.')) return;
           api('/api/admin/dispatchers/' + tid, { method: 'DELETE' })
-            .then(function() { loadDispatchers(); loadRoleAudit(); })
+            .then(function() { loadDispatchers(); loadRoleAudit(); loadOperationsAudit(); })
             .catch(function(e) { (typeof window.showAppAlert === 'function' ? window.showAppAlert : alert)(e.message || 'Ошибка удаления', 'Ошибка'); });
         });
       });
@@ -269,7 +312,7 @@
     var name = (document.getElementById('dispName').value || '').trim();
     var phone = (document.getElementById('dispPhone').value || '').trim();
     api('/api/admin/dispatchers', { method: 'POST', body: JSON.stringify({ telegram_id: tid, name: name, phone: phone, routes: [], direction: '' }) })
-      .then(function() { tidEl.value = ''; document.getElementById('dispName').value = ''; document.getElementById('dispPhone').value = ''; loadDispatchers(); loadRoleAudit(); })
+      .then(function() { tidEl.value = ''; document.getElementById('dispName').value = ''; document.getElementById('dispPhone').value = ''; loadDispatchers(); loadRoleAudit(); loadOperationsAudit(); })
       .catch(function(e) { (typeof window.showAppAlert === 'function' ? window.showAppAlert : alert)(e.message, 'Ошибка'); });
   });
 

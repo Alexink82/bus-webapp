@@ -24,6 +24,13 @@ def get_verified_telegram_user_id(
         uid = get_user_id_from_init_data(x_telegram_init_data)
         if uid is None:
             raise HTTPException(401, detail="invalid_init_data")
+        if x_telegram_user_id and x_telegram_user_id.strip():
+            try:
+                header_uid = int(x_telegram_user_id)
+            except ValueError:
+                raise HTTPException(401, detail="invalid_telegram_id")
+            if header_uid != uid:
+                raise HTTPException(401, detail="telegram_id_mismatch")
         return uid
     if not x_telegram_user_id:
         raise HTTPException(401, detail="telegram_id_required")
@@ -42,7 +49,16 @@ def get_optional_verified_telegram_user_id(
     if (settings.bot_token or "").strip():
         if not x_telegram_init_data or not x_telegram_init_data.strip():
             return None
-        return get_user_id_from_init_data(x_telegram_init_data)
+        uid = get_user_id_from_init_data(x_telegram_init_data)
+        if uid is None:
+            return None
+        if x_telegram_user_id and x_telegram_user_id.strip():
+            try:
+                if int(x_telegram_user_id) != uid:
+                    return None
+            except ValueError:
+                return None
+        return uid
     if not x_telegram_user_id:
         return None
     try:

@@ -118,10 +118,18 @@ async def take_booking(
         raise HTTPException(404, detail="booking_not_found")
     if b.dispatcher_id and b.dispatcher_id != dispatcher_id:
         raise HTTPException(409, detail="already_taken")
+    previous_status = b.status
     b.dispatcher_id = int(dispatcher_id)
     b.status = "active"
     b.taken_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
-    await log_action(db, "INFO", "dispatcher", "take_booking", user_id=dispatcher_id, details={"booking_id": booking_id})
+    await log_action(
+        db,
+        "INFO",
+        "dispatcher",
+        "take_booking",
+        user_id=dispatcher_id,
+        details={"booking_id": booking_id, "route_id": b.route_id, "previous_status": previous_status, "new_status": "active"},
+    )
     await db.commit()
     if b.contact_tg_id:
         try:
@@ -166,6 +174,7 @@ async def set_booking_status(
     allowed = {"active", "payment_link_sent", "paid", "ticket_sent", "done", "cancelled"}
     if body.status not in allowed:
         raise HTTPException(400, detail="invalid_status")
+    previous_status = b.status
     b.status = body.status
     if body.status == "cancelled":
         if not (body.reason or "").strip():
@@ -173,7 +182,20 @@ async def set_booking_status(
         b.cancel_reason = (body.reason or "").strip()
     if body.status == "paid":
         b.paid_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
-    await log_action(db, "INFO", "dispatcher", "set_status", user_id=dispatcher_id, details={"booking_id": booking_id, "status": body.status})
+    await log_action(
+        db,
+        "INFO",
+        "dispatcher",
+        "set_status",
+        user_id=dispatcher_id,
+        details={
+            "booking_id": booking_id,
+            "route_id": b.route_id,
+            "previous_status": previous_status,
+            "new_status": body.status,
+            "has_reason": bool((body.reason or "").strip()),
+        },
+    )
     await db.commit()
     if b.contact_tg_id:
         try:
@@ -293,6 +315,14 @@ async def export_dispatcher_bookings_today(
     output.seek(0)
     suffix = f"admin_{filter_dispatcher_id or 'all'}" if admin_view else str(user_id)
     filename = f"dispatcher_{suffix}_{today_str}.csv"
+    await log_action(
+        db,
+        "INFO",
+        "dispatcher",
+        "export_dispatcher_bookings",
+        user_id=user_id,
+        details={"is_admin_view": admin_view, "filter_dispatcher_id": filter_dispatcher_id, "rows": len(rows), "date": today_str},
+    )
     return StreamingResponse(
         iter([output.getvalue()]),
         media_type="text/csv",

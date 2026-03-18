@@ -154,6 +154,14 @@ async def admin_cancel_bulk(
     )
     result = await db.execute(stmt)
     await db.commit()
+    await log_action(
+        db,
+        "INFO",
+        "admin",
+        "cancel_bulk_bookings",
+        user_id=admin_id,
+        details={"booking_ids": ids[:50], "requested_count": len(ids), "cancelled": result.rowcount},
+    )
     for uid in user_ids:
         await invalidate_dashboard_cache(uid)
     return {"cancelled": result.rowcount, "message": f"Отменено заявок: {result.rowcount}"}
@@ -192,6 +200,17 @@ async def admin_logs(
 
 
 ROLE_AUDIT_ACTIONS = ("add_admin", "add_dispatcher", "delete_dispatcher")
+OPERATIONS_AUDIT_ACTIONS = (
+    "cancel_bulk_bookings",
+    "archive_bookings",
+    "rotate_logs",
+    "export_bookings",
+    "take_booking",
+    "set_status",
+    "export_dispatcher_bookings",
+    "cancel_booking",
+    "reschedule_request",
+)
 
 
 @router.get("/role-audit")
@@ -223,6 +242,37 @@ async def admin_role_audit(
     }
 
 
+@router.get("/operations-audit")
+async def admin_operations_audit(
+    limit: int = Query(100, le=300),
+    db: AsyncSession = Depends(get_db),
+    admin_id: int = Depends(get_admin_id),
+):
+    """История чувствительных операционных действий админки и диспетчерской."""
+    q = (
+        select(LogEntry)
+        .where(LogEntry.action.in_(OPERATIONS_AUDIT_ACTIONS))
+        .order_by(LogEntry.timestamp.desc())
+        .limit(limit)
+    )
+    result = await db.execute(q)
+    rows = result.scalars().all()
+    return {
+        "entries": [
+            {
+                "id": r.id,
+                "timestamp": r.timestamp.isoformat() if r.timestamp else None,
+                "level": r.level,
+                "source": r.source,
+                "action": r.action,
+                "user_id": r.user_id,
+                "details": r.details or {},
+            }
+            for r in rows
+        ]
+    }
+
+
 @router.post("/archive")
 async def run_archive(
     older_than_days: int = Query(90),
@@ -236,6 +286,15 @@ async def run_archive(
             Booking.date < threshold,
             Booking.is_archived == False,
         ).values(is_archived=True)
+    )
+    await db.flush()
+    await log_action(
+        db,
+        "INFO",
+        "admin",
+        "archive_bookings",
+        user_id=admin_id,
+        details={"older_than_days": older_than_days, "threshold": threshold, "archived": result.rowcount},
     )
     return {"archived": result.rowcount, "message": f"Archived bookings with date < {threshold}"}
 
@@ -342,6 +401,15 @@ async def add_dispatcher(
         is_active=True,
     )
     db.add(d)
+    await db.flush()
+    await log_action(
+        db,
+        "INFO",
+        "admin",
+        "add_dispatcher",
+        user_id=admin_id,
+        details={"target_telegram_id": body.telegram_id, "name": body.name, "routes_count": len(body.routes or [])},
+    )
     return {"success": True}
 
 
@@ -396,6 +464,14 @@ async def export_bookings(
             r.created_at or "",
         ])
     output.seek(0)
+    await log_action(
+        db,
+        "INFO",
+        "admin",
+        "export_bookings",
+        user_id=admin_id,
+        details={"from_date": from_str, "to_date": to_str, "rows": len(rows)},
+    )
     return StreamingResponse(
         iter([output.getvalue()]),
         media_type="text/csv",

@@ -6,6 +6,7 @@ import hmac
 import hashlib
 import json
 import logging
+import time
 from urllib.parse import parse_qsl
 
 from config import get_settings
@@ -44,6 +45,21 @@ def validate_init_data(init_data: str) -> dict | None:
         hashlib.sha256,
     ).hexdigest()
     if not hmac.compare_digest(computed, hash_val):
+        return None
+    auth_date_raw = parsed.get("auth_date")
+    if not auth_date_raw:
+        return None
+    try:
+        auth_date = int(auth_date_raw)
+    except (TypeError, ValueError):
+        return None
+    now_ts = int(time.time())
+    max_age = max(0, int(getattr(settings, "telegram_init_data_max_age_seconds", 86400) or 0))
+    if auth_date > now_ts + 300:
+        logger.warning("Telegram initData rejected: auth_date is in the future")
+        return None
+    if max_age and now_ts - auth_date > max_age:
+        logger.warning("Telegram initData rejected: auth_date is stale")
         return None
     return parsed
 

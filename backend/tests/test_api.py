@@ -551,6 +551,12 @@ def test_admin_role_audit_unauthorized(client):
     assert r.status_code == 401
 
 
+def test_admin_operations_audit_unauthorized(client):
+    """GET /api/admin/operations-audit без заголовка -> 401."""
+    r = client.get("/api/admin/operations-audit")
+    assert r.status_code == 401
+
+
 def test_admin_export_unauthorized(client):
     """GET /api/admin/export без заголовка -> 401."""
     r = client.get("/api/admin/export")
@@ -568,6 +574,17 @@ def test_admin_stats_forbidden_for_non_admin(client):
     old = _env_for_access_tests()
     try:
         r = client.get("/api/admin/stats", headers={"X-Telegram-User-Id": "888"})
+        assert r.status_code == 403
+        assert r.json().get("detail") == "not_admin"
+    finally:
+        _restore_env(old)
+
+
+def test_admin_operations_audit_forbidden_for_non_admin(client):
+    """GET /api/admin/operations-audit с X-Telegram-User-Id не из ADMIN_IDS -> 403 not_admin."""
+    old = _env_for_access_tests()
+    try:
+        r = client.get("/api/admin/operations-audit", headers={"X-Telegram-User-Id": "888"})
         assert r.status_code == 403
         assert r.json().get("detail") == "not_admin"
     finally:

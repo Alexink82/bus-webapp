@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     # Telegram
     bot_token: str = ""
     channel_id: str = ""
+    telegram_init_data_max_age_seconds: int = 86400
 
     # Access (для вкладок Админ/Диспетчер и доступа к API)
     # ADMIN_IDS — через запятую Telegram user_id администраторов (числа)

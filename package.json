@@ -8,9 +8,11 @@
     "build": "vite build",
     "preview": "vite preview",
     "test:build": "vite build && node scripts/verify-build.js",
+    "test:e2e": "npm run test:build && playwright test",
     "copy-dist": "node scripts/copy-dist-to-webapp.js"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "vite": "^5.4.0"
   }
 }
