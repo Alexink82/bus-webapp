@@ -146,7 +146,7 @@ body.has-app-shell {
   padding-bottom: max(76px, calc(76px + env(safe-area-inset-bottom)));
 }
 
-@media (min-width: 1025px) {
+@media (min-width: 1024px) {
   body.has-app-shell {
     padding-bottom: 0;
   }
@@ -161,7 +161,7 @@ body.has-app-shell {
   flex-direction: column;
 }
 
-@media (min-width: 1025px) {
+@media (min-width: 1024px) {
   .app-shell {
     display: grid;
     grid-template-columns: 220px minmax(0, 1fr);
@@ -1728,7 +1728,7 @@ body.page-home .actual-info {
 }
 
 /* Десктоп: левый sidebar вместо нижнего таб-бара */
-@media (min-width: 1025px) {
+@media (min-width: 1024px) {
   .app-shell .tab-bar {
     position: sticky;
     top: 16px;
@@ -2507,17 +2507,16 @@ select:focus-visible {
   }
 }
 
-@media (min-width: 1025px) {
-  body.page-home .container.container--app {
-    max-width: 100%;
-  }
-
+/* Главная: два столбца с планшета — единый «дашборд», без разъезда колонок */
+@media (min-width: 768px) {
   body.page-home .main {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+    grid-template-columns: minmax(0, 1fr) minmax(260px, min(360px, 38vw));
     gap: 24px;
     align-items: start;
-    justify-content: space-between;
+    justify-content: start;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   body.page-home #lastSearchBlock,
@@ -2526,6 +2525,7 @@ select:focus-visible {
   body.page-home #results,
   body.page-home #scheduleSection {
     grid-column: 1;
+    min-width: 0;
   }
 
   body.page-home #actualInfo {
@@ -2533,8 +2533,9 @@ select:focus-visible {
     grid-row: 1 / span 5;
     position: sticky;
     top: 24px;
-    justify-self: stretch;
+    align-self: start;
     width: 100%;
+    min-width: 0;
   }
 
   body.page-home .search-form-subtitle {
@@ -2546,6 +2547,23 @@ select:focus-visible {
   body.page-home .schedule-section,
   body.page-home .actual-info {
     padding: 20px;
+  }
+}
+
+/* Планшет / узкое окно: центрируем контент, пока боковой tab-bar ещё снизу */
+@media (min-width: 768px) and (max-width: 1023px) {
+  body.page-home .app-shell__body {
+    width: 100%;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+    box-sizing: border-box;
+  }
+}
+
+@media (min-width: 1024px) {
+  body.page-home .container.container--app {
+    max-width: 100%;
   }
 
   body.page-profile .container {
