@@ -19,8 +19,15 @@
   <link rel="stylesheet" href="css/telegram-theme.css">
   <link rel="stylesheet" href="css/animations.css">
 </head>
-<body class="success-page">
-  <div class="container">
+<body class="success-page has-app-shell">
+  <div class="app-shell">
+    <nav class="tab-bar" id="tabBar" aria-label="Основная навигация">
+      <a href="index.html" class="tab active"><span class="tab-bar__icon">🎫</span><span class="tab-bar__label" data-i18n="tabBook">Бронь</span></a>
+      <a href="profile.html" class="tab"><span class="tab-bar__icon">👤</span><span class="tab-bar__label" data-i18n="tabProfile">Профиль</span></a>
+      <a href="faq.html" class="tab"><span class="tab-bar__icon">❓</span><span class="tab-bar__label" data-i18n="tabFaq">FAQ</span></a>
+    </nav>
+    <div class="app-shell__body">
+  <div class="container container--app">
     <header class="header">
       <div class="header__logo-bar">
         <img src="/assets/logo-DHd3bDT6-DHd3bDT6.png" alt="СТОЛИЦА" class="header__logo" width="160" height="40">
@@ -47,11 +54,8 @@
         <button type="button" id="backOrCloseBtn" class="btn btn-primary success-btn" data-i18n="backToMain">Главная</button>
       </div>
     </main>
-    <nav class="tab-bar" id="tabBar">
-      <a href="index.html" class="tab active"><span class="tab-bar__icon">🎫</span><span class="tab-bar__label" data-i18n="tabBook">Бронь</span></a>
-      <a href="profile.html" class="tab"><span class="tab-bar__icon">👤</span><span class="tab-bar__label" data-i18n="tabProfile">Профиль</span></a>
-      <a href="faq.html" class="tab"><span class="tab-bar__icon">❓</span><span class="tab-bar__label" data-i18n="tabFaq">FAQ</span></a>
-    </nav>
+  </div>
+    </div>
   </div>
   <script type="module" src="./js/success-entry.js"></script>
 </body>

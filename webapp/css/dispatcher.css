@@ -22,12 +22,40 @@
   display: none !important;
 }
 
+/* Компактная шапка: сессия в раскрывающемся блоке */
+.dispatcher-meta-panel {
+  margin: 8px 16px 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius, 8px);
+  background: var(--surface);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+.dispatcher-meta-panel__summary {
+  cursor: pointer;
+  padding: 10px 14px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  list-style: none;
+}
+.dispatcher-meta-panel__summary::-webkit-details-marker { display: none; }
+.dispatcher-meta-panel[open] .dispatcher-meta-panel__summary {
+  border-bottom: 1px solid var(--border);
+}
+.dispatcher-meta-panel .dispatcher-access-actions {
+  padding: 8px 12px 12px;
+}
+.dispatcher-meta-panel .dispatcher-session {
+  margin: 0 12px 12px;
+}
+
 .dispatcher-session {
   margin: 16px 16px 0;
   padding: 14px 16px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius, 8px);
 }
 .dispatcher-session.hidden {
   display: none !important;
@@ -69,6 +97,9 @@
   gap: 8px;
   flex-wrap: wrap;
   padding: 0 16px 12px;
+}
+.dispatcher-meta-panel .dispatcher-access-actions {
+  padding-top: 4px;
 }
 .dispatcher-auth-badge {
   display: inline-flex;
@@ -121,16 +152,68 @@
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+  border-radius: var(--radius, 8px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
+
+.dispatcher-topbar--dashboard {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 12px 16px;
+}
+
+.dispatcher-header-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+.dispatcher-header-stats__sep {
+  opacity: 0.45;
+  user-select: none;
+}
+.dispatcher-header-stats strong {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.dispatcher-topbar__controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+@media (min-width: 900px) {
+  .dispatcher-topbar--dashboard {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .dispatcher-header-stats {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .dispatcher-topbar__controls {
+    flex: 1 1 320px;
+    max-width: 480px;
+  }
+}
+
 .dispatcher-topbar__search {
   flex: 1;
   min-height: 40px;
+  max-width: 100%;
   padding: 8px 12px;
   border-radius: var(--radius);
   border: 1px solid var(--border);
   background: var(--bg);
   color: var(--text);
-  font-size: 1rem;
+  font-size: 0.95rem;
 }
 .dispatcher-topbar__search::placeholder {
   color: var(--text-muted);
@@ -157,7 +240,7 @@
   }
 }
 
-/* Контейнер 3 колонки (desktop) */
+/* Контейнер 3 колонки (desktop ≥1024px) */
 .dispatcher-container {
   display: grid;
   grid-template-columns: 1fr;
@@ -166,21 +249,22 @@
   min-height: 0;
   flex: 1;
 }
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   .dispatcher-wrap {
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 140px);
+    height: calc(100vh - 120px);
     min-height: 400px;
   }
   .dispatcher-container {
-    grid-template-columns: 280px 1fr 340px;
-    height: calc(100dvh - 60px - 60px);
+    grid-template-columns: 250px minmax(0, 1fr) 300px;
+    height: calc(100dvh - 120px);
     padding: 16px;
+    padding-top: 8px;
   }
 }
 
-/* Боковые панели: скрыты на мобильном */
+/* Боковые панели: скрыты на узком экране — фильтры в модалке / drawer */
 .dispatcher-sidebar {
   display: none;
   flex-direction: column;
@@ -188,16 +272,23 @@
   min-height: 0;
   overflow-y: auto;
 }
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   .dispatcher-sidebar {
     display: flex;
+    position: sticky;
+    top: 0;
+    align-self: start;
+    max-height: calc(100dvh - 100px);
+  }
+  .dispatcher-sidebar--right {
+    top: 8px;
   }
 }
 .dispatcher-sidebar--left {
-  min-width: 280px;
+  min-width: 250px;
 }
 .dispatcher-sidebar--right {
-  min-width: 340px;
+  min-width: 300px;
 }
 
 /* Кнопка свернуть левую панель (ноутбук/десктоп) */
@@ -220,9 +311,9 @@
 .dispatcher-sidebar-toggle {
   transition: grid-template-columns 0.22s ease, width 0.22s ease, min-width 0.22s ease, padding 0.22s ease, transform 0.18s ease, opacity 0.18s ease;
 }
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   .dispatcher-sidebar-toggle { display: block; }
-  body.dispatcher-sidebar-collapsed .dispatcher-container { grid-template-columns: 72px 1fr 340px; }
+  body.dispatcher-sidebar-collapsed .dispatcher-container { grid-template-columns: 72px minmax(0, 1fr) 300px; }
   body.dispatcher-sidebar-collapsed .dispatcher-sidebar--left { min-width: 72px; width: 72px; overflow: hidden; padding-right: 0; }
   body.dispatcher-sidebar-collapsed .dispatcher-sidebar--left .dispatcher-card { display: none; }
   body.dispatcher-sidebar-collapsed .dispatcher-sidebar--left .dispatcher-sidebar-toggle {
@@ -241,25 +332,26 @@
   background: var(--surface);
   border-top: 1px solid var(--border);
 }
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   .dispatcher-mobile-actions {
     display: none;
   }
 }
 
-/* Боковые панели и карточки — прямоугольник со скруглёнными углами (не овал) */
+/* Боковые панели и карточки — 8px radius */
 .dispatcher-sidebar--left,
 .dispatcher-sidebar--right {
-  border-radius: 12px;
+  border-radius: var(--radius, 8px);
 }
 
 /* Карточка общая */
 .dispatcher-card {
   background: var(--surface);
-  padding: 16px;
-  border-radius: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius, 8px);
   border: 1px solid var(--border);
   position: relative;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 .dispatcher-card__sla {
   position: absolute;
@@ -428,18 +520,80 @@
   color: var(--text-muted);
 }
 
-/* Сетка карточек: 1 колонка на мобильном, 2 на ПК */
+/* Сетка карточек: плотная колонка; на десктопе карточки — «строки» */
 .dispatcher-cards-grid {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
-@media (min-width: 768px) {
-  .dispatcher-cards-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
+
+.dispatcher-card__body--new,
+.dispatcher-card__body--active {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .dispatcher-card__body--new,
+  .dispatcher-card__body--active {
+    grid-template-columns: 1fr minmax(140px, 220px);
+    align-items: start;
   }
+
+  .dispatcher-card__aside {
+    text-align: right;
+  }
+
+  .dispatcher-card__aside .actions {
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+}
+
+.dispatcher-card__title-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.dispatcher-card__id {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.dispatcher-card__route {
+  font-weight: 700;
+  color: var(--text);
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.dispatcher-card__datetime {
+  font-weight: 700;
+  margin-top: 4px;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+.dispatcher-card__meta {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.dispatcher-card__price {
+  font-weight: 700;
+  color: var(--accent);
+  font-size: 1rem;
+  margin-bottom: 8px;
+}
+
+.dispatcher-card--active-row .dispatcher-card__main .status {
+  margin-top: 8px;
 }
 
 /* Карточка заявки в списке */
@@ -494,35 +648,35 @@
   font-size: 1rem;
   resize: vertical;
 }
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   .dispatcher-card[data-booking],
   .dispatcher-card.booking-card {
-    padding: 20px;
-    min-height: 140px;
-    font-size: 16px;
+    padding: 12px 14px;
+    min-height: 0;
+    font-size: 0.95rem;
   }
   .dispatcher-card .status,
   .dispatcher-card .badge {
-    font-size: 15px;
+    font-size: 0.85rem;
   }
   .dispatcher-card .badge .icon {
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
   }
   .dispatcher-card .actions button {
-    min-height: 52px;
-    font-size: 1rem;
-    padding: 10px 16px;
+    min-height: 40px;
+    font-size: 0.9rem;
+    padding: 8px 12px;
   }
 }
 
-/* Overdue блок */
+/* Overdue блок — пастельный фон всей секции */
 .dispatcher-overdue {
   margin-bottom: 16px;
-  padding: 12px;
-  background: rgba(200, 80, 60, 0.12);
-  border: 1px solid rgba(200, 80, 60, 0.4);
-  border-radius: var(--radius);
+  padding: 16px;
+  background: rgba(220, 100, 90, 0.1);
+  border: 1px solid rgba(200, 80, 60, 0.22);
+  border-radius: var(--radius, 8px);
 }
 .dispatcher-overdue.hidden {
   display: none !important;

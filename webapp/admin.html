@@ -23,14 +23,17 @@
         <a href="index.html" class="admin-header__exit">Выйти</a>
       </div>
     </header>
-    <div class="admin-access-actions">
-      <span id="adminAuthModeBadge" class="admin-header__badge hidden">Telegram</span>
-      <button type="button" id="openAdminInBrowser" class="admin-header__link">Открыть в браузере</button>
-      <button type="button" id="adminLogoutBtn" class="admin-header__link hidden">Выйти из браузера</button>
-      <button type="button" id="adminLogoutAllBtn" class="admin-header__link hidden">Выйти везде</button>
-    </div>
     <div id="loginWarning" class="warning hidden">Войдите через Telegram (как администратор) или через browser-session backoffice.</div>
-    <div id="adminSessionPanel" class="admin-session hidden"></div>
+    <details class="admin-meta-panel">
+      <summary class="admin-meta-panel__summary">Сессия и выход</summary>
+      <div class="admin-access-actions">
+        <span id="adminAuthModeBadge" class="admin-header__badge hidden">Telegram</span>
+        <button type="button" id="openAdminInBrowser" class="admin-header__link">Открыть в браузере</button>
+        <button type="button" id="adminLogoutBtn" class="admin-header__link hidden">Выйти из браузера</button>
+        <button type="button" id="adminLogoutAllBtn" class="admin-header__link hidden">Выйти везде</button>
+      </div>
+      <div id="adminSessionPanel" class="admin-session hidden"></div>
+    </details>
     <div class="admin-layout" id="adminLayout">
     <div id="adminTabs" class="segmented-control admin-tabs-nav hidden" role="tablist">
       <button type="button" id="adminSidebarToggle" class="admin-sidebar-toggle" aria-label="Свернуть меню" title="Свернуть меню">◀ Свернуть</button>

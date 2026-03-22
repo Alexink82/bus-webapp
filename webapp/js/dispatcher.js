@@ -322,12 +322,21 @@
         </div>
         <div class="dispatcher-card__row">
           <label class="dispatcher-card__check"><input type="checkbox" class="dispatcher-card__cb" data-booking="${esc(b.booking_id)}" aria-label="Выбрать заявку"></label>
-          <div class="dispatcher-card__body">
-            <strong>${esc(b.booking_id)}</strong> ${esc(b.route_name)}<br>
-            ${esc(b.departure_date)} ${esc(b.departure_time)} | ${esc(b.passengers_count)} пасс. | ${esc(b.price_total)} ${esc(b.currency)}
-            <div class="status">${statusBadge}</div>
-            <div class="actions">
-              <button data-action="take" data-id="${b.booking_id}">Взять в работу</button>
+          <div class="dispatcher-card__body dispatcher-card__body--new">
+            <div class="dispatcher-card__main">
+              <div class="dispatcher-card__title-line">
+                <span class="dispatcher-card__id">${esc(b.booking_id)}</span>
+                <span class="dispatcher-card__route">${esc(b.route_name)}</span>
+              </div>
+              <div class="dispatcher-card__datetime">${esc(b.departure_date)} · ${esc(b.departure_time)}</div>
+              <div class="dispatcher-card__meta">${esc(b.passengers_count)} пасс.</div>
+              <div class="status">${statusBadge}</div>
+            </div>
+            <div class="dispatcher-card__aside">
+              <div class="dispatcher-card__price">${esc(b.price_total)} ${esc(b.currency)}</div>
+              <div class="actions">
+                <button data-action="take" data-id="${b.booking_id}">Взять в работу</button>
+              </div>
             </div>
           </div>
         </div>
@@ -365,19 +374,30 @@
   function renderActiveCard(b) {
     var statusBadge = getBadgeHtml(b.payment_status || b.status);
     var contactLabel = (b.contact_phone || '').trim() ? 'Телефон' : 'Связаться';
-    var dispatcherLine = (isAdminView && b.dispatcher_id) ? '<br><span class="dispatcher-card__dispatcher">Диспетчер: ' + esc(String(b.dispatcher_id)) + '</span>' : '';
+    var dispatcherLine = (isAdminView && b.dispatcher_id) ? '<div class="dispatcher-card__dispatcher">Диспетчер: ' + esc(String(b.dispatcher_id)) + '</div>' : '';
     return `
-      <div class="dispatcher-card" data-booking="${esc(b.booking_id)}">
-        <strong>${esc(b.booking_id)}</strong> ${esc(b.route_name)}${dispatcherLine}<br>
-        ${esc(b.departure_date)} ${esc(b.departure_time)} | ${esc(b.price_total)} ${esc(b.currency)}
-        <div class="status">${statusBadge}</div>
-        <div class="actions">
-          <button type="button" data-action="contact" data-id="${esc(b.booking_id)}" class="dispatcher-btn-contact">${contactLabel}</button>
-          <button data-id="${b.booking_id}" data-status="payment_link_sent">Ссылка оплаты</button>
-          <button data-id="${b.booking_id}" data-status="paid">Оплачено</button>
-          <button data-id="${b.booking_id}" data-status="ticket_sent">Билет отправлен</button>
-          <button data-id="${b.booking_id}" data-status="done">Завершено</button>
-          <button data-id="${b.booking_id}" data-status="cancelled">Отменить</button>
+      <div class="dispatcher-card dispatcher-card--active-row" data-booking="${esc(b.booking_id)}">
+        <div class="dispatcher-card__body dispatcher-card__body--active">
+          <div class="dispatcher-card__main">
+            <div class="dispatcher-card__title-line">
+              <span class="dispatcher-card__id">${esc(b.booking_id)}</span>
+              <span class="dispatcher-card__route">${esc(b.route_name)}</span>
+            </div>
+            ${dispatcherLine}
+            <div class="dispatcher-card__datetime">${esc(b.departure_date)} · ${esc(b.departure_time)}</div>
+            <div class="status">${statusBadge}</div>
+          </div>
+          <div class="dispatcher-card__aside">
+            <div class="dispatcher-card__price">${esc(b.price_total)} ${esc(b.currency)}</div>
+            <div class="actions">
+              <button type="button" data-action="contact" data-id="${esc(b.booking_id)}" class="dispatcher-btn-contact">${contactLabel}</button>
+              <button data-id="${b.booking_id}" data-status="payment_link_sent">Ссылка оплаты</button>
+              <button data-id="${b.booking_id}" data-status="paid">Оплачено</button>
+              <button data-id="${b.booking_id}" data-status="ticket_sent">Билет отправлен</button>
+              <button data-id="${b.booking_id}" data-status="done">Завершено</button>
+              <button data-id="${b.booking_id}" data-status="cancelled">Отменить</button>
+            </div>
+          </div>
         </div>
       </div>
     `;
@@ -515,10 +535,17 @@
         list.innerHTML = fresh.map(b => renderNewCard(b)).join('') || '<p>Нет новых заявок.</p>';
         bindTakeButtons(list);
       }
+      var statNewEl = document.getElementById('statNew');
+      if (statNewEl) statNewEl.textContent = String(items.length);
       state.loaded = true;
       updateNewBulkActions();
       bindNewBulkActionsOnce();
-    }).catch(() => { if (list) list.innerHTML = '<p>Нет доступа (вы не диспетчер).</p>'; updateNewBulkActions(); }).finally(function() {
+    }).catch(() => {
+      if (list) list.innerHTML = '<p>Нет доступа (вы не диспетчер).</p>';
+      var statNewEl = document.getElementById('statNew');
+      if (statNewEl) statNewEl.textContent = '—';
+      updateNewBulkActions();
+    }).finally(function() {
       state.inFlight = false;
       state.promise = null;
       if (state.dirty) loadNew(true);
@@ -700,6 +727,10 @@
       if (sidebarEl) {
         sidebarEl.innerHTML = 'За сегодня: <strong>' + total + '</strong> заявок, <strong>' + sum + ' BYN</strong><br>Просрочено &gt;15 мин: <strong>' + overdue15 + '</strong>';
       }
+      var statTotalEl = document.getElementById('statTotal');
+      var statOverdueEl = document.getElementById('statOverdue');
+      if (statTotalEl) statTotalEl.textContent = String(total);
+      if (statOverdueEl) statOverdueEl.textContent = String(overdue15);
       const slaEl = document.getElementById('dispatcherSlaCount');
       if (slaEl) {
         slaEl.textContent = overdue15 > 0 ? 'Просрочено: ' + overdue15 : '—';
@@ -709,6 +740,10 @@
     }).catch(() => {
       const sidebarEl = document.getElementById('sidebarStatsContent');
       if (sidebarEl) sidebarEl.textContent = 'Ошибка загрузки';
+      var statTotalEl = document.getElementById('statTotal');
+      var statOverdueEl = document.getElementById('statOverdue');
+      if (statTotalEl) statTotalEl.textContent = '—';
+      if (statOverdueEl) statOverdueEl.textContent = '—';
       const slaEl = document.getElementById('dispatcherSlaCount');
       if (slaEl) slaEl.textContent = '—';
     }).finally(function() {

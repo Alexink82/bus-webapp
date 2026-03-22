@@ -21,7 +21,7 @@
   <link rel="stylesheet" href="css/telegram-theme.css">
   <link rel="stylesheet" href="css/animations.css">
 </head>
-<body>
+<body class="page-faq has-app-shell">
   <div id="maintenanceOverlay" class="maintenance-overlay hidden">
     <div class="maintenance-overlay__inner">
       <img src="/assets/logo-DHd3bDT6-DHd3bDT6.png" alt="СТОЛИЦА" class="maintenance-overlay__logo" width="160" height="40">
@@ -31,7 +31,14 @@
       <p class="maintenance-overlay__countdown" id="maintenanceCountdown">—</p>
     </div>
   </div>
-  <div class="container" id="appContent">
+  <div class="app-shell">
+    <nav class="tab-bar" id="tabBar" aria-label="Основная навигация">
+      <a href="index.html" class="tab"><span class="tab-bar__icon">🎫</span><span class="tab-bar__label" data-i18n="tabBook">Бронь</span></a>
+      <a href="profile.html" class="tab"><span class="tab-bar__icon">👤</span><span class="tab-bar__label" data-i18n="tabProfile">Профиль</span></a>
+      <a href="faq.html" class="tab active"><span class="tab-bar__icon">❓</span><span class="tab-bar__label" data-i18n="tabFaq">FAQ</span></a>
+    </nav>
+    <div class="app-shell__body">
+  <div class="container container--app" id="appContent">
     <header class="header">
       <div class="header__logo-bar">
         <img src="/assets/logo-DHd3bDT6-DHd3bDT6.png" alt="СТОЛИЦА" class="header__logo" width="160" height="40">
@@ -54,11 +61,8 @@
         <a href="https://t.me/bus_news" target="_blank" rel="noopener" class="faq-support__link" data-i18n="faqSupportLink">📨 Написать в поддержку (Telegram)</a>
       </section>
     </main>
-    <nav class="tab-bar" id="tabBar">
-      <a href="index.html" class="tab"><span class="tab-bar__icon">🎫</span><span class="tab-bar__label" data-i18n="tabBook">Бронь</span></a>
-      <a href="profile.html" class="tab"><span class="tab-bar__icon">👤</span><span class="tab-bar__label" data-i18n="tabProfile">Профиль</span></a>
-      <a href="faq.html" class="tab active"><span class="tab-bar__icon">❓</span><span class="tab-bar__label" data-i18n="tabFaq">FAQ</span></a>
-    </nav>
+  </div>
+    </div>
   </div>
   <script type="module" src="./js/faq-entry.js"></script>
 </body>
